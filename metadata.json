@@ -1,6 +1,6 @@
 {
-  "name": "(주)대성스틸 연간교육계획수립",
-  "description": "구글 스프레드시트를 데이터베이스로 활용하여 사내/사외 연간 교육 계획을 수립, 관리하고 분석하는 솔루션입니다.",
+  "name": "(주)대성스틸 교육관리",
+  "description": "사내/사외 연간 교육 계획을 수립, 관리하고 분석하는 솔루션입니다.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
