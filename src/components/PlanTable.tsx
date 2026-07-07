@@ -112,37 +112,36 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
 
       {/* Table Section */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse text-xs md:text-sm">
           <thead>
-            <tr className="border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
-              <th className="py-3.5 px-5 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('edu_date')}>
+            <tr className="border-b border-gray-100 text-[11px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+              <th className="py-3 px-2 md:px-3 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap w-[90px]" onClick={() => handleSort('edu_date')}>
                 교육일자 {sortField === 'edu_date' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3.5 px-4 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('category')}>
+              <th className="py-3 px-2 md:px-3 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap w-[50px] text-center" onClick={() => handleSort('category')}>
                 구분 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3.5 px-4 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
+              <th className="py-3 px-2.5 md:px-3.5 cursor-pointer hover:bg-gray-100 transition-colors min-w-[180px] md:min-w-[240px]" onClick={() => handleSort('title')}>
                 교육명 {sortField === 'title' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3.5 px-4">교육기관 / 강사</th>
-              <th className="py-3.5 px-4">대상자</th>
-              <th className="py-3.5 px-4">교육일정</th>
-              <th className="py-3.5 px-4">시간대</th>
-              <th className="py-3.5 px-4 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('total_hours')}>
-                시간 {sortField === 'total_hours' && (sortDirection === 'asc' ? '▲' : '▼')}
+              <th className="py-3 px-2.5 md:px-3.5 min-w-[160px] md:min-w-[200px]">교육기관 / 강사</th>
+              <th className="py-3 px-2.5 md:px-3.5 min-w-[110px] md:min-w-[150px]">대상자</th>
+              <th className="py-3 px-2 md:px-3 whitespace-nowrap w-[95px]">교육일정</th>
+              <th className="py-3 px-2 md:px-3 text-center whitespace-nowrap w-[115px]" onClick={() => handleSort('total_hours')}>
+                교육시간 {sortField === 'total_hours' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3.5 px-5 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('estimated_cost')}>
+              <th className="py-3 px-2 md:px-3 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap w-[85px]" onClick={() => handleSort('estimated_cost')}>
                 예상비용 {sortField === 'estimated_cost' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3.5 px-5 text-center">관리</th>
-              <th className="py-3.5 px-5 text-center">기안</th>
-              <th className="py-3.5 px-5 text-center">보고서</th>
+              <th className="py-3 px-2 md:px-3 text-center whitespace-nowrap w-[65px]">관리</th>
+              <th className="py-3 px-2 md:px-3 text-center whitespace-nowrap w-[55px]">기안</th>
+              <th className="py-3 px-2 md:px-3 text-center whitespace-nowrap w-[55px]">보고서</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 text-sm">
+          <tbody className="divide-y divide-gray-100">
             {sortedPlans.length === 0 ? (
               <tr>
-                <td colSpan={12} className="py-12 text-center text-gray-400 font-medium">
+                <td colSpan={11} className="py-12 text-center text-gray-400 font-medium">
                   수립된 교육 계획이 없습니다.
                 </td>
               </tr>
@@ -150,14 +149,14 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
               sortedPlans.map(({ plan, originalIndex }) => (
                 <tr key={plan.id} className="hover:bg-gray-50/50 transition-colors">
                   {/* Date */}
-                  <td className="py-4 px-5 font-medium text-gray-700 whitespace-nowrap">
+                  <td className="py-3.5 px-2 md:px-3 font-medium text-gray-700 whitespace-nowrap">
                     {plan.edu_date}
                   </td>
 
                   {/* Category */}
-                  <td className="py-4 px-4 whitespace-nowrap">
+                  <td className="py-3.5 px-2 md:px-3 text-center whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold leading-none ${
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold leading-none whitespace-nowrap ${
                         plan.category === '사내'
                           ? 'bg-blue-50 text-blue-600 border border-blue-100'
                           : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
@@ -168,79 +167,74 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                   </td>
 
                   {/* Title */}
-                  <td className="py-4 px-4 font-semibold text-gray-800 min-w-[180px]">
+                  <td className="py-3.5 px-2.5 md:px-3.5 font-semibold text-gray-800 leading-snug">
                     {plan.title}
                   </td>
 
                   {/* Agency / Instructor */}
-                  <td className="py-4 px-4 text-gray-500">
-                    <div className="font-medium text-gray-700">{plan.agency}</div>
-                    <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                      <User className="w-3 h-3" /> {plan.instructor}
+                  <td className="py-3.5 px-2.5 md:px-3.5 text-gray-500">
+                    <div className="font-medium text-gray-700 leading-snug">{plan.agency}</div>
+                    <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap">
+                      <User className="w-3 h-3 shrink-0" /> <span className="whitespace-nowrap">{plan.instructor}</span>
                     </div>
                   </td>
 
                   {/* Target Group */}
-                  <td className="py-4 px-4 text-gray-600">
+                  <td className="py-3.5 px-2.5 md:px-3.5 text-gray-600 leading-snug">
                     {plan.target_group}
                   </td>
 
                   {/* Schedule */}
-                  <td className="py-4 px-4 text-gray-600 whitespace-nowrap">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                      {plan.schedule}
+                  <td className="py-3.5 px-2 md:px-3 text-gray-600 whitespace-nowrap">
+                    <div className="flex items-center gap-1 whitespace-nowrap">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="whitespace-nowrap">{plan.schedule}</span>
                     </div>
                   </td>
 
-                  {/* Time Range */}
-                  <td className="py-4 px-4 text-gray-600 whitespace-nowrap">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-gray-400" />
-                      {plan.time_range}H
+                  {/* Integrated Education Time */}
+                  <td className="py-3.5 px-2 md:px-3 text-center text-gray-600 whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                      <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="whitespace-nowrap">{plan.time_range} ({plan.total_hours}시간)</span>
                     </div>
-                  </td>
-
-                  {/* Total Hours */}
-                  <td className="py-4 px-4 text-right font-semibold text-gray-800">
-                    {plan.total_hours} <span className="text-xs font-normal text-gray-400">시간</span>
                   </td>
 
                   {/* Estimated Cost */}
-                  <td className="py-4 px-5 text-right font-bold text-gray-800 whitespace-nowrap">
+                  <td className="py-3.5 px-2 md:px-3 text-right font-bold text-gray-800 whitespace-nowrap">
                     ₩{formatCurrency(plan.estimated_cost)}
                   </td>
 
                   {/* Actions */}
-                  <td className="py-4 px-5 whitespace-nowrap text-center">
-                    <div className="flex items-center justify-center gap-2">
+                  <td className="py-3.5 px-2 md:px-3 whitespace-nowrap text-center">
+                    <div className="flex items-center justify-center gap-1.5">
                       <button
                         onClick={() => onEdit(plan, originalIndex)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                        className="p-1 rounded-lg text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
                         title="수정"
                       >
-                        <Edit3 className="w-4.5 h-4.5" />
+                        <Edit3 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => confirmDelete(originalIndex)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                        className="p-1 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                         title="삭제"
                       >
-                        <Trash2 className="w-4.5 h-4.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
 
                   {/* Draft Column */}
-                  <td className="py-4 px-5 whitespace-nowrap text-center">
+                  <td className="py-3.5 px-2 md:px-3 whitespace-nowrap text-center">
                     {drafts.some((d) => d.plan_id === plan.id) ? (
-                      <span className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-rose-600 text-white shadow-xs">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-rose-600 text-white shadow-xs whitespace-nowrap">
                         완료
                       </span>
                     ) : (
                       <button
                         onClick={() => onStartDraft(plan)}
-                        className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-lime-300 text-indigo-950 hover:bg-lime-400 border border-lime-400/30 shadow-xs transition-all active:scale-95 cursor-pointer"
+                        className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-lime-300 text-indigo-950 hover:bg-lime-400 border border-lime-400/30 shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
                       >
                         기안
                       </button>
@@ -248,18 +242,18 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                   </td>
 
                   {/* Report Column */}
-                  <td className="py-4 px-5 whitespace-nowrap text-center">
+                  <td className="py-3.5 px-2 md:px-3 whitespace-nowrap text-center">
                     {drafts.some((d) => d.plan_id === plan.id) ? (
                       <button
                         onClick={() => onStartReport(plan)}
-                        className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-[#1e293b] text-white hover:bg-slate-700 shadow-xs transition-all active:scale-95 cursor-pointer"
+                        className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-[#1e293b] text-white hover:bg-slate-700 shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
                       >
                         작성
                       </button>
                     ) : (
                       <button
                         disabled
-                        className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
+                        className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed opacity-50 whitespace-nowrap"
                       >
                         작성
                       </button>
