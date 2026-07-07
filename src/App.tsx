@@ -662,6 +662,7 @@ export default function App() {
                     <PlanTable
                       plans={plans}
                       drafts={drafts}
+                      reports={reports}
                       onEdit={handleOpenEditModal}
                       onDelete={handleDeletePlan}
                       onStartDraft={handleStartDraft}

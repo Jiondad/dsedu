@@ -147,11 +147,127 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
   };
 
   const handlePrint = () => {
+    // Remove list landscape print styles to prevent conflict
+    const listStyleEl = document.getElementById('dynamic-landscape-print-style-reports');
+    if (listStyleEl) {
+      listStyleEl.remove();
+    }
+    
     const isIframe = window.self !== window.top;
     if (isIframe) {
       console.warn('Iframe sandbox detected. Showing instructions for secure print.');
       setShowPrintIframeWarning(true);
     } else {
+      // Add portrait print rules
+      const portraitStyleId = 'dynamic-portrait-print-style';
+      let styleEl = document.getElementById(portraitStyleId);
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = portraitStyleId;
+        styleEl.innerHTML = `
+          @media print {
+            @page {
+              size: portrait !important;
+              margin: 10mm !important;
+            }
+          }
+        `;
+        document.head.appendChild(styleEl);
+      }
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Print blocked or failed:', err);
+        setShowPrintIframeWarning(true);
+      }
+    }
+  };
+
+  const handlePrintList = () => {
+    // Remove portrait single-report style to prevent conflict
+    const portraitStyleEl = document.getElementById('dynamic-portrait-print-style');
+    if (portraitStyleEl) {
+      portraitStyleEl.remove();
+    }
+    
+    const isIframe = window.self !== window.top;
+    if (isIframe) {
+      console.warn('Iframe sandbox detected. Showing instructions for secure print.');
+      setShowPrintIframeWarning(true);
+    } else {
+      const styleId = 'dynamic-landscape-print-style-reports';
+      let styleEl = document.getElementById(styleId);
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        styleEl.innerHTML = `
+          @media print {
+            @page {
+              size: landscape !important;
+              margin: 10mm !important;
+            }
+            /* Hide general web app layouts & headers */
+            header, footer, nav, button, form, .no-print, .modal, [role="dialog"] {
+              display: none !important;
+            }
+            body > *:not(#root) {
+              display: none !important;
+            }
+            /* Ensure maximum printable area */
+            #root, main, main > div, .max-w-7xl {
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: block !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: transparent !important;
+            }
+            /* Hide other sections and dashboards from StatisticsDashboard view */
+            main > div > *:not(.print-report-table-container),
+            .space-y-6 > *:not(.print-report-table-container),
+            .space-y-4 > *:not(.print-report-table-container) {
+              display: none !important;
+            }
+            /* Style the container sheet to fill horizontal paper space */
+            .print-report-table-container {
+              display: block !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: transparent !important;
+              overflow: visible !important;
+            }
+            /* Table optimization for Landscape A4 */
+            .print-report-table-container table {
+              width: 100% !important;
+              table-layout: fixed !important;
+              border-collapse: collapse !important;
+              font-size: 10px !important;
+            }
+            .print-report-table-container th {
+              background-color: #f1f5f9 !important; /* Elegant slate-100 header */
+              color: #1e293b !important;
+              font-weight: 700 !important;
+              border: 1px solid #94a3b8 !important;
+              padding: 6px 4px !important;
+            }
+            .print-report-table-container td {
+              border: 1px solid #cbd5e1 !important;
+              padding: 6px 4px !important;
+              font-size: 10px !important;
+              word-break: break-all !important;
+              line-height: 1.3 !important;
+              color: #000000 !important;
+            }
+          }
+        `;
+        document.head.appendChild(styleEl);
+      }
+
       try {
         window.print();
       } catch (err) {
@@ -459,8 +575,18 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
       </div>
 
       {/* Education Performance List Table */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-4">
-        <div className="flex justify-between items-center">
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-4 print-report-table-container">
+        {/* 인쇄 전용 헤더 (화면 숨김, 인쇄 시에만 가로 상단 표출) */}
+        <div className="hidden print:block mb-6 w-full">
+          <div className="flex justify-between items-baseline border-b-2 border-slate-800 pb-2.5">
+            <h1 className="text-lg font-black text-slate-900">대성스틸 연간 교육 실적 현황</h1>
+            <span className="text-xs text-slate-500 font-mono font-bold">
+              출력일자: {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
           <div>
             <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
               <Award className="w-4.5 h-4.5 text-indigo-500" />
@@ -468,8 +594,17 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5 font-medium">기안 및 결과보고 제출이 100% 완료된 실적 상세 현황입니다.</p>
           </div>
-          <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
-            총 {completedReportsWithDetails.length}건 완료
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
+              총 {completedReportsWithDetails.length}건 완료
+            </div>
+            <button
+              onClick={handlePrintList}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-950 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <Printer className="w-4 h-4 text-slate-500" />
+              <span>교육 실적 목록 출력</span>
+            </button>
           </div>
         </div>
 
@@ -484,7 +619,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                 <th style={{ width: '11%' }} className="py-3 px-2 text-right">실집행비용</th>
                 <th style={{ width: '5%' }} className="py-3 px-2 text-center">만족도</th>
                 <th style={{ width: '5%' }} className="py-3 px-2 text-center">수료증</th>
-                <th style={{ width: '3%' }} className="py-3 px-3.5 text-center">기능</th>
+                <th style={{ width: '3%' }} className="py-3 px-3.5 text-center no-print">기능</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-150">
@@ -524,7 +659,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                           <span className="text-gray-300 font-bold">-</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-3.5 text-center">
+                      <td className="py-3.5 px-3.5 text-center no-print">
                         <button
                           onClick={() => setSelectedReportDetail({ report, plan, draft })}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all border border-indigo-100 cursor-pointer whitespace-nowrap"
