@@ -57,6 +57,12 @@ export default function App() {
 
   // Active Screen Tab state
   const [activeTab, setActiveTab] = useState<'plans' | 'drafts'>('plans');
+  const [preselectedPlanId, setPreselectedPlanId] = useState<string | null>(null);
+
+  const handleStartDraft = (plan: EducationPlan) => {
+    setPreselectedPlanId(plan.id);
+    setActiveTab('drafts');
+  };
 
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -579,8 +585,10 @@ export default function App() {
                     {/* Data Table */}
                     <PlanTable
                       plans={plans}
+                      drafts={drafts}
                       onEdit={handleOpenEditModal}
                       onDelete={handleDeletePlan}
+                      onStartDraft={handleStartDraft}
                     />
                   </div>
                 </div>
@@ -588,10 +596,13 @@ export default function App() {
                 <DraftManager
                   plans={plans}
                   drafts={drafts}
+                  setDrafts={setDrafts}
                   onAddDraft={handleAddDraft}
                   onUpdateDraft={handleUpdateDraft}
                   onDeleteDraft={handleDeleteDraft}
                   isLoading={isLoading}
+                  preselectedPlanId={preselectedPlanId}
+                  onClearPreselectedPlan={() => setPreselectedPlanId(null)}
                 />
               )}
             </div>

@@ -8,19 +8,12 @@ import { EducationPlan, EducationDraft } from '../types';
 import { formatCurrency } from '../utils';
 import {
   FileText,
-  Plus,
   Trash2,
   Printer,
   Sparkles,
   RefreshCw,
   FileCheck,
   AlertCircle,
-  HelpCircle,
-  User,
-  Calendar,
-  Layers,
-  Clock,
-  Briefcase,
   PenTool,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -28,19 +21,25 @@ import { motion, AnimatePresence } from 'motion/react';
 interface DraftManagerProps {
   plans: EducationPlan[];
   drafts: EducationDraft[];
+  setDrafts: React.Dispatch<React.SetStateAction<EducationDraft[]>>;
   onAddDraft: (draft: EducationDraft) => Promise<void>;
   onUpdateDraft: (draft: EducationDraft, index: number) => Promise<void>;
   onDeleteDraft: (index: number) => Promise<void>;
   isLoading: boolean;
+  preselectedPlanId?: string | null;
+  onClearPreselectedPlan?: () => void;
 }
 
 export default function DraftManager({
   plans,
   drafts,
+  setDrafts,
   onAddDraft,
   onUpdateDraft,
   onDeleteDraft,
   isLoading,
+  preselectedPlanId,
+  onClearPreselectedPlan,
 }: DraftManagerProps) {
   // Currently editing draft state (form)
   const [selectedPlanId, setSelectedPlanId] = useState('');
@@ -54,8 +53,30 @@ export default function DraftManager({
   // Selected draft from history for editing
   const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(null);
 
+  // Local notification state
+  const [localNotification, setLocalNotification] = useState<{
+    text: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
+
+  const triggerLocalNotification = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setLocalNotification({ text, type });
+    setTimeout(() => {
+      setLocalNotification(null);
+    }, 4500);
+  };
+
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Target ID of draft to delete (for custom confirmation dialog)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  // State to show print dialog error warning modal (when window.print is blocked by iframe sandbox)
+  const [showPrintIframeWarning, setShowPrintIframeWarning] = useState(false);
+
+  // Filter for plan categories ('전체', '사내', '사외')
+  const [planCategoryFilter, setPlanCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
 
   // Auto-generate sequential draft ID based on selected date and year-based sequence
   const generateDraftIdForDate = (date: string) => {
@@ -89,7 +110,12 @@ export default function DraftManager({
 
   // Auto-generate draft ID when selected date or drafts change (only in NEW mode)
   useEffect(() => {
-    if (editingDraftIndex === null && draftDate) {
+    if (editingDraftIndex === null && draftDate && selectedPlanId) {
+      // Verify first if there is an existing draft for this plan to prevent overwriting
+      const existing = drafts.find((d) => d.plan_id === selectedPlanId);
+      if (existing) {
+        return;
+      }
       const nextId = generateDraftIdForDate(draftDate);
       setDraftId(nextId);
       
@@ -102,14 +128,62 @@ export default function DraftManager({
         });
       }
     }
-  }, [draftDate, drafts, editingDraftIndex]);
+  }, [draftDate, drafts, editingDraftIndex, selectedPlanId]);
+
+  // Synchronize editingDraftIndex when drafts array updates after a new draft is saved
+  useEffect(() => {
+    if (editingDraftIndex === null && draftId) {
+      const index = drafts.findIndex((d) => d.id === draftId);
+      if (index !== -1) {
+        setEditingDraftIndex(index);
+      }
+    }
+  }, [drafts, draftId, editingDraftIndex]);
+
+  // Handle preselected plan when clicking "기안" from the plans tab
+  useEffect(() => {
+    if (preselectedPlanId) {
+      const plan = plans.find((p) => p.id === preselectedPlanId);
+      if (plan) {
+        // Set the active plan ID
+        setSelectedPlanId(preselectedPlanId);
+
+        // Check if an existing draft already exists for this plan
+        const existingDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
+        if (existingDraft) {
+          const index = drafts.findIndex((d) => d.plan_id === preselectedPlanId);
+          setEditingDraftIndex(index);
+          setDraftId(existingDraft.id);
+          setDrafter(existingDraft.drafter);
+          setDraftDate(existingDraft.draft_date);
+          setPurpose(existingDraft.purpose);
+          setContentSummary(existingDraft.content_summary);
+          setBudgetBreakdown(existingDraft.budget_breakdown);
+          setErrors({});
+          triggerLocalNotification('이미 작성된 기안서가 존재하여 해당 기안서를 불러왔습니다.', 'info');
+        } else {
+          // If no draft exists, start a brand new draft
+          setEditingDraftIndex(null);
+          const nextId = generateDraftIdForDate(draftDate);
+          setDraftId(nextId);
+          setDrafter('');
+          setPurpose('');
+          setContentSummary('');
+          setBudgetBreakdown('');
+          setErrors({});
+          triggerLocalNotification('새 교육 기안서 작성을 시작합니다.', 'success');
+        }
+      }
+      onClearPreselectedPlan?.();
+    }
+  }, [preselectedPlanId, plans, drafts, draftDate]);
 
   // Find the currently selected plan details
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
 
   // Auto-map selected plan data to details if desired
   useEffect(() => {
-    if (selectedPlan && !editingDraftIndex) {
+    if (selectedPlan && editingDraftIndex === null) {
       // Provide smart default for content summary and budget breakdown if they are empty
       if (!contentSummary) {
         setContentSummary(
@@ -128,7 +202,60 @@ export default function DraftManager({
         setPurpose(`직무 능력 향상 및 현업 적용을 위한 전문 지식 습득`);
       }
     }
-  }, [selectedPlanId]);
+  }, [selectedPlanId, editingDraftIndex]);
+
+  // Handle plan selection change from dropdown with defense check for existing drafts
+  const handlePlanSelection = (planId: string) => {
+    setSelectedPlanId(planId);
+    if (errors.selectedPlanId) {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.selectedPlanId;
+        return copy;
+      });
+    }
+
+    if (!planId) {
+      handleResetForm();
+      return;
+    }
+
+    // Check if an existing draft for this plan already exists
+    const existingDraft = drafts.find((d) => d.plan_id === planId);
+    if (existingDraft) {
+      // If we are creating a brand new draft or editing a different draft, show warning immediately
+      if (editingDraftIndex === null || drafts[editingDraftIndex].plan_id !== planId) {
+        setErrors((prev) => ({
+          ...prev,
+          selectedPlanId: '이미 기안서가 작성된 교육계획입니다.',
+        }));
+        triggerLocalNotification('이미 기안서가 작성된 교육계획입니다.', 'error');
+        try {
+          alert('이미 기안서가 작성된 교육계획입니다.');
+        } catch (_) {}
+        
+        // Reset draft details to prevent creating duplicate content
+        const nextId = generateDraftIdForDate(draftDate);
+        setDraftId(nextId);
+        setDrafter('');
+        setPurpose('');
+        setContentSummary('');
+        setBudgetBreakdown('');
+        return;
+      }
+    } else {
+      // It's a brand new draft for this plan (no existing draft exists for it)
+      // Only reset/clean inputs if we are in new draft mode, so we don't clear an active edit session
+      if (editingDraftIndex === null) {
+        const nextId = generateDraftIdForDate(draftDate);
+        setDraftId(nextId);
+        setDrafter('');
+        setPurpose('');
+        setContentSummary('');
+        setBudgetBreakdown('');
+      }
+    }
+  };
 
   // Load selected draft for editing from history
   const handleSelectDraftForEdit = (draft: EducationDraft, index: number) => {
@@ -156,9 +283,74 @@ export default function DraftManager({
     setErrors({});
   };
 
+  // Delete draft helper using draftId with instant optimistic UI update
+  const handleDeleteDraft = (draftId: string) => {
+    // 1. Find target index in original state array before filtering
+    const targetIndex = drafts.findIndex((d) => d.id === draftId || (d as any).draft_id === draftId);
+    
+    // 2. Immediate optimistic update on the frontend
+    if (setDrafts) {
+      setDrafts((prev) => prev.filter((d) => d.id !== draftId && (d as any).draft_id !== draftId));
+    }
+    
+    // 3. Clear editing form if the current form was editing the deleted draft
+    if (editingDraftIndex === targetIndex && targetIndex !== -1) {
+      handleResetForm();
+    } else if (editingDraftIndex !== null && targetIndex !== -1 && targetIndex < editingDraftIndex) {
+      setEditingDraftIndex((prev) => (prev !== null ? prev - 1 : null));
+    }
+
+    // 4. Delegate server action in the background
+    if (targetIndex !== -1) {
+      onDeleteDraft(targetIndex).catch((err) => {
+        console.error('Failed to sync deletion on spreadsheet:', err);
+        triggerLocalNotification('구글 스프레드시트 삭제 반영 실패', 'error');
+      });
+    }
+  };
+
+  // High-reliability print handler that detects iframe environments and provides solutions
+  const handlePrint = () => {
+    const isIframe = window.self !== window.top;
+    if (isIframe) {
+      console.warn('Iframe sandbox detected. Showing instructions for secure print.');
+      setShowPrintIframeWarning(true);
+    } else {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Print blocked or failed:', err);
+        setShowPrintIframeWarning(true);
+      }
+    }
+  };
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!selectedPlanId) newErrors.selectedPlanId = '연관 교육 계획을 선택해주세요.';
+    if (!selectedPlanId) {
+      newErrors.selectedPlanId = '연관 교육 계획을 선택해주세요.';
+    } else {
+      // Check if another draft already has this plan_id
+      if (editingDraftIndex === null) {
+        const existingDraft = drafts.find((d) => d.plan_id === selectedPlanId);
+        if (existingDraft) {
+          newErrors.selectedPlanId = '이미 기안서가 작성된 교육계획입니다.';
+          triggerLocalNotification('이미 기안서가 작성된 교육계획입니다.', 'error');
+          try {
+            alert('이미 기안서가 작성된 교육계획입니다.');
+          } catch (_) {}
+        }
+      } else {
+        const otherDraft = drafts.find((d, idx) => d.plan_id === selectedPlanId && idx !== editingDraftIndex);
+        if (otherDraft) {
+          newErrors.selectedPlanId = '이미 기안서가 작성된 교육계획입니다.';
+          triggerLocalNotification('이미 기안서가 작성된 교육계획입니다.', 'error');
+          try {
+            alert('이미 기안서가 작성된 교육계획입니다.');
+          } catch (_) {}
+        }
+      }
+    }
     if (!draftId.trim()) newErrors.draftId = '기안서 번호를 입력해주세요.';
     if (!drafter.trim()) newErrors.drafter = '기안자 이름을 입력해주세요.';
     if (!draftDate) newErrors.draftDate = '기안일자를 선택해주세요.';
@@ -200,19 +392,19 @@ export default function DraftManager({
     }
   };
 
-  // Trigger window print
-  const handlePrint = () => {
-    if (!validate()) {
-      alert('기안서의 필수 항목들을 먼저 올바르게 작성해주세요.');
-      return;
-    }
-    window.print();
-  };
-
   // Pre-fill a sample draft for convenience if there are plans
   const handleLoadSample = () => {
     if (plans.length === 0) return;
     const firstPlan = plans[0];
+    
+    // Check if there is already a draft for this plan
+    const existingIndex = drafts.findIndex((d) => d.plan_id === firstPlan.id);
+    if (existingIndex !== -1) {
+      handleSelectDraftForEdit(drafts[existingIndex], existingIndex);
+      triggerLocalNotification('기존 교육계획 기안서를 로드했습니다.', 'info');
+      return;
+    }
+
     setSelectedPlanId(firstPlan.id);
     setDrafter('김철수 대리');
     setDraftDate(new Date().toISOString().split('T')[0]);
@@ -226,10 +418,11 @@ export default function DraftManager({
       `1. 교육 수강료: ₩${formatCurrency(firstPlan.estimated_cost)} (부가가치세 면제)\n` +
         `2. 집행 과목: 인재개발원 - 직원 위탁교육 훈련비`
     );
-    // Trigger Draft ID auto-generation
+    
     const today = new Date().toISOString().split('T')[0];
     const generatedId = generateDraftIdForDate(today);
     setDraftId(generatedId);
+    setEditingDraftIndex(null);
   };
 
   // Display date formatting for corporate preview
@@ -242,56 +435,36 @@ export default function DraftManager({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
-      {/* Dynamic Printing Style Block */}
-      <style>{`
-        @media print {
-          /* Hide everything except the print-area container */
-          body {
-            background: white !important;
-            color: black !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          header, main > div:not(#print-area-wrapper), nav, button, form, .no-print {
-            display: none !important;
-          }
-          #print-area-wrapper {
-            display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          #print-area {
-            width: 210mm !important;
-            min-height: 297mm !important;
-            height: auto !important;
-            padding: 15mm 15mm 15mm 15mm !important;
-            margin: 0 auto !important;
-            border: none !important;
-            box-shadow: none !important;
-            background: white !important;
-            box-sizing: border-box !important;
-            page-break-inside: avoid !important;
-          }
-          /* Ensure backgrounds print correctly */
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            box-sizing: border-box !important;
-          }
-          /* Prevent trailing page overflow */
-          html, body {
-            height: 99% !important;
-            overflow: hidden !important;
-          }
-        }
-      `}</style>
+      {/* Local Toast Notification */}
+      <AnimatePresence>
+        {localNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4 no-print"
+          >
+            <div
+              className={`p-4 rounded-xl shadow-lg border text-xs font-bold flex items-center justify-between gap-3 ${
+                localNotification.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-100'
+                  : localNotification.type === 'error'
+                  ? 'bg-rose-50 text-rose-800 border-rose-100'
+                  : 'bg-indigo-50 text-indigo-800 border-indigo-100'
+              }`}
+            >
+              <span>{localNotification.text}</span>
+              <button
+                type="button"
+                onClick={() => setLocalNotification(null)}
+                className="hover:opacity-80 font-bold ml-auto"
+              >
+                닫기
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* LEFT COLUMN: Input Form & History (5 cols) */}
       <div className="lg:col-span-5 space-y-6 no-print">
@@ -317,14 +490,16 @@ export default function DraftManager({
             </h3>
             {editingDraftIndex !== null ? (
               <button
+                type="button"
                 onClick={handleResetForm}
-                className="text-xs font-bold text-indigo-600 hover:underline"
+                className="text-xs font-bold text-indigo-600 hover:underline animate-pulse"
               >
                 신규 작성 전환
               </button>
             ) : (
               plans.length > 0 && (
                 <button
+                  type="button"
                   onClick={handleLoadSample}
                   className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
                 >
@@ -336,51 +511,92 @@ export default function DraftManager({
 
           <form onSubmit={handleSaveDraft} className="space-y-4">
             {/* Plan Select */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                1. 연관 교육 계획 선택 <span className="text-rose-500">*</span>
-              </label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-gray-500">
+                  1. 연관 교육 계획 선택 <span className="text-rose-500">*</span>
+                </label>
+                
+                {/* Category Filter segmented control */}
+                <div className="flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-bold">
+                  {(['전체', '사내', '사외'] as const).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setPlanCategoryFilter(cat)}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                        planCategoryFilter === cat
+                          ? 'bg-white text-indigo-700 shadow-xs'
+                          : 'text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <select
                 value={selectedPlanId}
-                onChange={(e) => {
-                  setSelectedPlanId(e.target.value);
-                  if (errors.selectedPlanId) {
-                    setErrors((prev) => {
-                      const copy = { ...prev };
-                      delete copy.selectedPlanId;
-                      return copy;
-                    });
-                  }
-                }}
+                onChange={(e) => handlePlanSelection(e.target.value)}
                 disabled={plans.length === 0}
                 className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm bg-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all disabled:opacity-50"
               >
                 <option value="">-- 연간교육계획을 선택해 주세요 --</option>
-                {plans.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.category}] {p.title} ({p.edu_date})
-                  </option>
-                ))}
+                {plans
+                  .filter((p) => {
+                    if (planCategoryFilter === '전체') return true;
+                    if (p.id === selectedPlanId) return true; // Keep selected plan visible
+                    return p.category === planCategoryFilter;
+                  })
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      [{p.category}] {p.title} ({p.edu_date})
+                    </option>
+                  ))}
               </select>
               {errors.selectedPlanId && (
-                <p className="text-xs text-rose-500 mt-1">{errors.selectedPlanId}</p>
+                <div className="mt-1 space-y-1">
+                  <p className="text-xs text-rose-500 font-semibold">{errors.selectedPlanId}</p>
+                  {errors.selectedPlanId === '이미 기안서가 작성된 교육계획입니다.' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const existingIndex = drafts.findIndex((d) => d.plan_id === selectedPlanId);
+                        if (existingIndex !== -1) {
+                          handleSelectDraftForEdit(drafts[existingIndex], existingIndex);
+                          triggerLocalNotification('기존 교육계획 기안서를 불러왔습니다.', 'success');
+                        }
+                      }}
+                      className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      👉 기존 기안서 불러와서 수정하기
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
             {/* Selected Plan Info Card (Read only) */}
             {selectedPlan && (
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs space-y-1.5 text-gray-600">
-                <p>
-                  <span className="font-bold text-gray-500">교육기관:</span> {selectedPlan.agency} |{' '}
-                  <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
-                </p>
-                <p>
-                  <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
-                  <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.total_hours}시간
-                </p>
-                <p>
-                  <span className="font-bold text-gray-500">예상비용:</span> ₩{formatCurrency(selectedPlan.estimated_cost)}
-                </p>
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs text-gray-600 flex justify-between items-center gap-4">
+                <div className="space-y-1.5 flex-1">
+                  <p>
+                    <span className="font-bold text-gray-500">교육기관:</span> {selectedPlan.agency} |{' '}
+                    <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
+                  </p>
+                  <p>
+                    <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
+                    <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.total_hours}시간
+                  </p>
+                  <p>
+                    <span className="font-bold text-gray-500">예상비용:</span> ₩{formatCurrency(selectedPlan.estimated_cost)}
+                  </p>
+                </div>
+                <div className="bg-white px-3 py-2 rounded-lg border border-gray-150 shrink-0 text-right shadow-2xs">
+                  <p className="text-[9px] text-gray-400 font-bold tracking-wider mb-0.5">교육 대상자</p>
+                  <p className="font-bold text-indigo-600 text-[11px]">{selectedPlan.target_group || '미지정'}</p>
+                </div>
               </div>
             )}
 
@@ -548,7 +764,7 @@ export default function DraftManager({
               <button
                 type="button"
                 onClick={handlePrint}
-                className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-4 py-3 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-4 py-3 transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-pulse"
               >
                 <Printer className="w-4 h-4 text-gray-500" />
                 <span>기안서 출력</span>
@@ -598,14 +814,9 @@ export default function DraftManager({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm('정말로 이 기안서를 삭제하시겠습니까? 구글 스프레드시트에서도 삭제됩니다.')) {
-                          onDeleteDraft(index);
-                          if (editingDraftIndex === index) {
-                            handleResetForm();
-                          }
-                        }
+                        setDeleteTargetId(d.id);
                       }}
-                      className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                      className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
                       title="삭제"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -620,22 +831,6 @@ export default function DraftManager({
 
       {/* RIGHT COLUMN: Real-Time Preview Area (7 cols) */}
       <div className="lg:col-span-7 flex flex-col items-center">
-        {/* Banner with helpful tips */}
-        <div className="w-full bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-4 text-xs text-indigo-800 no-print">
-          <div className="flex gap-2.5 items-start">
-            <Printer className="w-4.5 h-4.5 shrink-0 text-indigo-500 mt-0.5" />
-            <div>
-              <p className="font-bold">🖨️ 최적화된 1페이지 인쇄 가이드</p>
-              <p className="mt-1 leading-relaxed font-medium">
-                '기안서 출력'을 클릭하면 배경, 사이드바 등 불필요한 영역은 모두 숨겨지고 아래 A4 기안서 양식만 출력창에 맞춰 정갈하게 인쇄됩니다.
-              </p>
-              <p className="mt-1.5 text-[11px] text-gray-500">
-                Tip: 브라우저 인쇄 옵션에서 <span className="font-semibold text-indigo-700">'배경 그래픽 인쇄'</span>를 체크하시면 표 머리글 배경색과 테두리 레이아웃이 원본 그대로 완벽하게 인쇄됩니다.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Scrollable container for preview on screen */}
         <div
           id="print-area-wrapper"
@@ -652,7 +847,7 @@ export default function DraftManager({
               <div className="flex justify-between items-start mb-8">
                 {/* Spacer or Left corner header */}
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">
-                  {draftId || 'DSED-YYYYMMDD-XXXX'}
+                  {draftId || 'DSEDU-YYYYMMDD-XXX'}
                 </div>
 
                 {/* APPROVAL STAMP GRIDS (결재방) */}
@@ -793,7 +988,113 @@ export default function DraftManager({
             </div>
           </div>
         </div>
+
+        {/* Banner with helpful tips */}
+        <div className="w-full bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mt-4 text-xs text-indigo-800 no-print">
+          <div className="flex gap-2.5 items-start">
+            <Printer className="w-4.5 h-4.5 shrink-0 text-indigo-500 mt-0.5" />
+            <div>
+              <p className="font-bold">🖨️ 최적화된 1페이지 인쇄 가이드</p>
+              <p className="mt-1 leading-relaxed font-medium">
+                '기안서 출력'을 클릭하면 배경, 사이드바 등 불필요한 영역은 모두 숨겨지고 아래 A4 기안서 양식만 출력창에 맞춰 정갈하게 인쇄됩니다.
+              </p>
+              <p className="mt-1.5 text-[11px] text-gray-500 leading-relaxed">
+                Tip 1: 브라우저 인쇄 옵션에서 <span className="font-semibold text-indigo-700">'배경 그래픽 인쇄'</span>를 체크하시면 표 머리글 배경색과 테두리 레이아웃이 원본 그대로 완벽하게 인쇄됩니다.<br />
+                Tip 2: 만약 구글 크롬 등 브라우저 보안 정책(iframe sandbox)에 의해 출력창이 팝업되지 않을 경우, 우측 상단의 <span className="font-semibold text-indigo-700">'새 창에서 열기(Open in new tab)'</span>를 통해 새 창으로 접속하시면 정상적으로 출력창이 실행됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteTargetId !== null && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-white rounded-2xl border border-gray-100 p-6 max-w-sm w-full shadow-2xl space-y-4 text-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-500">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-sm font-bold text-gray-800">삭제하시겠습니까?</h4>
+                <p className="text-xs text-gray-400">
+                  삭제된 기안서 정보는 복구할 수 없으며, 구글 스프레드시트에서도 즉시 동기화되어 지워집니다.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTargetId(null)}
+                  className="flex-1 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  아니요
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteDraft(deleteTargetId);
+                    setDeleteTargetId(null);
+                  }}
+                  className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  확인
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Iframe Sandbox Print Warning Modal */}
+      <AnimatePresence>
+        {showPrintIframeWarning && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-white rounded-2xl border border-gray-100 p-6 max-w-md w-full shadow-2xl space-y-4 text-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto text-indigo-500">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-sm font-bold text-gray-800">보안 및 브라우저 환경 안내</h4>
+                <p className="text-xs text-gray-500 leading-relaxed text-left bg-gray-50 p-3.5 rounded-xl border border-gray-150">
+                  현재 AI Studio 미리보기 창(Iframe Sandbox) 내부에서는 브라우저 보안 규정으로 인해 <span className="font-semibold text-rose-600">인쇄 팝업을 직접 열 수 없습니다.</span><br /><br />
+                  인쇄를 정상적으로 진행하려면 우측 상단의 <span className="font-semibold text-indigo-600">[새 창에서 열기 (Open in new tab)]</span> 아이콘을 클릭하여 새 탭에서 접속해 주시기 바랍니다. 아래 버튼을 클릭하여 바로 새 창으로 이동하실 수도 있습니다.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPrintIframeWarning(false)}
+                  className="flex-1 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  닫기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(window.location.href, '_blank');
+                    setShowPrintIframeWarning(false);
+                  }}
+                  className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  새 창으로 열기 (인쇄 실행)
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

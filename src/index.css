@@ -1,1 +1,81 @@
 @import "tailwindcss";
+
+@media print {
+  /* Hide all elements with the no-print class, as well as headers, buttons, forms */
+  header,
+  footer,
+  nav,
+  button,
+  form,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset body and HTML styles for print */
+  html, body {
+    width: 210mm !important;
+    height: 297mm !important;
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Reset all wrapping layouts so they don't restrict size or use grid/flex sidebars */
+  #root,
+  main,
+  main > div,
+  .grid,
+  .lg\:col-span-7 {
+    display: block !important;
+    width: 210mm !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Reset print wrapper container */
+  #print-area-wrapper {
+    display: block !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Style the exact A4 print area sheet */
+  #print-area {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
+    padding: 18mm !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Ensure stamp tables and corporate layout render elegantly */
+  table {
+    border-collapse: collapse !important;
+  }
+
+  td, th {
+    border: 1px solid black !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}

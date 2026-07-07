@@ -4,18 +4,20 @@
  */
 
 import React, { useState } from 'react';
-import { EducationPlan } from '../types';
+import { EducationPlan, EducationDraft } from '../types';
 import { formatCurrency } from '../utils';
 import { Search, Filter, Edit3, Trash2, Calendar, Clock, User, Award, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface PlanTableProps {
   plans: EducationPlan[];
+  drafts: EducationDraft[];
   onEdit: (plan: EducationPlan, index: number) => void;
   onDelete: (index: number) => void;
+  onStartDraft: (plan: EducationPlan) => void;
 }
 
-export default function PlanTable({ plans, onEdit, onDelete }: PlanTableProps) {
+export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraft }: PlanTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
@@ -132,12 +134,13 @@ export default function PlanTable({ plans, onEdit, onDelete }: PlanTableProps) {
                 예상비용 {sortField === 'estimated_cost' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
               <th className="py-3.5 px-5 text-center">관리</th>
+              <th className="py-3.5 px-5 text-center">기안</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
             {sortedPlans.length === 0 ? (
               <tr>
-                <td colSpan={10} className="py-12 text-center text-gray-400 font-medium">
+                <td colSpan={11} className="py-12 text-center text-gray-400 font-medium">
                   수립된 교육 계획이 없습니다.
                 </td>
               </tr>
@@ -224,6 +227,22 @@ export default function PlanTable({ plans, onEdit, onDelete }: PlanTableProps) {
                         <Trash2 className="w-4.5 h-4.5" />
                       </button>
                     </div>
+                  </td>
+
+                  {/* Draft Column */}
+                  <td className="py-4 px-5 whitespace-nowrap text-center">
+                    {drafts.some((d) => d.plan_id === plan.id) ? (
+                      <span className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-rose-600 text-white shadow-xs">
+                        완료
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => onStartDraft(plan)}
+                        className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-lime-300 text-indigo-950 hover:bg-lime-400 border border-lime-400/30 shadow-xs transition-all active:scale-95 cursor-pointer"
+                      >
+                        기안
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
