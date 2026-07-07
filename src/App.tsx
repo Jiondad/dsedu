@@ -4,11 +4,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { User } from 'firebase/auth';
-import { initAuth, googleSignIn, logout } from './auth';
 import { EducationPlan, EducationDraft } from './types';
 import { computeMetrics } from './utils';
 import {
+  getSpreadsheetConfig,
   findOrCreateSpreadsheet,
   fetchPlans,
   addPlan,
@@ -26,7 +25,6 @@ import DraftManager from './components/DraftManager';
 import {
   CalendarRange,
   Plus,
-  LogOut,
   RefreshCw,
   AlertCircle,
   Database,
@@ -34,15 +32,11 @@ import {
   ShieldCheck,
   CheckCircle,
   FileText,
+  Settings,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [needsAuth, setNeedsAuth] = useState(true);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
   // Sheets DB state
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
   const [plans, setPlans] = useState<EducationPlan[]>([]);
@@ -54,6 +48,11 @@ export default function App() {
     text: string;
     type: 'success' | 'error' | 'info';
   } | null>(null);
+
+  // Settings states
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsSpreadsheetId, setSettingsSpreadsheetId] = useState('');
+  const [settingsApiKey, setSettingsApiKey] = useState('');
 
   // Active Screen Tab state
   const [activeTab, setActiveTab] = useState<'plans' | 'drafts'>('plans');
@@ -79,64 +78,33 @@ export default function App() {
     }, 4000);
   };
 
-  // Auth initialization
+  // Load configuration and data on mount
   useEffect(() => {
-    const unsubscribe = initAuth(
-      (currentUser, accessToken) => {
-        setUser(currentUser);
-        setToken(accessToken);
-        setNeedsAuth(false);
-        initializeSheetsDB(accessToken);
-      },
-      () => {
-        setNeedsAuth(true);
-        setUser(null);
-        setToken(null);
-      }
-    );
-    return () => unsubscribe();
+    const config = getSpreadsheetConfig();
+    setSpreadsheetId(config.spreadsheetId);
+    setSettingsSpreadsheetId(config.spreadsheetId);
+    setSettingsApiKey(config.apiKey);
+    
+    initializeSheetsDB(null);
   }, []);
 
-  // Sign-in handler
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
-    setErrorMsg(null);
-    try {
-      const result = await googleSignIn();
-      if (result) {
-        setToken(result.accessToken);
-        setUser(result.user);
-        setNeedsAuth(false);
-        await initializeSheetsDB(result.accessToken);
-      }
-    } catch (err: any) {
-      console.error('로그인 실패:', err);
-      setErrorMsg('구글 로그인에 실패했습니다. 다시 시도해주세요.');
-    } finally {
-      setIsLoggingIn(false);
+  // Sync settings inputs when settings open
+  useEffect(() => {
+    if (isSettingsOpen) {
+      const config = getSpreadsheetConfig();
+      setSettingsSpreadsheetId(config.spreadsheetId);
+      setSettingsApiKey(config.apiKey);
     }
-  };
+  }, [isSettingsOpen]);
 
-  // Logout handler
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setPlans([]);
-      setDrafts([]);
-      setSpreadsheetId(null);
-      triggerNotification('로그아웃 되었습니다.', 'info');
-    } catch (err) {
-      console.error('로그아웃 실패:', err);
-    }
-  };
-
-  // Sheets DB Setup Flow
-  const initializeSheetsDB = async (accessToken: string) => {
+  // Sheets DB Setup Flow using public/cached access
+  const initializeSheetsDB = async (accessToken: string | null = null) => {
     setIsLoading(true);
-    setLoadingStep('구글 드라이브에서 연간교육계획수립_DB를 찾는 중입니다...');
+    setLoadingStep('구글 스프레드시트 데이터를 불러오는 중입니다...');
     setErrorMsg(null);
     try {
-      const sheetId = await findOrCreateSpreadsheet(accessToken);
+      const config = getSpreadsheetConfig();
+      const sheetId = config.spreadsheetId;
       setSpreadsheetId(sheetId);
 
       setLoadingStep('교육 계획 데이터를 불러오는 중입니다...');
@@ -150,23 +118,44 @@ export default function App() {
       triggerNotification('구글 스프레드시트 DB 연동 완료!', 'success');
     } catch (err: any) {
       console.error('DB 연동 에러:', err);
-      setErrorMsg('구글 스프레드시트 데이터베이스를 불러오지 못했습니다. 권한 설정이나 네트워크 상태를 확인해주세요.');
+      // Fallback
+      try {
+        const cachedPlans = localStorage.getItem('ds_steel_plans_cache');
+        const cachedDrafts = localStorage.getItem('ds_steel_drafts_cache');
+        if (cachedPlans) setPlans(JSON.parse(cachedPlans));
+        if (cachedDrafts) setDrafts(JSON.parse(cachedDrafts));
+        triggerNotification('구글 시트 연동 실패로 로컬 저장소 데이터를 불러왔습니다.', 'info');
+      } catch (localErr) {
+        console.error('로컬 데이터 복구 실패:', localErr);
+      }
     } finally {
       setIsLoading(false);
       setLoadingStep('');
     }
   };
 
+  // Settings Save Handler
+  const handleSaveSettings = () => {
+    localStorage.setItem('ds_steel_spreadsheet_id', settingsSpreadsheetId);
+    localStorage.setItem('ds_steel_google_api_key', settingsApiKey);
+    setIsSettingsOpen(false);
+    triggerNotification('설정이 저장되었습니다. 데이터를 다시 불러옵니다...', 'success');
+    initializeSheetsDB(null);
+  };
+
   // Manual Re-sync
   const handleResync = async () => {
-    if (!token || !spreadsheetId) return;
     setIsLoading(true);
     setLoadingStep('데이터 동기화 중...');
     try {
-      const fetched = await fetchPlans(spreadsheetId, token);
+      const config = getSpreadsheetConfig();
+      const sheetId = spreadsheetId || config.spreadsheetId;
+      setSpreadsheetId(sheetId);
+
+      const fetched = await fetchPlans(sheetId, null);
       setPlans(fetched);
 
-      const fetchedDrafts = await fetchDrafts(spreadsheetId, token);
+      const fetchedDrafts = await fetchDrafts(sheetId, null);
       setDrafts(fetchedDrafts);
 
       triggerNotification('성공적으로 동기화되었습니다.', 'success');
@@ -181,10 +170,8 @@ export default function App() {
 
   // Add / Edit Plan Submit Handler with Optimistic Update
   const handleFormSubmit = async (formData: Omit<EducationPlan, 'id'> & { id?: string }) => {
-    if (!token || !spreadsheetId) {
-      triggerNotification('인증 만료로 인해 교육 계획을 저장할 수 없습니다.', 'error');
-      return;
-    }
+    const config = getSpreadsheetConfig();
+    const activeSheetId = spreadsheetId || config.spreadsheetId;
 
     const originalPlans = [...plans];
 
@@ -205,7 +192,7 @@ export default function App() {
       triggerNotification('교육 계획이 수정되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
       try {
-        await updatePlan(spreadsheetId, token, updatedPlan, index);
+        await updatePlan(activeSheetId, null, updatedPlan, index);
       } catch (err) {
         console.error('업데이트 동기화 실패:', err);
         setPlans(originalPlans); // Revert
@@ -224,7 +211,7 @@ export default function App() {
       triggerNotification('새 교육 계획이 등록되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
       try {
-        await addPlan(spreadsheetId, token, newPlan);
+        await addPlan(activeSheetId, null, newPlan);
       } catch (err) {
         console.error('추가 동기화 실패:', err);
         setPlans(originalPlans); // Revert
@@ -235,7 +222,8 @@ export default function App() {
 
   // Delete Plan with Optimistic Update
   const handleDeletePlan = async (index: number) => {
-    if (!token || !spreadsheetId) return;
+    const config = getSpreadsheetConfig();
+    const activeSheetId = spreadsheetId || config.spreadsheetId;
 
     const originalPlans = [...plans];
 
@@ -245,7 +233,7 @@ export default function App() {
     triggerNotification('교육 계획이 삭제되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await deletePlan(spreadsheetId, token, index);
+      await deletePlan(activeSheetId, null, index);
     } catch (err) {
       console.error('삭제 동기화 실패:', err);
       setPlans(originalPlans); // Revert
@@ -256,17 +244,15 @@ export default function App() {
   // ---------------- DRAFT OPERATION HANDLERS ----------------
 
   const handleAddDraft = async (newDraft: EducationDraft) => {
-    if (!token || !spreadsheetId) {
-      triggerNotification('인증 만료로 인해 기안서를 저장할 수 없습니다.', 'error');
-      return;
-    }
+    const config = getSpreadsheetConfig();
+    const activeSheetId = spreadsheetId || config.spreadsheetId;
 
     const originalDrafts = [...drafts];
     setDrafts((prev) => [...prev, newDraft]);
     triggerNotification('기안서가 저장되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await addDraft(spreadsheetId, token, newDraft);
+      await addDraft(activeSheetId, null, newDraft);
     } catch (err) {
       console.error('기안서 추가 동기화 실패:', err);
       setDrafts(originalDrafts); // Revert
@@ -275,10 +261,8 @@ export default function App() {
   };
 
   const handleUpdateDraft = async (updatedDraft: EducationDraft, index: number) => {
-    if (!token || !spreadsheetId) {
-      triggerNotification('인증 만료로 인해 기안서를 수정할 수 없습니다.', 'error');
-      return;
-    }
+    const config = getSpreadsheetConfig();
+    const activeSheetId = spreadsheetId || config.spreadsheetId;
 
     const originalDrafts = [...drafts];
     const updatedList = [...drafts];
@@ -287,7 +271,7 @@ export default function App() {
     triggerNotification('기안서가 수정되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await updateDraft(spreadsheetId, token, updatedDraft, index);
+      await updateDraft(activeSheetId, null, updatedDraft, index);
     } catch (err) {
       console.error('기안서 수정 동기화 실패:', err);
       setDrafts(originalDrafts); // Revert
@@ -296,7 +280,8 @@ export default function App() {
   };
 
   const handleDeleteDraft = async (index: number) => {
-    if (!token || !spreadsheetId) return;
+    const config = getSpreadsheetConfig();
+    const activeSheetId = spreadsheetId || config.spreadsheetId;
 
     const originalDrafts = [...drafts];
     const updatedList = drafts.filter((_, i) => i !== index);
@@ -304,7 +289,7 @@ export default function App() {
     triggerNotification('기안서가 삭제되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await deleteDraft(spreadsheetId, token, index);
+      await deleteDraft(activeSheetId, null, index);
     } catch (err) {
       console.error('기안서 삭제 동기화 실패:', err);
       setDrafts(originalDrafts); // Revert
@@ -321,88 +306,6 @@ export default function App() {
     setEditPlan(plan);
     setIsModalOpen(true);
   };
-
-  // ---------------- RENDERING SIGN IN SCREEN ----------------
-  if (needsAuth) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md bg-white rounded-3xl p-8 shadow-xl border border-gray-100 flex flex-col items-center"
-        >
-          {/* Visual branding */}
-          <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-            <CalendarRange className="w-8 h-8" />
-          </div>
-
-          <h2 className="text-2xl font-black text-gray-800 tracking-tight text-center">
-            (주)대성스틸 연간교육계획
-          </h2>
-          <p className="text-sm text-gray-400 mt-2 text-center max-w-xs leading-relaxed">
-            구글 스프레드시트를 클라우드 DB로 안전하게 활용하는 교육 수립 및 실시간 대시보드 솔루션입니다.
-          </p>
-
-          <div className="w-full h-px bg-gray-100 my-6" />
-
-          {/* Value props */}
-          <div className="space-y-3.5 w-full mb-8">
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-gray-500 leading-relaxed">
-                <span className="font-semibold text-gray-700">안전한 데이터 보관</span>: 별도 서버 없이 사용자의 구글 드라이브 스프레드시트에 직접 기록됩니다.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-gray-500 leading-relaxed">
-                <span className="font-semibold text-gray-700">스마트 실시간 분석</span>: 등록한 연간계획을 토대로 사내/사외 비용 및 시간 가중치를 대시보드로 요약합니다.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-gray-500 leading-relaxed">
-                <span className="font-semibold text-gray-700">직관적이고 매끄러운 UX</span>: Optimistic Update 기반으로 저장 완료를 기다리지 않고 데이터가 실시간 추가됩니다.
-              </p>
-            </div>
-          </div>
-
-          {errorMsg && (
-            <div className="mb-5 bg-rose-50 text-rose-600 border border-rose-100 text-xs px-3.5 py-2.5 rounded-xl w-full flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          {/* Authentic Google Sign-In button */}
-          <button
-            onClick={handleLogin}
-            disabled={isLoggingIn}
-            className="w-full inline-flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-300 rounded-xl shadow-xs hover:shadow-md text-gray-700 text-sm font-bold hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isLoggingIn ? (
-              <RefreshCw className="w-5 h-5 text-gray-400 animate-spin" />
-            ) : (
-              <>
-                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5 shrink-0">
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                  <path fill="none" d="M0 0h48v48H0z"></path>
-                </svg>
-                <span>Google 계정으로 로그인</span>
-              </>
-            )}
-          </button>
-
-          <p className="text-[10px] text-gray-400 mt-6 text-center max-w-xs">
-            로그인을 누르면 구글 드라이브 파일 생성 및 스프레드시트 데이터 조회를 위한 Google Workspace 동의 창이 팝업됩니다.
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
 
   // ---------------- RENDERING THE MAIN APP INTERFACE ----------------
   return (
@@ -451,26 +354,10 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3 self-stretch sm:self-auto justify-between sm:justify-end">
-            {user && (
-              <div className="flex items-center gap-2">
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || 'User profile'}
-                    referrerPolicy="no-referrer"
-                    className="w-8 h-8 rounded-full border border-gray-200"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-xs">
-                    {user.displayName?.substring(0, 1) || 'U'}
-                  </div>
-                )}
-                <div className="hidden md:block">
-                  <p className="text-xs font-bold text-gray-700">{user.displayName || '인증 사용자'}</p>
-                  <p className="text-[10px] text-gray-400 truncate max-w-[150px]">{user.email}</p>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center gap-2 border border-emerald-100 bg-emerald-50/50 px-3 py-1.5 rounded-xl">
+              <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+              <p className="text-xs font-bold text-emerald-800">공개 시트 모드 활성화됨</p>
+            </div>
 
             <div className="flex items-center gap-2">
               <button
@@ -482,11 +369,11 @@ export default function App() {
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:border-rose-100 hover:bg-rose-50/30 text-gray-500 hover:text-rose-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                onClick={() => setIsSettingsOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:border-indigo-100 hover:bg-indigo-50/30 text-gray-600 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
-                <LogOut className="w-4 h-4" />
-                <span>로그아웃</span>
+                <Database className="w-4 h-4 text-indigo-500" />
+                <span>시트 설정</span>
               </button>
             </div>
           </div>
@@ -512,17 +399,17 @@ export default function App() {
               <p className="mt-1 leading-relaxed">{errorMsg}</p>
               <div className="mt-2 flex items-center gap-4">
                 <button
-                  onClick={() => initializeSheetsDB(token || '')}
+                  onClick={() => initializeSheetsDB(null)}
                   className="text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <span>재시도하기</span>
                   <ArrowRight className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={handleLogout}
-                  className="text-rose-600 hover:underline flex items-center gap-1 cursor-pointer"
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  <span>로그인 세션 초기화 (로그아웃)</span>
+                  <span>시트 설정 열기</span>
                   <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
@@ -617,6 +504,80 @@ export default function App() {
         onSubmit={handleFormSubmit}
         editPlan={editPlan}
       />
+
+      {/* Settings modal */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-xl border border-gray-100 space-y-6"
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Database className="w-5 h-5 text-indigo-600" />
+                  <h3 className="text-lg font-bold text-gray-800">구글 스프레드시트 연동 설정</h3>
+                </div>
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 text-sm font-bold cursor-pointer p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">
+                    구글 스프레드시트 ID
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsSpreadsheetId}
+                    onChange={(e) => setSettingsSpreadsheetId(e.target.value)}
+                    placeholder="예: 1v0E0Zz6-mO1TWhRz-H8bX9K4rVMyF4ZpXW0p_2gO0Hk"
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-indigo-500 focus:bg-white rounded-xl py-2.5 px-4 text-xs font-medium focus:outline-none transition-all font-mono text-[11px]"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                    구글 스프레드시트의 URL 주소창에서 <span className="font-semibold text-gray-600">/d/와 /edit 사이의 값</span>을 복사해 넣어주세요.<br />
+                    * 시트 공유 설정을 반드시 <span className="font-semibold text-emerald-600">"링크가 있는 모든 사용자에게 편집자(혹은 뷰어)"</span>로 변경해 주세요.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">
+                    구글 API Key (기본값 제공됨)
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsApiKey}
+                    onChange={(e) => setSettingsApiKey(e.target.value)}
+                    placeholder="구글 클라우드 콘솔에서 발급한 API 키"
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-indigo-500 focus:bg-white rounded-xl py-2.5 px-4 text-xs font-medium focus:outline-none transition-all font-mono text-[11px]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 font-sans">
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveSettings}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
+                >
+                  설정 저장 및 새로고침
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
