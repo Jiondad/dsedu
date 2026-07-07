@@ -111,31 +111,31 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
       </div>
 
       {/* Table Section */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse text-xs md:text-sm">
+      <div className="w-full overflow-hidden">
+        <table className="w-full table-fixed text-left border-collapse text-xs md:text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-[11px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
-              <th className="py-3 px-2 md:px-3 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap w-[90px]" onClick={() => handleSort('edu_date')}>
+              <th style={{ width: '8.5%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('edu_date')}>
                 교육일자 {sortField === 'edu_date' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3 px-2 md:px-3 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap w-[50px] text-center" onClick={() => handleSort('category')}>
+              <th style={{ width: '4.5%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => handleSort('category')}>
                 구분 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3 px-2.5 md:px-3.5 cursor-pointer hover:bg-gray-100 transition-colors min-w-[180px] md:min-w-[240px]" onClick={() => handleSort('title')}>
+              <th style={{ width: '23%' }} className="py-3 px-1.5 md:px-2 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
                 교육명 {sortField === 'title' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3 px-2.5 md:px-3.5 min-w-[160px] md:min-w-[200px]">교육기관 / 강사</th>
-              <th className="py-3 px-2.5 md:px-3.5 min-w-[110px] md:min-w-[150px]">대상자</th>
-              <th className="py-3 px-2 md:px-3 whitespace-nowrap w-[95px]">교육일정</th>
-              <th className="py-3 px-2 md:px-3 text-center whitespace-nowrap w-[115px]" onClick={() => handleSort('total_hours')}>
+              <th style={{ width: '18%' }} className="py-3 px-1.5 md:px-2">교육기관 / 강사</th>
+              <th style={{ width: '9%' }} className="py-3 px-1.5 md:px-2">대상자</th>
+              <th style={{ width: '9%' }} className="py-3 px-1 md:px-1.5 whitespace-nowrap">교육일정</th>
+              <th style={{ width: '11%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('total_hours')}>
                 교육시간 {sortField === 'total_hours' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3 px-2 md:px-3 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap w-[85px]" onClick={() => handleSort('estimated_cost')}>
+              <th style={{ width: '8%' }} className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('estimated_cost')}>
                 예상비용 {sortField === 'estimated_cost' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="py-3 px-2 md:px-3 text-center whitespace-nowrap w-[65px]">관리</th>
-              <th className="py-3 px-2 md:px-3 text-center whitespace-nowrap w-[55px]">기안</th>
-              <th className="py-3 px-2 md:px-3 text-center whitespace-nowrap w-[55px]">보고서</th>
+              <th style={{ width: '5%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">관리</th>
+              <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">기안</th>
+              <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">보고서</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -149,12 +149,12 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
               sortedPlans.map(({ plan, originalIndex }) => (
                 <tr key={plan.id} className="hover:bg-gray-50/50 transition-colors">
                   {/* Date */}
-                  <td className="py-3.5 px-2 md:px-3 font-medium text-gray-700 whitespace-nowrap">
+                  <td className="py-3.5 px-1 md:px-1.5 font-medium text-gray-700 whitespace-nowrap">
                     {plan.edu_date}
                   </td>
 
                   {/* Category */}
-                  <td className="py-3.5 px-2 md:px-3 text-center whitespace-nowrap">
+                  <td className="py-3.5 px-1 md:px-1.5 text-center whitespace-nowrap">
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold leading-none whitespace-nowrap ${
                         plan.category === '사내'
@@ -167,12 +167,12 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                   </td>
 
                   {/* Title */}
-                  <td className="py-3.5 px-2.5 md:px-3.5 font-semibold text-gray-800 leading-snug">
+                  <td className="py-3.5 px-1.5 md:px-2 font-semibold text-gray-800 leading-snug break-all">
                     {plan.title}
                   </td>
 
                   {/* Agency / Instructor */}
-                  <td className="py-3.5 px-2.5 md:px-3.5 text-gray-500">
+                  <td className="py-3.5 px-1.5 md:px-2 text-gray-500 break-all">
                     <div className="font-medium text-gray-700 leading-snug">{plan.agency}</div>
                     <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap">
                       <User className="w-3 h-3 shrink-0" /> <span className="whitespace-nowrap">{plan.instructor}</span>
@@ -180,12 +180,12 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                   </td>
 
                   {/* Target Group */}
-                  <td className="py-3.5 px-2.5 md:px-3.5 text-gray-600 leading-snug">
+                  <td className="py-3.5 px-1.5 md:px-2 text-gray-600 leading-snug break-all">
                     {plan.target_group}
                   </td>
 
                   {/* Schedule */}
-                  <td className="py-3.5 px-2 md:px-3 text-gray-600 whitespace-nowrap">
+                  <td className="py-3.5 px-1 md:px-1.5 text-gray-600 whitespace-nowrap">
                     <div className="flex items-center gap-1 whitespace-nowrap">
                       <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                       <span className="whitespace-nowrap">{plan.schedule}</span>
@@ -193,7 +193,7 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                   </td>
 
                   {/* Integrated Education Time */}
-                  <td className="py-3.5 px-2 md:px-3 text-center text-gray-600 whitespace-nowrap">
+                  <td className="py-3.5 px-1 md:px-1.5 text-center text-gray-600 whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                       <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                       <span className="whitespace-nowrap">{plan.time_range} ({plan.total_hours}시간)</span>
@@ -201,12 +201,12 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                   </td>
 
                   {/* Estimated Cost */}
-                  <td className="py-3.5 px-2 md:px-3 text-right font-bold text-gray-800 whitespace-nowrap">
-                    ₩{formatCurrency(plan.estimated_cost)}
+                  <td className="py-3.5 px-1 md:px-1.5 text-right text-gray-800 whitespace-nowrap">
+                    {formatCurrency(plan.estimated_cost)}
                   </td>
 
                   {/* Actions */}
-                  <td className="py-3.5 px-2 md:px-3 whitespace-nowrap text-center">
+                  <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       <button
                         onClick={() => onEdit(plan, originalIndex)}
@@ -226,7 +226,7 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                   </td>
 
                   {/* Draft Column */}
-                  <td className="py-3.5 px-2 md:px-3 whitespace-nowrap text-center">
+                  <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
                     {drafts.some((d) => d.plan_id === plan.id) ? (
                       <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-rose-600 text-white shadow-xs whitespace-nowrap">
                         완료
@@ -242,7 +242,7 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                   </td>
 
                   {/* Report Column */}
-                  <td className="py-3.5 px-2 md:px-3 whitespace-nowrap text-center">
+                  <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
                     {drafts.some((d) => d.plan_id === plan.id) ? (
                       <button
                         onClick={() => onStartReport(plan)}
