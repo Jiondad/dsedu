@@ -73,6 +73,25 @@
   td, th {
     border: 1px solid black !important;
   }
+
+  /* Specific high-precision styles for approval stamp tables to prevent border clipping or missing borders */
+  .approval-table {
+    border-collapse: collapse !important;
+    border: 1px solid #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .approval-table td,
+  .approval-table th {
+    border: 1px solid #000000 !important;
+    border-top: 1px solid #000000 !important;
+    border-bottom: 1px solid #000000 !important;
+    border-left: 1px solid #000000 !important;
+    border-right: 1px solid #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
 
 @page {

@@ -529,34 +529,20 @@ export default function App() {
               <CalendarRange className="w-5.5 h-5.5" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-gray-800 tracking-tight">(주)대성스틸 연간교육계획</h1>
+              <h1 className="text-lg font-black text-gray-800 tracking-tight">(주)대성스틸 교육관리 시스템</h1>
               <p className="text-xs text-gray-400 mt-0.5">Google Sheets Cloud Database Sync</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-stretch sm:self-auto justify-between sm:justify-end">
-            <div className="flex items-center gap-2 border border-emerald-100 bg-emerald-50/50 px-3 py-1.5 rounded-xl">
-              <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
-              <p className="text-xs font-bold text-emerald-800">공개 시트 모드 활성화됨</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleResync}
-                disabled={isLoading}
-                className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 cursor-pointer"
-                title="데이터 즉시 동기화"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </button>
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:border-indigo-100 hover:bg-indigo-50/30 text-gray-600 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                <Database className="w-4 h-4 text-indigo-500" />
-                <span>시트 설정</span>
-              </button>
-            </div>
+          <div className="flex items-center gap-3 self-stretch sm:self-auto justify-end">
+            <button
+              onClick={handleResync}
+              disabled={isLoading}
+              className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 cursor-pointer"
+              title="데이터 즉시 동기화"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
       </header>
