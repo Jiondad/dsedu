@@ -12,7 +12,44 @@ import {
   User,
   signOut,
 } from 'firebase/auth';
-import firebaseConfig from '../firebase-applet-config.json';
+
+// Default Firebase Configuration (Embedded to allow Vercel build without JSON file)
+const defaultFirebaseConfig = {
+  projectId: "copper-yeti-d40ks",
+  appId: "1:666417637093:web:8841ea96ba2d9a9da4d60c",
+  apiKey: "AIzaSyBBsSXc9iGdFMC5sd3afRZIvr3UND8QjDE",
+  authDomain: "copper-yeti-d40ks.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-f0f38be7-180f-4374-8e39-4d9a2f3cd749",
+  storageBucket: "copper-yeti-d40ks.firebasestorage.app",
+  messagingSenderId: "666417637093",
+  measurementId: ""
+};
+
+// Check for overriding environment variables or single VITE_FIREBASE_CONFIG JSON string
+let firebaseConfig: any = defaultFirebaseConfig;
+
+try {
+  const metaEnv = (import.meta as any).env || {};
+  const envConfig = metaEnv.VITE_FIREBASE_CONFIG;
+  if (envConfig) {
+    firebaseConfig = JSON.parse(envConfig);
+  } else {
+    const envApiKey = metaEnv.VITE_FIREBASE_API_KEY;
+    if (envApiKey) {
+      firebaseConfig = {
+        apiKey: envApiKey,
+        authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || defaultFirebaseConfig.authDomain,
+        projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || defaultFirebaseConfig.projectId,
+        storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || defaultFirebaseConfig.storageBucket,
+        messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || defaultFirebaseConfig.messagingSenderId,
+        appId: metaEnv.VITE_FIREBASE_APP_ID || defaultFirebaseConfig.appId,
+        measurementId: metaEnv.VITE_FIREBASE_MEASUREMENT_ID || defaultFirebaseConfig.measurementId,
+      };
+    }
+  }
+} catch (e) {
+  console.error('Failed to parse custom firebase config from environment:', e);
+}
 
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
