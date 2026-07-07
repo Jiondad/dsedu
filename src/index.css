@@ -14,11 +14,13 @@
   /* Reset body and HTML styles for print */
   html, body {
     width: 210mm !important;
-    height: 297mm !important;
+    height: auto !important;
     background: white !important;
     color: black !important;
     margin: 0 !important;
     padding: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
     overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -34,7 +36,9 @@
     width: 210mm !important;
     max-width: none !important;
     margin: 0 !important;
+    margin-bottom: 0 !important;
     padding: 0 !important;
+    padding-bottom: 0 !important;
     border: none !important;
     box-shadow: none !important;
   }
@@ -44,7 +48,9 @@
     display: block !important;
     width: 210mm !important;
     margin: 0 !important;
+    margin-bottom: 0px !important;
     padding: 0 !important;
+    padding-bottom: 0px !important;
     background: white !important;
     border: none !important;
     box-shadow: none !important;
@@ -52,11 +58,13 @@
 
   /* Style the exact A4 print area sheet */
   #print-area {
-    width: 210mm !important;
-    min-height: 297mm !important;
-    height: 297mm !important;
-    padding: 18mm !important;
+    width: 100% !important;
+    min-height: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    padding-bottom: 0px !important;
     margin: 0 !important;
+    margin-bottom: 0px !important;
     border: none !important;
     box-shadow: none !important;
     background: white !important;
@@ -72,6 +80,8 @@
 
   td, th {
     border: 1px solid black !important;
+    padding: 4px 6px !important;
+    line-height: 1.25 !important;
   }
 
   /* Specific high-precision styles for approval stamp tables to prevent border clipping or missing borders */
@@ -89,8 +99,15 @@
     border-bottom: 1px solid #000000 !important;
     border-left: 1px solid #000000 !important;
     border-right: 1px solid #000000 !important;
+    padding: 4px 4px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  #print-area table td,
+  #print-area table th {
+    padding: 4px 6px !important;
+    line-height: 1.25 !important;
   }
 
   /* Force print layout to hide overflow elements safely */
@@ -101,7 +118,7 @@
 
 @page {
   size: A4;
-  margin: 0;
+  margin: 10mm 12mm;
 }
 
 /* Global screens layout safeguards to prevent horizontal scrollbars on any screen resolution */

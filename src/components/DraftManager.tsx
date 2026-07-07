@@ -813,7 +813,7 @@ export default function DraftManager({
                   }
                 }}
                 placeholder="상세 교육 커리큘럼, 내용 개요 등을 기재해 주세요..."
-                rows={4}
+                rows={8}
                 className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all resize-y"
               />
               {errors.contentSummary && (
@@ -942,12 +942,12 @@ export default function DraftManager({
           {/* THE HOVER A4 PRINT PAPER SHEETS */}
           <div
             id="print-area"
-            className="w-full max-w-[210mm] min-h-[297mm] p-4 sm:p-[18mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-between shrink-0 box-border overflow-x-hidden"
+            className="w-full max-w-[210mm] h-auto min-h-0 p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden"
             style={{ boxSizing: 'border-box' }}
           >
             {/* Header Area */}
             <div>
-              <div className="flex justify-between items-start mb-8">
+              <div className="flex justify-between items-start mb-4">
                 {/* Spacer or Left corner header */}
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">
                   {draftId || 'DSEDU-YYYYMMDD-XXX'}
@@ -975,13 +975,13 @@ export default function DraftManager({
 
               {/* Central Title */}
               <div className="text-center mb-10">
-                <h1 className="text-2xl font-black tracking-[0.8em] border-b-2 border-double border-black pb-3 inline-block pl-[0.8em]">
+                <h1 className="text-2xl font-black tracking-[0.8em] border-b-2 border-double border-black pb-2 inline-block pl-[0.8em]">
                   교 육 기 안 서
                 </h1>
               </div>
 
               {/* Meta Grid Corporate Table */}
-              <table className="w-full border-collapse border border-black text-xs mb-6">
+              <table className="w-full border-collapse border border-black text-xs mb-3">
                 <tbody>
                   {/* Row 1: Draft Number & Drafter */}
                   <tr className="border-b border-black">
@@ -1058,8 +1058,10 @@ export default function DraftManager({
                   {/* Row 8: Content Summary */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육요약 및<br />상세내용</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] min-h-[120px] align-top">
-                      {contentSummary || '(교육 개요 및 커리큘럼 요약 기재)'}
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                      <div className="min-h-[240px] w-full">
+                        {contentSummary || '(교육 개요 및 커리큘럼 요약 기재)'}
+                      </div>
                     </td>
                   </tr>
 
@@ -1075,21 +1077,20 @@ export default function DraftManager({
             </div>
 
             {/* Bottom Signature / Footer Area */}
-            <div className="text-center pt-8 border-t border-gray-100 mt-auto">
-              <p className="text-xs text-gray-500 leading-relaxed mb-12">
-                위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 위와 동일한 교육 과정을 수행코자 하오니,<br />
+            <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1.5 pb-0">
+              <p className="text-[11px] sm:text-xs text-gray-500 tracking-tight leading-relaxed mb-2 print:mb-1.5 font-medium max-w-[95%] mx-auto">
+                위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 교육 과정을 수행코자 하오니,<br />
                 검토 후 재가하여 주시기 바랍니다.
               </p>
 
-              <p className="text-sm font-bold text-gray-700 tracking-wider mb-8">
+              <p className="text-[11px] sm:text-xs font-bold text-gray-700 tracking-wider mb-2 print:mb-1.5">
                 {getFormattedKoreanDate(draftDate)}
               </p>
 
               <div className="flex flex-col items-center">
-                <p className="text-md font-extrabold tracking-widest text-gray-900">
-                  (주) 대 성 스 틸
+                <p className="text-sm sm:text-md font-extrabold text-gray-900 leading-none">
+                  (주)대성스틸
                 </p>
-                <p className="text-xs text-gray-400 mt-1 font-semibold">대표이사 귀하</p>
               </div>
             </div>
           </div>

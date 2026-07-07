@@ -808,12 +808,12 @@ export default function ReportManager({
           {/* THE HOVER A4 PRINT PAPER SHEETS */}
           <div
             id="print-area"
-            className="w-full max-w-[210mm] min-h-[297mm] p-4 sm:p-[18mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-between shrink-0 box-border overflow-x-hidden"
+            className="w-full max-w-[210mm] h-auto min-h-0 p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden"
             style={{ boxSizing: 'border-box' }}
           >
             {/* Header Area */}
             <div>
-              <div className="flex justify-between items-start mb-8">
+              <div className="flex justify-between items-start mb-4">
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">
                   {reportId || 'DSEREP-YYYYMMDD-XXX'}
                 </div>
@@ -840,13 +840,13 @@ export default function ReportManager({
 
               {/* Central Title */}
               <div className="text-center mb-10">
-                <h1 className="text-2xl font-black tracking-[0.4em] border-b-2 border-double border-black pb-3 inline-block pl-[0.4em]">
+                <h1 className="text-2xl font-black tracking-[0.4em] border-b-2 border-double border-black pb-2 inline-block pl-[0.4em]">
                   교 육 결 과 보 고 서
                 </h1>
               </div>
 
               {/* Meta Grid Corporate Table */}
-              <table className="w-full border-collapse border border-black text-xs mb-6">
+              <table className="w-full border-collapse border border-black text-xs mb-3">
                 <tbody>
                   {/* Row 1: Report Number & Drafter Info */}
                   <tr className="border-b border-black">
@@ -931,17 +931,21 @@ export default function ReportManager({
 
                   {/* Row 9: Content Summary (Results Summary) */}
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">5. 교육 결과<br />요약 및 성과</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] min-h-[140px] align-top">
-                      {summary || '(교육 수료 내용 및 이수 평가 기재)'}
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육 결과<br />요약 및 성과</td>
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                      <div className="min-h-[168px] w-full">
+                        {summary || '(교육 수료 내용 및 이수 평가 기재)'}
+                      </div>
                     </td>
                   </tr>
 
                   {/* Row 10: Future Plan */}
                   <tr>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">6. 향후 현업<br />적용 계획 및<br />기대효과</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] min-h-[120px] align-top">
-                      {futurePlan || '(교육 내용의 현업 환류 적용 과제 및 정량적/정성적 기대효과 기재)'}
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">향후 현업<br />적용 계획 및<br />기대효과</td>
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                      <div className="min-h-[60px] w-full">
+                        {futurePlan || '(교육 내용의 현업 환류 적용 과제 및 정량적/정성적 기대효과 기재)'}
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -949,21 +953,20 @@ export default function ReportManager({
             </div>
 
             {/* Bottom Signature / Footer Area */}
-            <div className="text-center pt-6 border-t border-gray-100 mt-auto">
-              <p className="text-xs text-gray-500 leading-relaxed mb-10">
-                위와 같이 연간 교육 계획 및 기안 내용에 따라 사내/사외 위탁 위와 동일한 교육 과정을 성실히 수행 완료하였기에,<br />
-                교육 결과 및 실무 전파 계획을 보고드립니다.
+            <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1.5 pb-0">
+              <p className="text-[11px] sm:text-xs text-gray-500 tracking-tight leading-relaxed mb-2 print:mb-1.5 font-medium max-w-[95%] mx-auto">
+                위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 교육 결과를 보고하오니,<br />
+                검토 후 결재하여 주시기 바랍니다.
               </p>
 
-              <p className="text-sm font-bold text-gray-700 tracking-wider mb-6">
+              <p className="text-[11px] sm:text-xs font-bold text-gray-700 tracking-wider mb-2 print:mb-1.5">
                 {getFormattedKoreanDate(reportDate)}
               </p>
 
               <div className="flex flex-col items-center">
-                <p className="text-md font-extrabold tracking-widest text-gray-900">
-                  (주) 대 성 스 틸
+                <p className="text-sm sm:text-md font-extrabold text-gray-900 leading-none">
+                  (주)대성스틸
                 </p>
-                <p className="text-xs text-gray-400 mt-1 font-semibold">대표이사 귀하</p>
               </div>
             </div>
           </div>
