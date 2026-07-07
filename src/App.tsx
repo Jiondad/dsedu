@@ -27,6 +27,7 @@ import PlanTable from './components/PlanTable';
 import PlanFormModal from './components/PlanFormModal';
 import DraftManager from './components/DraftManager';
 import ReportManager from './components/ReportManager';
+import StatisticsDashboard from './components/StatisticsDashboard';
 import {
   CalendarRange,
   Plus,
@@ -38,6 +39,7 @@ import {
   CheckCircle,
   FileText,
   Settings,
+  TrendingUp,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -61,7 +63,7 @@ export default function App() {
   const [settingsApiKey, setSettingsApiKey] = useState('');
 
   // Active Screen Tab state
-  const [activeTab, setActiveTab] = useState<'plans' | 'drafts' | 'reports'>('plans');
+  const [activeTab, setActiveTab] = useState<'plans' | 'drafts' | 'reports' | 'statistics'>('plans');
   const [preselectedPlanId, setPreselectedPlanId] = useState<string | null>(null);
 
   const handleStartDraft = (plan: EducationPlan) => {
@@ -133,18 +135,10 @@ export default function App() {
       triggerNotification('구글 스프레드시트 DB 연동 완료!', 'success');
     } catch (err: any) {
       console.error('DB 연동 에러:', err);
-      // Fallback
-      try {
-        const cachedPlans = localStorage.getItem('ds_steel_plans_cache');
-        const cachedDrafts = localStorage.getItem('ds_steel_drafts_cache');
-        const cachedReports = localStorage.getItem('ds_steel_reports_cache');
-        if (cachedPlans) setPlans(JSON.parse(cachedPlans));
-        if (cachedDrafts) setDrafts(JSON.parse(cachedDrafts));
-        if (cachedReports) setReports(JSON.parse(cachedReports));
-        triggerNotification('구글 시트 연동 실패로 로컬 저장소 데이터를 불러왔습니다.', 'info');
-      } catch (localErr) {
-        console.error('로컬 데이터 복구 실패:', localErr);
-      }
+      setPlans([]);
+      setDrafts([]);
+      setReports([]);
+      triggerNotification('구글 시트 연동 중 오류가 발생하여 데이터를 로드하지 못했습니다.', 'error');
     } finally {
       setIsLoading(false);
       setLoadingStep('');
@@ -641,6 +635,17 @@ export default function App() {
                 <CheckCircle className="w-4.5 h-4.5" />
                 <span>교육 결과보고서 작성 및 인쇄</span>
               </button>
+              <button
+                onClick={() => setActiveTab('statistics')}
+                className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'statistics'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <TrendingUp className="w-4.5 h-4.5" />
+                <span>교육실적 통계</span>
+              </button>
             </div>
 
             {/* TAB CONTENTS */}
@@ -705,6 +710,14 @@ export default function App() {
                   isLoading={isLoading}
                   preselectedPlanId={preselectedPlanId}
                   onClearPreselectedPlan={() => setPreselectedPlanId(null)}
+                />
+              )}
+
+              {activeTab === 'statistics' && (
+                <StatisticsDashboard
+                  plans={plans}
+                  drafts={drafts}
+                  reports={reports}
                 />
               )}
             </div>

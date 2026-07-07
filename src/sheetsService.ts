@@ -22,74 +22,7 @@ const SHEET_ID = 0;
 const DRAFT_SHEET_ID = 1;
 const REPORT_SHEET_ID = 2;
 
-// Default Mock Data for immediate offline/out-of-box usage
-const DEFAULT_MOCK_PLANS: EducationPlan[] = [
-  {
-    id: 'edu_mock_1',
-    edu_date: '2026-03-15',
-    category: '사내',
-    title: '전사 안전 관리 및 환경 교육',
-    agency: '대성스틸 안전환경본부',
-    instructor: '김철수 본부장',
-    target_group: '전 임직원',
-    schedule: '03/15~03/15',
-    time_range: '09~12',
-    total_hours: 3,
-    estimated_cost: 0
-  },
-  {
-    id: 'edu_mock_2',
-    edu_date: '2026-05-10',
-    category: '사외',
-    title: '스틸 제조 공정 스마트화 및 AI 도입 워크숍',
-    agency: '한국스마트제조협회',
-    instructor: '이영희 박사',
-    target_group: '생산기술 및 품질관리팀',
-    schedule: '05/10~05/12',
-    time_range: '09~17',
-    total_hours: 24,
-    estimated_cost: 1200000
-  },
-  {
-    id: 'edu_mock_3',
-    edu_date: '2026-09-20',
-    category: '사내',
-    title: '신입 사원 직무 역량 강화 OJT',
-    agency: '인사노무팀',
-    instructor: '박민수 과장',
-    target_group: '2026년 하반기 신입사원',
-    schedule: '09/20~09/24',
-    time_range: '13~18',
-    total_hours: 20,
-    estimated_cost: 250000
-  }
-];
 
-const DEFAULT_MOCK_DRAFTS: EducationDraft[] = [
-  {
-    id: 'draft_mock_1',
-    plan_id: 'edu_mock_2',
-    drafter: '정품질 대리',
-    draft_date: '2026-04-20',
-    purpose: '스틸 제조 공정 스마트 팩토리 최신 기술 습득 및 생산 현장 도입 방안 구상',
-    content_summary: '1. AI 기반 품질 예측 솔루션 구축 우수사례 분석\n2. 스마트센서 연동 빅데이터 수집 기법 실습\n3. 우리 공정 생산 라인 최적화 적용 시뮬레이션 워크숍 진행',
-    budget_breakdown: '1. 교육 참가비: 400,000원 * 3명 = 1,200,000원\n2. 여비 및 식비: 100,000원\n\n총 소요예산: 1,300,000원'
-  }
-];
-
-const DEFAULT_MOCK_REPORTS: EducationReport[] = [
-  {
-    id: 'DSEREP-20260515-001',
-    draft_id: 'draft_mock_1',
-    plan_id: 'edu_mock_2',
-    department: '품질관리부',
-    position: '대리',
-    drafter_name: '정품질',
-    report_date: '2026-05-15',
-    summary: '스마트제조공정 교육을 무사히 수료하였습니다. 특히 AI 기반 예측 제어 분야에서 센서 연동 실습을 진행하며 현업 설비 고장 진단 모델의 적용 가능성을 확인했습니다. 교육 이수자 평가에서 전원 만족 이상의 결과를 도출했습니다.',
-    future_plan: '1. 다음 달 내로 품질 관리 실무 공정에 AI 예지정비 모델 시범 적용 및 데이터 수집 개시 예정\n2. 부서 내 세미나를 개최하여 교육 내용 공유 및 스마트 팩토리 최적화 가이드라인 작성'
-  }
-];
 
 /**
  * Returns spreadsheet configuration from env or localStorage
@@ -172,7 +105,7 @@ async function createSpreadsheet(accessToken: string): Promise<string> {
           title: SHEET_TAB_REPORT_NAME,
           gridProperties: {
             rowCount: 200,
-            columnCount: 9,
+            columnCount: 10,
           },
         },
       },
@@ -236,8 +169,9 @@ async function createSpreadsheet(accessToken: string): Promise<string> {
     '보고일자',
     '교육결과 및 성과',
     '향후 적용계획 및 기대효과',
+    '만족도점수',
   ];
-  await writeHeaders(spreadsheetId, accessToken, SHEET_TAB_REPORT_NAME, reportHeaders, 'A1:I1');
+  await writeHeaders(spreadsheetId, accessToken, SHEET_TAB_REPORT_NAME, reportHeaders, 'A1:J1');
 
   return spreadsheetId;
 }
@@ -402,14 +336,8 @@ export async function fetchPlans(
     localStorage.setItem('ds_steel_plans_cache', JSON.stringify(plans));
     return plans;
   } catch (err) {
-    console.warn('Google Sheets API plans load failed, loading from local cache fallback:', err);
-    const cached = localStorage.getItem('ds_steel_plans_cache');
-    if (cached) {
-      return JSON.parse(cached);
-    }
-    // Return mock data initially so the app is instantly populated
-    localStorage.setItem('ds_steel_plans_cache', JSON.stringify(DEFAULT_MOCK_PLANS));
-    return DEFAULT_MOCK_PLANS;
+    console.error('Google Sheets API plans load failed:', err);
+    return [];
   }
 }
 
@@ -655,14 +583,8 @@ export async function fetchDrafts(
     localStorage.setItem('ds_steel_drafts_cache', JSON.stringify(drafts));
     return drafts;
   } catch (err) {
-    console.warn('Google Sheets API drafts load failed, loading from local cache fallback:', err);
-    const cached = localStorage.getItem('ds_steel_drafts_cache');
-    if (cached) {
-      return JSON.parse(cached);
-    }
-    // Return mock data initially
-    localStorage.setItem('ds_steel_drafts_cache', JSON.stringify(DEFAULT_MOCK_DRAFTS));
-    return DEFAULT_MOCK_DRAFTS;
+    console.error('Google Sheets API drafts load failed:', err);
+    return [];
   }
 }
 
@@ -877,7 +799,7 @@ export async function fetchReports(
   spreadsheetId: string,
   accessToken?: string | null
 ): Promise<EducationReport[]> {
-  const range = `${SHEET_TAB_REPORT_NAME}!A2:I1000`;
+  const range = `${SHEET_TAB_REPORT_NAME}!A2:J1000`;
   const { apiKey } = getSpreadsheetConfig();
   
   let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
@@ -908,14 +830,8 @@ export async function fetchReports(
     localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
     return reports;
   } catch (err) {
-    console.warn('Google Sheets API reports load failed, loading from local cache fallback:', err);
-    const cached = localStorage.getItem('ds_steel_reports_cache');
-    if (cached) {
-      return JSON.parse(cached);
-    }
-    // Return mock data initially
-    localStorage.setItem('ds_steel_reports_cache', JSON.stringify(DEFAULT_MOCK_REPORTS));
-    return DEFAULT_MOCK_REPORTS;
+    console.error('Google Sheets API reports load failed:', err);
+    return [];
   }
 }
 
@@ -937,7 +853,7 @@ export async function addReport(
     console.error('Failed to update local cache in addReport:', err);
   }
 
-  const range = `${SHEET_TAB_REPORT_NAME}!A:I`;
+  const range = `${SHEET_TAB_REPORT_NAME}!A:J`;
   const { apiKey } = getSpreadsheetConfig();
   let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
     range
@@ -1006,7 +922,7 @@ export async function updateReport(
   }
 
   const sheetRow = rowIndex + 2;
-  const range = `${SHEET_TAB_REPORT_NAME}!A${sheetRow}:I${sheetRow}`;
+  const range = `${SHEET_TAB_REPORT_NAME}!A${sheetRow}:J${sheetRow}`;
   const { apiKey } = getSpreadsheetConfig();
   let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
     range

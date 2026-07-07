@@ -54,6 +54,7 @@ export default function ReportManager({
   const [futurePlan, setFuturePlan] = useState('');
   const [purpose, setPurpose] = useState('');
   const [budgetBreakdown, setBudgetBreakdown] = useState('');
+  const [satisfactionScore, setSatisfactionScore] = useState<number>(5.0);
 
   // Helper parser for backward compatibility
   const parseDrafter = (drafterStr: string) => {
@@ -290,6 +291,7 @@ export default function ReportManager({
     setReportDate(report.report_date);
     setSummary(report.summary);
     setFuturePlan(report.future_plan);
+    setSatisfactionScore(report.satisfaction_score || 5.0);
     
     // Auto-load matched draft purpose and budget
     const matchedDraft = drafts.find((d) => d.plan_id === report.plan_id);
@@ -318,6 +320,7 @@ export default function ReportManager({
     setFuturePlan('');
     setPurpose('');
     setBudgetBreakdown('');
+    setSatisfactionScore(5.0);
     setErrors({});
   };
 
@@ -385,6 +388,7 @@ export default function ReportManager({
       report_date: reportDate,
       summary: summary.trim(),
       future_plan: futurePlan.trim(),
+      satisfaction_score: Number(satisfactionScore) || 5.0,
     };
 
     if (editingReportIndex !== null) {
@@ -637,6 +641,30 @@ export default function ReportManager({
               </div>
             </div>
 
+            {/* Step 3-2. 교육 만족도 평가 */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                3-2. 종합 교육 만족도 평가 <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-indigo-50/20 p-3 rounded-xl border border-indigo-50">
+                <select
+                  value={satisfactionScore}
+                  onChange={(e) => setSatisfactionScore(Number(e.target.value))}
+                  className="w-full sm:w-48 bg-white border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                >
+                  <option value="5.0">5.0점 (매우 만족)</option>
+                  <option value="4.8">4.8점 (우수)</option>
+                  <option value="4.5">4.5점 (매우 우수)</option>
+                  <option value="4.0">4.0점 (만족)</option>
+                  <option value="3.5">3.5점 (보통)</option>
+                  <option value="3.0">3.0점 (보통)</option>
+                  <option value="2.0">2.0점 (불만족)</option>
+                  <option value="1.0">1.0점 (매우 불만족)</option>
+                </select>
+                <span className="text-[11px] text-gray-400">결과보고서 제출 및 마감 처리를 위해 수강생 설문 조사 기준 평점을 입력해 주세요.</span>
+              </div>
+            </div>
+
             {/* Step 4. 교육 목적 (자동 로드, 수정가능) */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
@@ -871,15 +899,20 @@ export default function ReportManager({
                     <td className="p-2.5">{selectedPlan ? `${selectedPlan.edu_date} (${selectedPlan.schedule})` : ''}</td>
                   </tr>
 
-                  {/* Row 6: Duration & Cost */}
+                  {/* Row 6: Duration & Cost & Satisfaction */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육시간</td>
                     <td className="border-r border-black p-2.5">
                       {selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.total_hours}시간)` : ''}
                     </td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">실제 집행예산</td>
-                    <td className="p-2.5 font-bold text-emerald-800">
-                      {selectedPlan ? `₩${formatCurrency(selectedPlan.estimated_cost)}` : ''}
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용 / 만족도</td>
+                    <td className="p-2.5">
+                      {selectedPlan ? (
+                        <div className="flex justify-between items-center w-full">
+                          <span className="font-bold text-emerald-800">₩{formatCurrency(selectedPlan.estimated_cost)}</span>
+                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50/50 border border-indigo-100 px-1.5 py-0.5 rounded-sm">만족도 {satisfactionScore.toFixed(1)} / 5.0</span>
+                        </div>
+                      ) : ''}
                     </td>
                   </tr>
 

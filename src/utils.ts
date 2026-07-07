@@ -157,6 +157,7 @@ export function mapRowToReport(row: any[]): EducationReport {
     report_date: String(row[6] || ''),
     summary: String(row[7] || ''),
     future_plan: String(row[8] || ''),
+    satisfaction_score: Number(row[9]) || 5.0,
   };
 }
 
@@ -174,6 +175,7 @@ export function mapReportToRow(report: EducationReport): any[] {
     report.report_date,
     report.summary,
     report.future_plan,
+    report.satisfaction_score || 5.0,
   ];
 }
 
