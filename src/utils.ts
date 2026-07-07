@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { EducationPlan, CategoryMetrics, EducationDraft } from './types';
+import { EducationPlan, CategoryMetrics, EducationDraft, EducationReport } from './types';
 
 /**
  * Computes metrics from education plans, calculating totals and counts
@@ -140,6 +140,40 @@ export function mapDraftToRow(draft: EducationDraft): any[] {
     draft.purpose,
     draft.content_summary,
     draft.budget_breakdown,
+  ];
+}
+
+/**
+ * Maps a sheet row (array of strings) back to an EducationReport object.
+ */
+export function mapRowToReport(row: any[]): EducationReport {
+  return {
+    id: String(row[0] || ''),
+    draft_id: String(row[1] || ''),
+    plan_id: String(row[2] || ''),
+    department: String(row[3] || ''),
+    position: String(row[4] || ''),
+    drafter_name: String(row[5] || ''),
+    report_date: String(row[6] || ''),
+    summary: String(row[7] || ''),
+    future_plan: String(row[8] || ''),
+  };
+}
+
+/**
+ * Maps an EducationReport object to a sheet row (array of values).
+ */
+export function mapReportToRow(report: EducationReport): any[] {
+  return [
+    report.id,
+    report.draft_id,
+    report.plan_id,
+    report.department,
+    report.position,
+    report.drafter_name,
+    report.report_date,
+    report.summary,
+    report.future_plan,
   ];
 }
 

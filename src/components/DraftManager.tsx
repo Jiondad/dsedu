@@ -22,7 +22,7 @@ interface DraftManagerProps {
   plans: EducationPlan[];
   drafts: EducationDraft[];
   setDrafts: React.Dispatch<React.SetStateAction<EducationDraft[]>>;
-  onAddDraft: (draft: EducationDraft) => Promise<void>;
+  onAddDraft: (draft: EducationDraft) => Promise<string | void>;
   onUpdateDraft: (draft: EducationDraft, index: number) => Promise<void>;
   onDeleteDraft: (index: number) => Promise<void>;
   isLoading: boolean;
@@ -44,11 +44,48 @@ export default function DraftManager({
   // Currently editing draft state (form)
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [draftId, setDraftId] = useState('');
-  const [drafter, setDrafter] = useState('');
+  const [department, setDepartment] = useState('');
+  const [position, setPosition] = useState('');
+  const [drafterName, setDrafterName] = useState('');
   const [draftDate, setDraftDate] = useState(new Date().toISOString().split('T')[0]);
   const [purpose, setPurpose] = useState('');
   const [contentSummary, setContentSummary] = useState('');
   const [budgetBreakdown, setBudgetBreakdown] = useState('');
+
+  // Combined drafter value for standard compatibility
+  const drafter = `${department}|${position}|${drafterName}`;
+
+  // Helper parser for backward compatibility
+  const parseDrafter = (drafterStr: string) => {
+    if (!drafterStr) return { dept: '', pos: '', name: '' };
+    if (drafterStr.includes('|')) {
+      const parts = drafterStr.split('|');
+      return {
+        dept: parts[0] || '',
+        pos: parts[1] || '',
+        name: parts[2] || '',
+      };
+    }
+    const parts = drafterStr.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      return {
+        dept: parts[0],
+        pos: parts[1],
+        name: parts.slice(2).join(' '),
+      };
+    } else if (parts.length === 2) {
+      return {
+        dept: '',
+        pos: parts[1],
+        name: parts[0],
+      };
+    }
+    return {
+      dept: '',
+      pos: '',
+      name: drafterStr,
+    };
+  };
 
   // Selected draft from history for editing
   const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(null);
@@ -154,7 +191,12 @@ export default function DraftManager({
           const index = drafts.findIndex((d) => d.plan_id === preselectedPlanId);
           setEditingDraftIndex(index);
           setDraftId(existingDraft.id);
-          setDrafter(existingDraft.drafter);
+          
+          const parts = parseDrafter(existingDraft.drafter);
+          setDepartment(parts.dept);
+          setPosition(parts.pos);
+          setDrafterName(parts.name);
+
           setDraftDate(existingDraft.draft_date);
           setPurpose(existingDraft.purpose);
           setContentSummary(existingDraft.content_summary);
@@ -166,7 +208,9 @@ export default function DraftManager({
           setEditingDraftIndex(null);
           const nextId = generateDraftIdForDate(draftDate);
           setDraftId(nextId);
-          setDrafter('');
+          setDepartment('');
+          setPosition('');
+          setDrafterName('');
           setPurpose('');
           setContentSummary('');
           setBudgetBreakdown('');
@@ -237,7 +281,9 @@ export default function DraftManager({
         // Reset draft details to prevent creating duplicate content
         const nextId = generateDraftIdForDate(draftDate);
         setDraftId(nextId);
-        setDrafter('');
+        setDepartment('');
+        setPosition('');
+        setDrafterName('');
         setPurpose('');
         setContentSummary('');
         setBudgetBreakdown('');
@@ -249,7 +295,9 @@ export default function DraftManager({
       if (editingDraftIndex === null) {
         const nextId = generateDraftIdForDate(draftDate);
         setDraftId(nextId);
-        setDrafter('');
+        setDepartment('');
+        setPosition('');
+        setDrafterName('');
         setPurpose('');
         setContentSummary('');
         setBudgetBreakdown('');
@@ -262,7 +310,12 @@ export default function DraftManager({
     setEditingDraftIndex(index);
     setSelectedPlanId(draft.plan_id);
     setDraftId(draft.id);
-    setDrafter(draft.drafter);
+    
+    const parts = parseDrafter(draft.drafter);
+    setDepartment(parts.dept);
+    setPosition(parts.pos);
+    setDrafterName(parts.name);
+
     setDraftDate(draft.draft_date);
     setPurpose(draft.purpose);
     setContentSummary(draft.content_summary);
@@ -275,7 +328,9 @@ export default function DraftManager({
     setEditingDraftIndex(null);
     setSelectedPlanId('');
     setDraftId('');
-    setDrafter('');
+    setDepartment('');
+    setPosition('');
+    setDrafterName('');
     setDraftDate(new Date().toISOString().split('T')[0]);
     setPurpose('');
     setContentSummary('');
@@ -352,7 +407,9 @@ export default function DraftManager({
       }
     }
     if (!draftId.trim()) newErrors.draftId = '기안서 번호를 입력해주세요.';
-    if (!drafter.trim()) newErrors.drafter = '기안자 이름을 입력해주세요.';
+    if (!department.trim()) newErrors.department = '부서를 입력해주세요.';
+    if (!position.trim()) newErrors.position = '직급을 입력해주세요.';
+    if (!drafterName.trim()) newErrors.drafterName = '성명을 입력해주세요.';
     if (!draftDate) newErrors.draftDate = '기안일자를 선택해주세요.';
     if (!purpose.trim()) newErrors.purpose = '교육목적을 입력해주세요.';
     if (!contentSummary.trim()) newErrors.contentSummary = '교육내용을 입력해주세요.';
@@ -388,7 +445,14 @@ export default function DraftManager({
         }));
         return;
       }
-      await onAddDraft(draftData);
+      try {
+        const finalId = await onAddDraft(draftData);
+        if (finalId) {
+          setDraftId(finalId);
+        }
+      } catch (err) {
+        console.error('Failed to add draft:', err);
+      }
     }
   };
 
@@ -406,7 +470,9 @@ export default function DraftManager({
     }
 
     setSelectedPlanId(firstPlan.id);
-    setDrafter('김철수 대리');
+    setDepartment('품질보증팀');
+    setPosition('대리');
+    setDrafterName('김철수');
     setDraftDate(new Date().toISOString().split('T')[0]);
     setPurpose('신규 트렌드 기술 파악 및 실무 적용 방안 도출');
     setContentSummary(
@@ -600,78 +666,115 @@ export default function DraftManager({
               </div>
             )}
 
-            {/* Drafter Name */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                2. 기안자 <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={drafter}
-                onChange={(e) => {
-                  setDrafter(e.target.value);
-                  if (errors.drafter) {
-                    setErrors((prev) => {
-                      const copy = { ...prev };
-                      delete copy.drafter;
-                      return copy;
-                    });
-                  }
-                }}
-                placeholder="예) IT사업본부 김철수 대리"
-                className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-              />
-              {errors.drafter && <p className="text-xs text-rose-500 mt-1">{errors.drafter}</p>}
-            </div>
-
-            {/* Draft Date */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                3. 기안일자 <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={draftDate}
-                onChange={(e) => {
-                  setDraftDate(e.target.value);
-                  if (errors.draftDate) {
-                    setErrors((prev) => {
-                      const copy = { ...prev };
-                      delete copy.draftDate;
-                      return copy;
-                    });
-                  }
-                }}
-                className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-              />
-              {errors.draftDate && <p className="text-xs text-rose-500 mt-1">{errors.draftDate}</p>}
-            </div>
-
-            {/* Draft ID & Generator */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                4. 기안서 번호 <span className="text-rose-500">*</span>
-              </label>
-              <div className="flex gap-2">
+            {/* Step 2. 문서 번호 및 일자 (Grid 배치) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  2-1. 기안서 번호 <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
-                  value={draftId}
+                  value={draftId || '(교육 계획 선택 시 자동 기입)'}
                   readOnly
-                  placeholder="자동 채번 중..."
-                  className="flex-1 rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm bg-gray-50 text-gray-600 font-mono outline-none cursor-not-allowed select-all"
+                  placeholder="교육 계획 선택 시 자동 생성"
+                  className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm bg-gray-50 font-mono text-[11px] outline-none text-gray-500 select-none"
                 />
-                <div className="rounded-xl px-3.5 py-2 bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold flex items-center gap-1 select-none">
-                  <FileCheck className="w-4 h-4 shrink-0 text-indigo-550" />
-                  <span>자동 채번</span>
-                </div>
+                {errors.draftId && <p className="text-xs text-rose-500 mt-1">{errors.draftId}</p>}
               </div>
-              {errors.draftId && <p className="text-xs text-rose-500 mt-1">{errors.draftId}</p>}
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  2-2. 기안일자 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={draftDate}
+                  onChange={(e) => {
+                    setDraftDate(e.target.value);
+                    if (errors.draftDate) {
+                      setErrors((prev) => {
+                        const copy = { ...prev };
+                        delete copy.draftDate;
+                        return copy;
+                      });
+                    }
+                  }}
+                  className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer"
+                />
+                {errors.draftDate && <p className="text-xs text-rose-500 mt-1">{errors.draftDate}</p>}
+              </div>
             </div>
 
-            {/* Purpose */}
+            {/* Step 3. 작성자 정보 (3열 Grid 배치) */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                5. 교육목적 <span className="text-rose-500">*</span>
+                3. 작성자 정보 <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <input
+                    type="text"
+                    value={department}
+                    onChange={(e) => {
+                      setDepartment(e.target.value);
+                      if (errors.department) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.department;
+                          return copy;
+                        });
+                      }
+                    }}
+                    placeholder="예: 관리팀"
+                    className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  />
+                  {errors.department && <p className="text-[10px] text-rose-500 mt-1">{errors.department}</p>}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={position}
+                    onChange={(e) => {
+                      setPosition(e.target.value);
+                      if (errors.position) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.position;
+                          return copy;
+                        });
+                      }
+                    }}
+                    placeholder="예: 과장"
+                    className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  />
+                  {errors.position && <p className="text-[10px] text-rose-500 mt-1">{errors.position}</p>}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={drafterName}
+                    onChange={(e) => {
+                      setDrafterName(e.target.value);
+                      if (errors.drafterName) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.drafterName;
+                          return copy;
+                        });
+                      }
+                    }}
+                    placeholder="예: 염지원"
+                    className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  />
+                  {errors.drafterName && <p className="text-[10px] text-rose-500 mt-1">{errors.drafterName}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4. 교육 목적 */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                4. 교육 목적 <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -692,10 +795,10 @@ export default function DraftManager({
               {errors.purpose && <p className="text-xs text-rose-500 mt-1">{errors.purpose}</p>}
             </div>
 
-            {/* Content Summary */}
+            {/* Step 5. 메인 내용 요약 */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                6. 교육내용 요약 <span className="text-rose-500">*</span>
+                5. 교육내용 요약 (6. 교육내용 요약) <span className="text-rose-500">*</span>
               </label>
               <textarea
                 value={contentSummary}
@@ -718,10 +821,10 @@ export default function DraftManager({
               )}
             </div>
 
-            {/* Budget Breakdown */}
+            {/* Step 6. 상세 내역 및 효과 */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                7. 소요예산 상세내역 <span className="text-rose-500">*</span>
+                6. 소요예산 상세내역 (7. 소요예산 상세내역) <span className="text-rose-500">*</span>
               </label>
               <textarea
                 value={budgetBreakdown}
@@ -864,7 +967,7 @@ export default function DraftManager({
                     <tr className="h-[45px]">
                       <td className="border-r border-black text-[9px] text-gray-400 p-1 flex flex-col justify-end items-center h-full">
                         <span className="text-[8px] leading-tight text-gray-300 font-bold mb-1">STAMP</span>
-                        <span className="font-semibold text-gray-700">{drafter.split(' ')[0] || ''}</span>
+                        <span className="font-semibold text-gray-700">{parseDrafter(drafter).name || ''}</span>
                       </td>
                       <td className="border-r border-black"></td>
                       <td></td>
@@ -888,7 +991,13 @@ export default function DraftManager({
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">기안번호</td>
                     <td className="border-r border-black p-2.5 w-[32%]">{draftId || '(기안 완료 시 부여)'}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">기안자</td>
-                    <td className="p-2.5 w-[32%]">{drafter || '(기안서 입력)'}</td>
+                    <td className="p-2.5 w-[32%]">
+                      {drafterName ? (
+                        `${department} ${position} ${drafterName}`.trim()
+                      ) : (
+                        '(기안서 입력)'
+                      )}
+                    </td>
                   </tr>
 
                   {/* Row 2: Draft Date & Category */}

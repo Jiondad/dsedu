@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { EducationPlan, EducationDraft } from './types';
+import { EducationPlan, EducationDraft, EducationReport } from './types';
 import { computeMetrics } from './utils';
 import {
   getSpreadsheetConfig,
@@ -17,11 +17,16 @@ import {
   addDraft,
   updateDraft,
   deleteDraft,
+  fetchReports,
+  addReport,
+  updateReport,
+  deleteReport,
 } from './sheetsService';
 import Dashboard from './components/Dashboard';
 import PlanTable from './components/PlanTable';
 import PlanFormModal from './components/PlanFormModal';
 import DraftManager from './components/DraftManager';
+import ReportManager from './components/ReportManager';
 import {
   CalendarRange,
   Plus,
@@ -41,6 +46,7 @@ export default function App() {
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
   const [plans, setPlans] = useState<EducationPlan[]>([]);
   const [drafts, setDrafts] = useState<EducationDraft[]>([]);
+  const [reports, setReports] = useState<EducationReport[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -55,12 +61,17 @@ export default function App() {
   const [settingsApiKey, setSettingsApiKey] = useState('');
 
   // Active Screen Tab state
-  const [activeTab, setActiveTab] = useState<'plans' | 'drafts'>('plans');
+  const [activeTab, setActiveTab] = useState<'plans' | 'drafts' | 'reports'>('plans');
   const [preselectedPlanId, setPreselectedPlanId] = useState<string | null>(null);
 
   const handleStartDraft = (plan: EducationPlan) => {
     setPreselectedPlanId(plan.id);
     setActiveTab('drafts');
+  };
+
+  const handleStartReport = (plan: EducationPlan) => {
+    setPreselectedPlanId(plan.id);
+    setActiveTab('reports');
   };
 
   // Form states
@@ -115,6 +126,10 @@ export default function App() {
       const fetchedDrafts = await fetchDrafts(sheetId, accessToken);
       setDrafts(fetchedDrafts);
 
+      setLoadingStep('교육 결과보고서 데이터를 불러오는 중입니다...');
+      const fetchedReports = await fetchReports(sheetId, accessToken);
+      setReports(fetchedReports);
+
       triggerNotification('구글 스프레드시트 DB 연동 완료!', 'success');
     } catch (err: any) {
       console.error('DB 연동 에러:', err);
@@ -122,8 +137,10 @@ export default function App() {
       try {
         const cachedPlans = localStorage.getItem('ds_steel_plans_cache');
         const cachedDrafts = localStorage.getItem('ds_steel_drafts_cache');
+        const cachedReports = localStorage.getItem('ds_steel_reports_cache');
         if (cachedPlans) setPlans(JSON.parse(cachedPlans));
         if (cachedDrafts) setDrafts(JSON.parse(cachedDrafts));
+        if (cachedReports) setReports(JSON.parse(cachedReports));
         triggerNotification('구글 시트 연동 실패로 로컬 저장소 데이터를 불러왔습니다.', 'info');
       } catch (localErr) {
         console.error('로컬 데이터 복구 실패:', localErr);
@@ -157,6 +174,9 @@ export default function App() {
 
       const fetchedDrafts = await fetchDrafts(sheetId, null);
       setDrafts(fetchedDrafts);
+
+      const fetchedReports = await fetchReports(sheetId, null);
+      setReports(fetchedReports);
 
       triggerNotification('성공적으로 동기화되었습니다.', 'success');
     } catch (err) {
@@ -243,20 +263,68 @@ export default function App() {
 
   // ---------------- DRAFT OPERATION HANDLERS ----------------
 
-  const handleAddDraft = async (newDraft: EducationDraft) => {
+  const handleAddDraft = async (newDraft: EducationDraft): Promise<string> => {
     const config = getSpreadsheetConfig();
     const activeSheetId = spreadsheetId || config.spreadsheetId;
 
-    const originalDrafts = [...drafts];
-    setDrafts((prev) => [...prev, newDraft]);
-    triggerNotification('기안서가 저장되었습니다. (스프레드시트 동기화 진행 중)', 'success');
+    setIsLoading(true);
+    setLoadingStep('최신 기안 데이터를 조회 중입니다...');
 
     try {
-      await addDraft(activeSheetId, null, newDraft);
+      // 1. Fetch absolute latest drafts to ensure no sequence numbering overlaps
+      const latestDrafts = await fetchDrafts(activeSheetId, null);
+      
+      // 2. Generate the unique sequential draft ID
+      const draftDate = newDraft.draft_date;
+      const year = draftDate.substring(0, 4);
+      const dateStr = draftDate.replace(/-/g, '');
+
+      const sameYearDrafts = latestDrafts.filter((d) => {
+        const dateMatch = d.draft_date && d.draft_date.substring(0, 4) === year;
+        const idMatch = d.id && (d.id.startsWith(`DSEDU-${year}`) || d.id.startsWith(`DSED-${year}`));
+        return dateMatch || idMatch;
+      });
+
+      let maxSerial = 0;
+      sameYearDrafts.forEach((d) => {
+        const parts = d.id.split('-');
+        if (parts.length === 3) {
+          const serialStr = parts[2];
+          const serial = parseInt(serialStr, 10);
+          if (!isNaN(serial) && serial > maxSerial) {
+            maxSerial = serial;
+          }
+        }
+      });
+
+      const nextSerial = maxSerial + 1;
+      const paddedSerial = String(nextSerial).padStart(3, '0');
+      const finalId = `DSEDU-${dateStr}-${paddedSerial}`;
+
+      // Overwrite ID to make it secure
+      const finalizedDraft = {
+        ...newDraft,
+        id: finalId,
+      };
+
+      // 3. Update state & cache optimistically before remote request
+      const updatedDrafts = [...latestDrafts, finalizedDraft];
+      setDrafts(updatedDrafts);
+      localStorage.setItem('ds_steel_drafts_cache', JSON.stringify(updatedDrafts));
+
+      setLoadingStep('기안서를 저장하는 중입니다...');
+      // 4. Save to remote Google Sheet
+      await addDraft(activeSheetId, null, finalizedDraft);
+      triggerNotification(`기안서가 저장되었습니다. (기안번호: ${finalId})`, 'success');
+
+      return finalId;
     } catch (err) {
       console.error('기안서 추가 동기화 실패:', err);
-      setDrafts(originalDrafts); // Revert
       triggerNotification('구글 시트 동기화에 실패하여 기안서 저장을 취소했습니다.', 'error');
+      throw err;
+    } finally {
+      setIsLoading(false);
+      setLoadingStep('');
     }
   };
 
@@ -294,6 +362,125 @@ export default function App() {
       console.error('기안서 삭제 동기화 실패:', err);
       setDrafts(originalDrafts); // Revert
       triggerNotification('구글 시트 동기화에 실패하여 기안서 삭제를 복구했습니다.', 'error');
+    }
+  };
+
+  // ---------------- REPORT OPERATION HANDLERS ----------------
+
+  const handleAddReport = async (newReport: EducationReport): Promise<string> => {
+    const config = getSpreadsheetConfig();
+    const activeSheetId = spreadsheetId || config.spreadsheetId;
+
+    setIsLoading(true);
+    setLoadingStep('최신 보고서 데이터를 조회 중입니다...');
+
+    try {
+      // 1. Fetch latest reports
+      const latestReports = await fetchReports(activeSheetId, null);
+
+      // 2. Determine non-duplicate Report ID
+      let finalId = newReport.id;
+      
+      const matchedDraft = drafts.find((d) => d.plan_id === newReport.plan_id);
+      if (matchedDraft && matchedDraft.id) {
+        // Direct replacement
+        finalId = matchedDraft.id.replace('DSEDU-', 'DSEREP-').replace('DSED-', 'DSEREP-');
+      } else {
+        const reportDate = newReport.report_date;
+        const dateStr = reportDate.replace(/-/g, '');
+        const sameDateReports = latestReports.filter((r) => r.id.startsWith(`DSEREP-${dateStr}`));
+        
+        let maxSerial = 0;
+        sameDateReports.forEach((r) => {
+          const parts = r.id.split('-');
+          if (parts.length === 3) {
+            const serialStr = parts[2];
+            const serial = parseInt(serialStr, 10);
+            if (!isNaN(serial) && serial > maxSerial) {
+              maxSerial = serial;
+            }
+          }
+        });
+        const nextSerial = maxSerial + 1;
+        const paddedSerial = String(nextSerial).padStart(3, '0');
+        finalId = `DSEREP-${dateStr}-${paddedSerial}`;
+      }
+
+      // Check if it duplicates in the retrieved rows
+      let finalUniqueId = finalId;
+      let counter = 1;
+      while (latestReports.some((r) => r.id === finalUniqueId)) {
+        const parts = finalId.split('-');
+        if (parts.length === 3) {
+          const serialNum = parseInt(parts[2], 10) + counter;
+          const paddedSerial = String(serialNum).padStart(3, '0');
+          finalUniqueId = `${parts[0]}-${parts[1]}-${paddedSerial}`;
+        } else {
+          finalUniqueId = `${finalId}-${counter}`;
+        }
+        counter++;
+      }
+
+      const finalizedReport = {
+        ...newReport,
+        id: finalUniqueId,
+      };
+
+      // 3. Update local state and cache
+      const updatedReports = [...latestReports, finalizedReport];
+      setReports(updatedReports);
+      localStorage.setItem('ds_steel_reports_cache', JSON.stringify(updatedReports));
+
+      setLoadingStep('결과보고서를 저장하는 중입니다...');
+      // 4. Save to remote Google Sheet
+      await addReport(activeSheetId, null, finalizedReport);
+      triggerNotification(`결과보고서가 저장되었습니다. (보고서번호: ${finalUniqueId})`, 'success');
+
+      return finalUniqueId;
+    } catch (err) {
+      console.error('결과보고서 추가 동기화 실패:', err);
+      triggerNotification('구글 시트 동기화에 실패하여 보고서 저장을 취소했습니다.', 'error');
+      throw err;
+    } finally {
+      setIsLoading(false);
+      setLoadingStep('');
+    }
+  };
+
+  const handleUpdateReport = async (updatedReport: EducationReport, index: number) => {
+    const config = getSpreadsheetConfig();
+    const activeSheetId = spreadsheetId || config.spreadsheetId;
+
+    const originalReports = [...reports];
+    const updatedList = [...reports];
+    updatedList[index] = updatedReport;
+    setReports(updatedList);
+    triggerNotification('결과보고서가 수정되었습니다. (스프레드시트 동기화 진행 중)', 'success');
+
+    try {
+      await updateReport(activeSheetId, null, updatedReport, index);
+    } catch (err) {
+      console.error('결과보고서 수정 동기화 실패:', err);
+      setReports(originalReports); // Revert
+      triggerNotification('구글 시트 동기화에 실패하여 변경 사항을 되돌렸습니다.', 'error');
+    }
+  };
+
+  const handleDeleteReport = async (index: number) => {
+    const config = getSpreadsheetConfig();
+    const activeSheetId = spreadsheetId || config.spreadsheetId;
+
+    const originalReports = [...reports];
+    const updatedList = reports.filter((_, i) => i !== index);
+    setReports(updatedList);
+    triggerNotification('결과보고서가 삭제되었습니다. (스프레드시트 동기화 진행 중)', 'success');
+
+    try {
+      await deleteReport(activeSheetId, null, index);
+    } catch (err) {
+      console.error('결과보고서 삭제 동기화 실패:', err);
+      setReports(originalReports); // Revert
+      triggerNotification('구글 시트 동기화에 실패하여 보고서 삭제를 복구했습니다.', 'error');
     }
   };
 
@@ -443,11 +630,22 @@ export default function App() {
                 <FileText className="w-4.5 h-4.5" />
                 <span>교육 기안서 작성 및 인쇄</span>
               </button>
+              <button
+                onClick={() => setActiveTab('reports')}
+                className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'reports'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <CheckCircle className="w-4.5 h-4.5" />
+                <span>교육 결과보고서 작성 및 인쇄</span>
+              </button>
             </div>
 
             {/* TAB CONTENTS */}
             <div className="mt-4">
-              {activeTab === 'plans' ? (
+              {activeTab === 'plans' && (
                 <div className="space-y-6 sm:space-y-8">
                   {/* Dashboard / Analytics Panel */}
                   <Dashboard metrics={metrics} />
@@ -476,10 +674,13 @@ export default function App() {
                       onEdit={handleOpenEditModal}
                       onDelete={handleDeletePlan}
                       onStartDraft={handleStartDraft}
+                      onStartReport={handleStartReport}
                     />
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {activeTab === 'drafts' && (
                 <DraftManager
                   plans={plans}
                   drafts={drafts}
@@ -487,6 +688,20 @@ export default function App() {
                   onAddDraft={handleAddDraft}
                   onUpdateDraft={handleUpdateDraft}
                   onDeleteDraft={handleDeleteDraft}
+                  isLoading={isLoading}
+                  preselectedPlanId={preselectedPlanId}
+                  onClearPreselectedPlan={() => setPreselectedPlanId(null)}
+                />
+              )}
+
+              {activeTab === 'reports' && (
+                <ReportManager
+                  plans={plans}
+                  drafts={drafts}
+                  reports={reports}
+                  onAddReport={handleAddReport}
+                  onUpdateReport={handleUpdateReport}
+                  onDeleteReport={handleDeleteReport}
                   isLoading={isLoading}
                   preselectedPlanId={preselectedPlanId}
                   onClearPreselectedPlan={() => setPreselectedPlanId(null)}

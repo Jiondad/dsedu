@@ -15,9 +15,10 @@ interface PlanTableProps {
   onEdit: (plan: EducationPlan, index: number) => void;
   onDelete: (index: number) => void;
   onStartDraft: (plan: EducationPlan) => void;
+  onStartReport: (plan: EducationPlan) => void;
 }
 
-export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraft }: PlanTableProps) {
+export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraft, onStartReport }: PlanTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
@@ -135,12 +136,13 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
               </th>
               <th className="py-3.5 px-5 text-center">관리</th>
               <th className="py-3.5 px-5 text-center">기안</th>
+              <th className="py-3.5 px-5 text-center">보고서</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
             {sortedPlans.length === 0 ? (
               <tr>
-                <td colSpan={11} className="py-12 text-center text-gray-400 font-medium">
+                <td colSpan={12} className="py-12 text-center text-gray-400 font-medium">
                   수립된 교육 계획이 없습니다.
                 </td>
               </tr>
@@ -241,6 +243,25 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                         className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-lime-300 text-indigo-950 hover:bg-lime-400 border border-lime-400/30 shadow-xs transition-all active:scale-95 cursor-pointer"
                       >
                         기안
+                      </button>
+                    )}
+                  </td>
+
+                  {/* Report Column */}
+                  <td className="py-4 px-5 whitespace-nowrap text-center">
+                    {drafts.some((d) => d.plan_id === plan.id) ? (
+                      <button
+                        onClick={() => onStartReport(plan)}
+                        className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-[#1e293b] text-white hover:bg-slate-700 shadow-xs transition-all active:scale-95 cursor-pointer"
+                      >
+                        작성
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
+                      >
+                        작성
                       </button>
                     )}
                   </td>

@@ -3,20 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { EducationPlan, EducationDraft } from './types';
+import { EducationPlan, EducationDraft, EducationReport } from './types';
 import {
   mapRowToPlan,
   mapPlanToRow,
   mapRowToDraft,
   mapDraftToRow,
+  mapRowToReport,
+  mapReportToRow,
 } from './utils';
 
 const SPREADSHEET_NAME = '연간교육계획수립_DB';
 const SHEET_TAB_NAME = '교육계획';
 const SHEET_TAB_DRAFT_NAME = 'education_drafts';
+const SHEET_TAB_REPORT_NAME = 'education_reports';
 
 const SHEET_ID = 0;
 const DRAFT_SHEET_ID = 1;
+const REPORT_SHEET_ID = 2;
 
 // Default Mock Data for immediate offline/out-of-box usage
 const DEFAULT_MOCK_PLANS: EducationPlan[] = [
@@ -70,6 +74,20 @@ const DEFAULT_MOCK_DRAFTS: EducationDraft[] = [
     purpose: '스틸 제조 공정 스마트 팩토리 최신 기술 습득 및 생산 현장 도입 방안 구상',
     content_summary: '1. AI 기반 품질 예측 솔루션 구축 우수사례 분석\n2. 스마트센서 연동 빅데이터 수집 기법 실습\n3. 우리 공정 생산 라인 최적화 적용 시뮬레이션 워크숍 진행',
     budget_breakdown: '1. 교육 참가비: 400,000원 * 3명 = 1,200,000원\n2. 여비 및 식비: 100,000원\n\n총 소요예산: 1,300,000원'
+  }
+];
+
+const DEFAULT_MOCK_REPORTS: EducationReport[] = [
+  {
+    id: 'DSEREP-20260515-001',
+    draft_id: 'draft_mock_1',
+    plan_id: 'edu_mock_2',
+    department: '품질관리부',
+    position: '대리',
+    drafter_name: '정품질',
+    report_date: '2026-05-15',
+    summary: '스마트제조공정 교육을 무사히 수료하였습니다. 특히 AI 기반 예측 제어 분야에서 센서 연동 실습을 진행하며 현업 설비 고장 진단 모델의 적용 가능성을 확인했습니다. 교육 이수자 평가에서 전원 만족 이상의 결과를 도출했습니다.',
+    future_plan: '1. 다음 달 내로 품질 관리 실무 공정에 AI 예지정비 모델 시범 적용 및 데이터 수집 개시 예정\n2. 부서 내 세미나를 개최하여 교육 내용 공유 및 스마트 팩토리 최적화 가이드라인 작성'
   }
 ];
 
@@ -148,6 +166,16 @@ async function createSpreadsheet(accessToken: string): Promise<string> {
           },
         },
       },
+      {
+        properties: {
+          sheetId: REPORT_SHEET_ID,
+          title: SHEET_TAB_REPORT_NAME,
+          gridProperties: {
+            rowCount: 200,
+            columnCount: 9,
+          },
+        },
+      },
     ],
   };
 
@@ -196,6 +224,20 @@ async function createSpreadsheet(accessToken: string): Promise<string> {
     '소요예산 상세내역',
   ];
   await writeHeaders(spreadsheetId, accessToken, SHEET_TAB_DRAFT_NAME, draftHeaders, 'A1:G1');
+
+  // Initialize reports headers
+  const reportHeaders = [
+    '보고서번호',
+    '기안번호',
+    '교육계획ID',
+    '부서',
+    '직급',
+    '성명',
+    '보고일자',
+    '교육결과 및 성과',
+    '향후 적용계획 및 기대효과',
+  ];
+  await writeHeaders(spreadsheetId, accessToken, SHEET_TAB_REPORT_NAME, reportHeaders, 'A1:I1');
 
   return spreadsheetId;
 }
@@ -824,6 +866,259 @@ export async function deleteDraft(
     }
   } catch (err) {
     console.error('Remote Google Sheets delete draft failed:', err);
+    if (accessToken) throw err;
+  }
+}
+
+/**
+ * Fetches all reports from the education_reports sheet tab.
+ */
+export async function fetchReports(
+  spreadsheetId: string,
+  accessToken?: string | null
+): Promise<EducationReport[]> {
+  const range = `${SHEET_TAB_REPORT_NAME}!A2:I1000`;
+  const { apiKey } = getSpreadsheetConfig();
+  
+  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
+  
+  const headers: HeadersInit = {};
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  } else if (apiKey) {
+    url += `?key=${apiKey}`;
+  }
+
+  try {
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('Failed to fetch reports from spreadsheet:', errorBody);
+      throw new Error('Reports fetch failed');
+    }
+
+    const data = await response.json();
+    const rows = data.values || [];
+
+    const reports = rows
+      .filter((row: any[]) => row && row.length > 0 && row[0] !== '')
+      .map(mapRowToReport);
+
+    localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
+    return reports;
+  } catch (err) {
+    console.warn('Google Sheets API reports load failed, loading from local cache fallback:', err);
+    const cached = localStorage.getItem('ds_steel_reports_cache');
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    // Return mock data initially
+    localStorage.setItem('ds_steel_reports_cache', JSON.stringify(DEFAULT_MOCK_REPORTS));
+    return DEFAULT_MOCK_REPORTS;
+  }
+}
+
+/**
+ * Appends a new report to the education_reports sheet tab.
+ */
+export async function addReport(
+  spreadsheetId: string,
+  accessToken: string | null,
+  report: EducationReport
+): Promise<void> {
+  // Update local storage cache
+  try {
+    const cached = localStorage.getItem('ds_steel_reports_cache');
+    const reports: EducationReport[] = cached ? JSON.parse(cached) : [];
+    reports.push(report);
+    localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
+  } catch (err) {
+    console.error('Failed to update local cache in addReport:', err);
+  }
+
+  const range = `${SHEET_TAB_REPORT_NAME}!A:I`;
+  const { apiKey } = getSpreadsheetConfig();
+  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
+    range
+  )}:append?valueInputOption=USER_ENTERED`;
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json'
+  };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  } else if (apiKey) {
+    url += `&key=${apiKey}`;
+  } else {
+    console.log('No auth credentials, saved report to local cache only');
+    return;
+  }
+
+  const body = {
+    values: [mapReportToRow(report)],
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.warn('Google Sheets append report failed:', errorBody);
+      if (!accessToken) return;
+      throw new Error('Report append failed');
+    }
+  } catch (err) {
+    console.error('Remote Google Sheets append report failed:', err);
+    if (accessToken) throw err;
+  }
+}
+
+/**
+ * Updates an existing report at a specific row.
+ */
+export async function updateReport(
+  spreadsheetId: string,
+  accessToken: string | null,
+  report: EducationReport,
+  rowIndex: number
+): Promise<void> {
+  // Update local storage cache
+  try {
+    const cached = localStorage.getItem('ds_steel_reports_cache');
+    if (cached) {
+      const reports: EducationReport[] = JSON.parse(cached);
+      const index = reports.findIndex(r => r.id === report.id);
+      if (index !== -1) {
+        reports[index] = report;
+      } else if (rowIndex >= 0 && rowIndex < reports.length) {
+        reports[rowIndex] = report;
+      }
+      localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
+    }
+  } catch (err) {
+    console.error('Failed to update local cache in updateReport:', err);
+  }
+
+  const sheetRow = rowIndex + 2;
+  const range = `${SHEET_TAB_REPORT_NAME}!A${sheetRow}:I${sheetRow}`;
+  const { apiKey } = getSpreadsheetConfig();
+  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
+    range
+  )}?valueInputOption=USER_ENTERED`;
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json'
+  };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  } else if (apiKey) {
+    url += `&key=${apiKey}`;
+  } else {
+    console.log('No auth credentials, updated report in local cache only');
+    return;
+  }
+
+  const body = {
+    values: [mapReportToRow(report)],
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.warn('Google Sheets update report failed:', errorBody);
+      if (!accessToken) return;
+      throw new Error('Report update failed');
+    }
+  } catch (err) {
+    console.error('Remote Google Sheets update report failed:', err);
+    if (accessToken) throw err;
+  }
+}
+
+/**
+ * Deletes a report row.
+ */
+export async function deleteReport(
+  spreadsheetId: string,
+  accessToken: string | null,
+  rowIndex: number
+): Promise<void> {
+  // Update local storage cache
+  try {
+    const cached = localStorage.getItem('ds_steel_reports_cache');
+    if (cached) {
+      const reports: EducationReport[] = JSON.parse(cached);
+      if (rowIndex >= 0 && rowIndex < reports.length) {
+        reports.splice(rowIndex, 1);
+      }
+      localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
+    }
+  } catch (err) {
+    console.error('Failed to delete from local cache in deleteReport:', err);
+  }
+
+  const { apiKey } = getSpreadsheetConfig();
+  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json'
+  };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  } else if (apiKey) {
+    url += `&key=${apiKey}`;
+  } else {
+    console.log('No auth credentials, deleted report from local cache only');
+    return;
+  }
+
+  const startIndex = rowIndex + 1; // 0-based index inclusive
+  const endIndex = rowIndex + 2;   // 0-based index exclusive
+
+  const body = {
+    requests: [
+      {
+        deleteDimension: {
+          range: {
+            sheetId: REPORT_SHEET_ID,
+            dimension: 'ROWS',
+            startIndex,
+            endIndex,
+          },
+        },
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.warn('Google Sheets delete report failed:', errorBody);
+      if (!accessToken) return;
+      throw new Error('Report deletion failed');
+    }
+  } catch (err) {
+    console.error('Remote Google Sheets delete report failed:', err);
     if (accessToken) throw err;
   }
 }

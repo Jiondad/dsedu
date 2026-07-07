@@ -1,0 +1,1046 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { EducationPlan, EducationDraft, EducationReport } from '../types';
+import { formatCurrency } from '../utils';
+import {
+  FileText,
+  Trash2,
+  Printer,
+  Sparkles,
+  RefreshCw,
+  FileCheck,
+  AlertCircle,
+  PenTool,
+  CheckCircle,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+
+interface ReportManagerProps {
+  plans: EducationPlan[];
+  drafts: EducationDraft[];
+  reports: EducationReport[];
+  onAddReport: (report: EducationReport) => Promise<string | void>;
+  onUpdateReport: (report: EducationReport, index: number) => Promise<void>;
+  onDeleteReport: (index: number) => Promise<void>;
+  isLoading: boolean;
+  preselectedPlanId?: string | null;
+  onClearPreselectedPlan?: () => void;
+}
+
+export default function ReportManager({
+  plans,
+  drafts,
+  reports,
+  onAddReport,
+  onUpdateReport,
+  onDeleteReport,
+  isLoading,
+  preselectedPlanId,
+  onClearPreselectedPlan,
+}: ReportManagerProps) {
+  // Currently editing report state (form)
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [reportId, setReportId] = useState('');
+  const [draftId, setDraftId] = useState('');
+  const [department, setDepartment] = useState('');
+  const [position, setPosition] = useState('');
+  const [drafterName, setDrafterName] = useState('');
+  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [summary, setSummary] = useState('');
+  const [futurePlan, setFuturePlan] = useState('');
+  const [purpose, setPurpose] = useState('');
+  const [budgetBreakdown, setBudgetBreakdown] = useState('');
+
+  // Helper parser for backward compatibility
+  const parseDrafter = (drafterStr: string) => {
+    if (!drafterStr) return { dept: '', pos: '', name: '' };
+    if (drafterStr.includes('|')) {
+      const parts = drafterStr.split('|');
+      return {
+        dept: parts[0] || '',
+        pos: parts[1] || '',
+        name: parts[2] || '',
+      };
+    }
+    const parts = drafterStr.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      return {
+        dept: parts[0],
+        pos: parts[1],
+        name: parts.slice(2).join(' '),
+      };
+    } else if (parts.length === 2) {
+      return {
+        dept: '',
+        pos: parts[1],
+        name: parts[0],
+      };
+    }
+    return {
+      dept: '',
+      pos: '',
+      name: drafterStr,
+    };
+  };
+
+  // Selected report from history for editing
+  const [editingReportIndex, setEditingReportIndex] = useState<number | null>(null);
+
+  // Local notification state
+  const [localNotification, setLocalNotification] = useState<{
+    text: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
+
+  const triggerLocalNotification = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setLocalNotification({ text, type });
+    setTimeout(() => {
+      setLocalNotification(null);
+    }, 4500);
+  };
+
+  // Validation errors
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Target ID of report to delete (for custom confirmation dialog)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  // State to show print dialog error warning modal (when window.print is blocked by iframe sandbox)
+  const [showPrintIframeWarning, setShowPrintIframeWarning] = useState(false);
+
+  // Filter for plan categories ('전체', '사내', '사외')
+  const [planCategoryFilter, setPlanCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
+
+  // Filter education plans that already have drafts (COMPLETED DRAFTS ONLY!)
+  const plansWithDrafts = plans.filter((p) => drafts.some((d) => d.plan_id === p.id));
+
+  // Auto-generate report ID based on selected draft's ID or fallback date
+  const autoGenerateReportId = (matchedDraft: EducationDraft | undefined, date: string) => {
+    if (matchedDraft && matchedDraft.id) {
+      // Direct replacement for a matched draft's sequence
+      return matchedDraft.id.replace('DSEDU-', 'DSEREP-').replace('DSED-', 'DSEREP-');
+    }
+    const dateStr = date.replace(/-/g, '');
+    const sameDateReports = reports.filter((r) => r.id.startsWith(`DSEREP-${dateStr}`));
+    const nextSerial = String(sameDateReports.length + 1).padStart(3, '0');
+    return `DSEREP-${dateStr}-${nextSerial}`;
+  };
+
+  // Synchronize report form on plan selection
+  useEffect(() => {
+    if (selectedPlanId) {
+      const matchedDraft = drafts.find((d) => d.plan_id === selectedPlanId);
+      const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+
+      if (matchedDraft && selectedPlan) {
+        setDraftId(matchedDraft.id);
+
+        if (editingReportIndex === null) {
+          // If in CREATE mode, set default draft/report sequence id
+          const nextId = autoGenerateReportId(matchedDraft, reportDate);
+          setReportId(nextId);
+
+          // Auto-load Writer Info from matchedDraft
+          const parts = parseDrafter(matchedDraft.drafter);
+          setDepartment(parts.dept);
+          setPosition(parts.pos);
+          setDrafterName(parts.name);
+
+          // Auto-load Purpose & Budget from matchedDraft
+          setPurpose(matchedDraft.purpose || '');
+          setBudgetBreakdown(matchedDraft.budget_breakdown || '');
+
+          // Pre-fill result report content summary & future plans
+          if (!summary) {
+            setSummary(
+              `수립된 교육 계획 및 기안 내용에 따라 [${selectedPlan.title}] 교육을 무사히 이수하였습니다.\n` +
+                `1. 교육 주요 요약: ${matchedDraft.purpose}\n` +
+                `2. 교육 성과: 실무 공정 스마트화 및 실무 유관 지식 습득, 팀 내 핵심 노하우를 확보하고 실습을 통한 현장 문제 해결 역량을 극대화하였습니다.\n` +
+                `3. 만족도 평가: 교육 참석자 설문 결과 직무 적합성 및 강사 만족도 전원 우수 평가를 획득하였습니다.`
+            );
+          }
+
+          if (!futurePlan) {
+            setFuturePlan(
+              `1. 현업 적용 계획:\n` +
+                `  - 교육 이수 내용을 바탕으로 관련 설비 운용 효율 향상 및 예방 정비 기법 도입 (차주 적용 시작)\n` +
+                `  - 부서 내 자체 세미나 교육을 개설하여 습득한 기술 노하우를 팀 전체에 공유 전파 예정\n` +
+                `2. 기대 효과:\n` +
+                `  - 최신 가이드라인 정립을 통한 작업 시간 단축 및 품질 표준화 달성\n` +
+                `  - 교육 환류를 통한 직무 만족도 고취 및 연쇄적인 현장 공정 불량률 감소 기대`
+            );
+          }
+        } else {
+          // In EDIT mode, just load the purpose & budget for standard layout
+          setPurpose(matchedDraft.purpose || '');
+          setBudgetBreakdown(matchedDraft.budget_breakdown || '');
+        }
+      }
+    }
+  }, [selectedPlanId, editingReportIndex, drafts, plans, reportDate]);
+
+  // Handle preselected plan when clicking "보고서" from the plans tab
+  useEffect(() => {
+    if (preselectedPlanId) {
+      const plan = plans.find((p) => p.id === preselectedPlanId);
+      if (plan) {
+        // Set the active plan ID
+        setSelectedPlanId(preselectedPlanId);
+
+        // Check if an existing report already exists for this plan
+        const existingReport = reports.find((r) => r.plan_id === preselectedPlanId);
+        if (existingReport) {
+          const index = reports.findIndex((r) => r.plan_id === preselectedPlanId);
+          handleSelectReportForEdit(existingReport, index);
+          triggerLocalNotification('이미 작성된 결과보고서가 존재하여 해당 보고서를 불러왔습니다.', 'info');
+        } else {
+          // Check if there is a completed draft to prefill with
+          const matchedDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
+          setEditingReportIndex(null);
+          
+          const nextId = autoGenerateReportId(matchedDraft, reportDate);
+          setReportId(nextId);
+
+          if (matchedDraft) {
+            setDraftId(matchedDraft.id);
+            
+            const parts = parseDrafter(matchedDraft.drafter);
+            setDepartment(parts.dept);
+            setPosition(parts.pos);
+            setDrafterName(parts.name);
+
+            setPurpose(matchedDraft.purpose || '');
+            setBudgetBreakdown(matchedDraft.budget_breakdown || '');
+
+            setSummary(
+              `수립된 교육 계획 및 기안 내용에 따라 [${plan.title}] 교육을 무사히 이수하였습니다.\n` +
+                `1. 교육 주요 요약: ${matchedDraft.purpose}\n` +
+                `2. 교육 성과: 실무 공정 스마트화 및 실무 유관 지식 습득, 팀 내 핵심 노하우를 확보하고 실습을 통한 현장 문제 해결 역량을 극대화하였습니다.\n` +
+                `3. 만족도 평가: 교육 참석자 설문 결과 직무 적합성 및 강사 만족도 전원 우수 평가를 획득하였습니다.`
+            );
+            setFuturePlan(
+              `1. 현업 적용 계획:\n` +
+                `  - 교육 이수 내용을 바탕으로 관련 설비 운용 효율 향상 및 예방 정비 기법 도입 (차주 적용 시작)\n` +
+                `  - 부서 내 자체 세미나 교육을 개설하여 습득한 기술 노하우를 팀 전체에 공유 전파 예정\n` +
+                `2. 기대 효과:\n` +
+                `  - 최신 가이드라인 정립을 통한 작업 시간 단축 및 품질 표준화 달성\n` +
+                `  - 교육 환류를 통한 직무 만족도 고취 및 연쇄적인 현장 공정 불량률 감소 기대`
+            );
+          } else {
+            setDraftId('');
+            setDepartment('');
+            setPosition('');
+            setDrafterName('');
+            setPurpose('');
+            setBudgetBreakdown('');
+            setSummary('');
+            setFuturePlan('');
+          }
+          setErrors({});
+          triggerLocalNotification('새 교육 결과보고서 작성을 시작합니다.', 'success');
+        }
+      }
+      onClearPreselectedPlan?.();
+    }
+  }, [preselectedPlanId, plans, drafts, reports, reportDate]);
+
+  // Handle plan selection change
+  const handlePlanSelection = (planId: string) => {
+    setSelectedPlanId(planId);
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy.selectedPlanId;
+      return copy;
+    });
+
+    if (!planId) {
+      handleResetForm();
+      return;
+    }
+
+    // Check if report already exists for this plan
+    const existingReport = reports.find((r) => r.plan_id === planId);
+    if (existingReport) {
+      if (editingReportIndex === null || reports[editingReportIndex].plan_id !== planId) {
+        setErrors((prev) => ({
+          ...prev,
+          selectedPlanId: '이미 결과보고서가 작성된 교육계획입니다.',
+        }));
+        triggerLocalNotification('이미 결과보고서가 작성된 교육계획입니다. 해당 보고서가 로드됩니다.', 'info');
+        
+        const index = reports.findIndex((r) => r.plan_id === planId);
+        handleSelectReportForEdit(existingReport, index);
+      }
+    }
+  };
+
+  // Load selected report for editing
+  const handleSelectReportForEdit = (report: EducationReport, index: number) => {
+    setEditingReportIndex(index);
+    setSelectedPlanId(report.plan_id);
+    setReportId(report.id);
+    setDraftId(report.draft_id);
+    setDepartment(report.department);
+    setPosition(report.position);
+    setDrafterName(report.drafter_name);
+    setReportDate(report.report_date);
+    setSummary(report.summary);
+    setFuturePlan(report.future_plan);
+    
+    // Auto-load matched draft purpose and budget
+    const matchedDraft = drafts.find((d) => d.plan_id === report.plan_id);
+    if (matchedDraft) {
+      setPurpose(matchedDraft.purpose || '');
+      setBudgetBreakdown(matchedDraft.budget_breakdown || '');
+    } else {
+      setPurpose('');
+      setBudgetBreakdown('');
+    }
+
+    setErrors({});
+  };
+
+  // Reset form to start a new report
+  const handleResetForm = () => {
+    setEditingReportIndex(null);
+    setSelectedPlanId('');
+    setReportId('');
+    setDraftId('');
+    setDepartment('');
+    setPosition('');
+    setDrafterName('');
+    setReportDate(new Date().toISOString().split('T')[0]);
+    setSummary('');
+    setFuturePlan('');
+    setPurpose('');
+    setBudgetBreakdown('');
+    setErrors({});
+  };
+
+  // Delete report with instant optimistic UI update
+  const handleDeleteReport = (targetReportId: string) => {
+    const targetIndex = reports.findIndex((r) => r.id === targetReportId);
+    
+    // Immediate optimistic update
+    onDeleteReport(targetIndex).catch((err) => {
+      console.error('Failed to sync deletion on spreadsheet:', err);
+      triggerLocalNotification('구글 스프레드시트 삭제 반영 실패', 'error');
+    });
+
+    if (editingReportIndex === targetIndex && targetIndex !== -1) {
+      handleResetForm();
+    } else if (editingReportIndex !== null && targetIndex !== -1 && targetIndex < editingReportIndex) {
+      setEditingReportIndex((prev) => (prev !== null ? prev - 1 : null));
+    }
+    triggerLocalNotification('교육 결과보고서가 즉시 삭제되었습니다.', 'success');
+  };
+
+  // High-reliability print handler that detects iframe environments and provides solutions
+  const handlePrint = () => {
+    const isIframe = window.self !== window.top;
+    if (isIframe) {
+      console.warn('Iframe sandbox detected. Showing instructions for secure print.');
+      setShowPrintIframeWarning(true);
+    } else {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Print blocked or failed:', err);
+        setShowPrintIframeWarning(true);
+      }
+    }
+  };
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!selectedPlanId) newErrors.selectedPlanId = '연관 교육 계획을 선택해주세요.';
+    if (!reportId.trim()) newErrors.reportId = '보고서 번호를 입력해주세요.';
+    if (!department.trim()) newErrors.department = '부서를 입력해주세요.';
+    if (!position.trim()) newErrors.position = '직급을 입력해주세요.';
+    if (!drafterName.trim()) newErrors.drafterName = '성명을 입력해주세요.';
+    if (!reportDate) newErrors.reportDate = '보고일자를 선택해주세요.';
+    if (!summary.trim()) newErrors.summary = '교육 결과 요약 및 성과를 입력해주세요.';
+    if (!futurePlan.trim()) newErrors.futurePlan = '향후 현업 적용 계획 및 기대효과를 입력해주세요.';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Save report
+  const handleSaveReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    const reportData: EducationReport = {
+      id: reportId.trim(),
+      draft_id: draftId,
+      plan_id: selectedPlanId,
+      department: department.trim(),
+      position: position.trim(),
+      drafter_name: drafterName.trim(),
+      report_date: reportDate,
+      summary: summary.trim(),
+      future_plan: futurePlan.trim(),
+    };
+
+    if (editingReportIndex !== null) {
+      await onUpdateReport(reportData, editingReportIndex);
+      triggerLocalNotification('결과보고서가 수정되었습니다.', 'success');
+    } else {
+      // Check duplicate ID
+      if (reports.some((r) => r.id === reportData.id)) {
+        setErrors((prev) => ({
+          ...prev,
+          reportId: '이미 존재하는 보고서 번호입니다. 다른 번호를 사용해 주세요.',
+        }));
+        return;
+      }
+      try {
+        const finalId = await onAddReport(reportData);
+        if (finalId) {
+          setReportId(finalId);
+        }
+        triggerLocalNotification('새 교육 결과보고서가 작성되었습니다.', 'success');
+      } catch (err) {
+        console.error('Failed to add report:', err);
+      }
+    }
+  };
+
+  const getFormattedKoreanDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
+  };
+
+  // Derived state details from chosen plan/draft
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+  const selectedDraft = drafts.find((d) => d.plan_id === selectedPlanId);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
+      {/* Local Toast Notification */}
+      <AnimatePresence>
+        {localNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4 no-print"
+          >
+            <div
+              className={`p-4 rounded-xl shadow-lg border text-xs font-bold flex items-center justify-between gap-3 ${
+                localNotification.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-100'
+                  : localNotification.type === 'error'
+                  ? 'bg-rose-50 text-rose-800 border-rose-100'
+                  : 'bg-indigo-50 text-indigo-800 border-indigo-100'
+              }`}
+            >
+              <span>{localNotification.text}</span>
+              <button
+                type="button"
+                onClick={() => setLocalNotification(null)}
+                className="hover:opacity-80 font-bold ml-auto"
+              >
+                닫기
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* LEFT COLUMN: Input Form & History (5 cols) */}
+      <div className="lg:col-span-5 space-y-6 no-print">
+        {plansWithDrafts.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs font-semibold text-amber-700 flex gap-2.5">
+            <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
+            <div>
+              <p className="font-bold">기안 완료된 교육 계획 없음</p>
+              <p className="mt-1 font-normal leading-relaxed">
+                결과보고서를 작성하기 위해서는, 먼저 <span className="font-semibold text-indigo-700">'교육 기안서 작성 및 인쇄'</span> 탭에서 기안서 작성이 완료(채번 완료)된 교육 계획이 존재해야 합니다.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Writing Form Panel */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5 space-y-5">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <PenTool className="w-4.5 h-4.5 text-indigo-500" />
+              {editingReportIndex !== null ? '결과보고서 수정' : '새 교육 결과보고서 작성'}
+            </h3>
+            {editingReportIndex !== null && (
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
+              >
+                신규 작성 전환
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleSaveReport} className="space-y-4">
+            {/* Step 1. 연간 교육 선택 */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                1. 연간 교육 선택 <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={selectedPlanId}
+                onChange={(e) => handlePlanSelection(e.target.value)}
+                className={`w-full bg-gray-50 border rounded-xl py-2.5 px-3.5 text-xs font-bold focus:outline-none focus:bg-white focus:border-indigo-500 transition-all cursor-pointer ${
+                  errors.selectedPlanId ? 'border-rose-400 bg-rose-50/20' : 'border-gray-200'
+                }`}
+              >
+                <option value="">-- 기안 완료된 교육 목록 선택 --</option>
+                {plansWithDrafts.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    [{plan.category}] {plan.title} ({plan.edu_date})
+                  </option>
+                ))}
+              </select>
+              {errors.selectedPlanId && (
+                <p className="text-[10px] text-rose-500 font-bold mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  {errors.selectedPlanId}
+                </p>
+              )}
+            </div>
+
+            {/* Selected Plan Info Card (Read only) */}
+            {selectedPlan && (
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs text-gray-600 flex justify-between items-center gap-4">
+                <div className="space-y-1.5 flex-1">
+                  <p>
+                    <span className="font-bold text-gray-500">교육기관:</span> {selectedPlan.agency} |{' '}
+                    <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
+                  </p>
+                  <p>
+                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target_group || '미지정'}
+                  </p>
+                  <p>
+                    <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
+                    <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.total_hours}시간
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2. 문서 번호 및 일자 (Grid 배치) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  2-1. 결과보고서 번호 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={reportId || '(교육 계획 선택 시 자동 기입)'}
+                  readOnly
+                  placeholder="교육 계획 선택 시 자동 생성"
+                  className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm bg-gray-50 font-mono text-[11px] outline-none text-gray-500 select-none"
+                />
+                {errors.reportId && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-1.5">{errors.reportId}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  2-2. 보고일자 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={reportDate}
+                  onChange={(e) => {
+                    setReportDate(e.target.value);
+                    if (editingReportIndex === null && selectedPlanId) {
+                      const matched = drafts.find((d) => d.plan_id === selectedPlanId);
+                      setReportId(autoGenerateReportId(matched, e.target.value));
+                    }
+                  }}
+                  className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Step 3. 작성자 정보 (3열 Grid 배치) */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                3. 작성자 정보 <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <input
+                    type="text"
+                    value={department}
+                    onChange={(e) => {
+                      setDepartment(e.target.value);
+                      if (errors.department) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.department;
+                          return copy;
+                        });
+                      }
+                    }}
+                    placeholder="예: 관리팀"
+                    className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
+                  />
+                  {errors.department && <p className="text-[10px] text-rose-500 mt-1">{errors.department}</p>}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={position}
+                    onChange={(e) => {
+                      setPosition(e.target.value);
+                      if (errors.position) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.position;
+                          return copy;
+                        });
+                      }
+                    }}
+                    placeholder="예: 과장"
+                    className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
+                  />
+                  {errors.position && <p className="text-[10px] text-rose-500 mt-1">{errors.position}</p>}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={drafterName}
+                    onChange={(e) => {
+                      setDrafterName(e.target.value);
+                      if (errors.drafterName) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.drafterName;
+                          return copy;
+                        });
+                      }
+                    }}
+                    placeholder="예: 염지원"
+                    className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
+                  />
+                  {errors.drafterName && <p className="text-[10px] text-rose-500 mt-1">{errors.drafterName}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4. 교육 목적 (자동 로드, 수정가능) */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                4. 교육 목적 <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                placeholder="교육 기안서에서 목적이 자동으로 입력됩니다."
+                className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 rounded-xl py-2.5 px-3.5 text-xs font-medium"
+              />
+            </div>
+
+            {/* Step 5. 교육 결과 요약 및 성과 */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                5. 교육 결과 요약 및 성과 <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder="교육 수료 내용, 참석자 평가, 주요 교육 습득 항목 및 교육 결과 성과 요약을 자세히 작성해주세요."
+                rows={4}
+                className={`w-full bg-gray-50 border rounded-xl py-2.5 px-3.5 text-xs font-medium focus:outline-none focus:bg-white focus:border-indigo-500 transition-all leading-relaxed ${
+                  errors.summary ? 'border-rose-400 bg-rose-50/20' : 'border-gray-200'
+                }`}
+              />
+              {errors.summary && <p className="text-[10px] text-rose-500 font-bold mt-1.5">{errors.summary}</p>}
+            </div>
+
+            {/* Step 6. 향후 현업 적용 계획 및 기대효과 */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                6. 향후 현업 적용 계획 및 기대효과 <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={futurePlan}
+                onChange={(e) => setFuturePlan(e.target.value)}
+                placeholder="수행한 교육 내용을 업무 현장에 어떻게 환류하고 적용할 것인지 계획 및 예상 기대효과를 기재해주세요."
+                rows={4}
+                className={`w-full bg-gray-50 border rounded-xl py-2.5 px-3.5 text-xs font-medium focus:outline-none focus:bg-white focus:border-indigo-500 transition-all leading-relaxed ${
+                  errors.futurePlan ? 'border-rose-400 bg-rose-50/20' : 'border-gray-200'
+                }`}
+              />
+              {errors.futurePlan && <p className="text-[10px] text-rose-500 font-bold mt-1.5">{errors.futurePlan}</p>}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-3 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-60 font-sans"
+              >
+                {isLoading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <FileCheck className="w-4 h-4" />
+                    <span>{editingReportIndex !== null ? '보고서 수정' : '보고서 저장'}</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-4 py-3 transition-all cursor-pointer flex items-center justify-center gap-1.5 font-sans animate-pulse"
+              >
+                <Printer className="w-4 h-4 text-gray-500" />
+                <span>보고서 출력</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Saved Reports History Panel */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5">
+          <h3 className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2.5 mb-3 flex items-center gap-2">
+            <CheckCircle className="w-4.5 h-4.5 text-emerald-500" />
+            작성된 교육 결과보고서 목록 ({reports.length})
+          </h3>
+
+          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+            {reports.length === 0 ? (
+              <p className="text-center text-xs text-gray-400 py-6">
+                저장된 교육 결과보고서가 없습니다.
+              </p>
+            ) : (
+              reports.map((r, index) => {
+                const associatedPlan = plans.find((p) => p.id === r.plan_id);
+                return (
+                  <div
+                    key={r.id}
+                    className={`p-3 rounded-xl border text-xs transition-all flex items-start justify-between gap-3 cursor-pointer ${
+                      editingReportIndex === index
+                        ? 'border-indigo-500 bg-indigo-50/20 shadow-xs'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => handleSelectReportForEdit(r, index)}
+                  >
+                    <div className="space-y-1 overflow-hidden">
+                      <p className="font-bold text-gray-800 truncate">
+                        {associatedPlan ? associatedPlan.title : '연관 계획 정보 없음'}
+                      </p>
+                      <div className="flex gap-2 text-gray-400 text-[10px]">
+                        <span>번호: {r.id}</span>
+                        <span>•</span>
+                        <span>보고자: {r.drafter_name} {r.position} ({r.department})</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400">보고일: {r.report_date}</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTargetId(r.id);
+                      }}
+                      className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT COLUMN: Real-Time Preview Area (7 cols) */}
+      <div className="lg:col-span-7 flex flex-col items-center">
+        {/* Scrollable container for preview on screen */}
+        <div
+          id="print-area-wrapper"
+          className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-auto"
+        >
+          {/* THE HOVER A4 PRINT PAPER SHEETS */}
+          <div
+            id="print-area"
+            className="w-[210mm] min-h-[297mm] p-[18mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-between shrink-0"
+            style={{ boxSizing: 'border-box' }}
+          >
+            {/* Header Area */}
+            <div>
+              <div className="flex justify-between items-start mb-8">
+                <div className="text-[10px] text-gray-400 font-mono tracking-tight">
+                  {reportId || 'DSEREP-YYYYMMDD-XXX'}
+                </div>
+
+                {/* APPROVAL STAMP GRIDS (결재방) */}
+                <table className="border-collapse border border-black text-center text-xs w-[180px]">
+                  <tbody>
+                    <tr className="border-b border-black">
+                      <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]">
+                        결<br />재
+                      </td>
+                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]">작 성</td>
+                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]">검 토</td>
+                      <td className="p-1 bg-gray-50 font-bold text-[10px] w-[50px]">승 인</td>
+                    </tr>
+                    <tr className="h-[45px]">
+                      <td className="border-r border-black text-[9px] text-gray-400 p-1 flex flex-col justify-end items-center h-full">
+                        <span className="text-[8px] leading-tight text-gray-300 font-bold mb-1">STAMP</span>
+                        <span className="font-semibold text-gray-700">{drafterName || ''}</span>
+                      </td>
+                      <td className="border-r border-black"></td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Central Title */}
+              <div className="text-center mb-10">
+                <h1 className="text-2xl font-black tracking-[0.4em] border-b-2 border-double border-black pb-3 inline-block pl-[0.4em]">
+                  교 육 결 과 보 고 서
+                </h1>
+              </div>
+
+              {/* Meta Grid Corporate Table */}
+              <table className="w-full border-collapse border border-black text-xs mb-6">
+                <tbody>
+                  {/* Row 1: Report Number & Drafter Info */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고서번호</td>
+                    <td className="border-r border-black p-2.5 w-[32%] font-mono text-[11px]">{reportId || '(보고서 저장 시 부여)'}</td>
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고자 정보</td>
+                    <td className="p-2.5 w-[32%]">
+                      {department && drafterName ? (
+                        <span className="font-bold">{department} {drafterName} {position}</span>
+                      ) : (
+                        '(보고자 입력)'
+                      )}
+                    </td>
+                  </tr>
+
+                  {/* Row 2: Draft Date & Category */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">보고일자</td>
+                    <td className="border-r border-black p-2.5">{getFormattedKoreanDate(reportDate)}</td>
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">기안연동번호</td>
+                    <td className="p-2.5 font-mono text-[10px] text-gray-600">
+                      {draftId || '(기안서 번호)'}
+                    </td>
+                  </tr>
+
+                  {/* Row 3: Course Title */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교 육 명</td>
+                    <td colSpan={3} className="p-2.5 font-bold text-sm bg-gray-50/10">
+                      {selectedPlan ? selectedPlan.title : '(교육 계획 선택 필요)'}
+                    </td>
+                  </tr>
+
+                  {/* Row 4: Institution & Instructor */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.agency : ''}</td>
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
+                    <td className="p-2.5">{selectedPlan ? selectedPlan.instructor : ''}</td>
+                  </tr>
+
+                  {/* Row 5: Target Group & Dates */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target_group : ''}</td>
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
+                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.edu_date} (${selectedPlan.schedule})` : ''}</td>
+                  </tr>
+
+                  {/* Row 6: Duration & Cost */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육시간</td>
+                    <td className="border-r border-black p-2.5">
+                      {selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.total_hours}시간)` : ''}
+                    </td>
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">실제 집행예산</td>
+                    <td className="p-2.5 font-bold text-emerald-800">
+                      {selectedPlan ? `₩${formatCurrency(selectedPlan.estimated_cost)}` : ''}
+                    </td>
+                  </tr>
+
+                  {/* Row 7: Purpose */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px]">
+                      {purpose || '(교육 목적 기재)'}
+                    </td>
+                  </tr>
+
+                  {/* Row 8: Budget Breakdown */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">소요예산 상세</td>
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] text-gray-700">
+                      {budgetBreakdown || '(기안서의 예산 내역 자동 연동)'}
+                    </td>
+                  </tr>
+
+                  {/* Row 9: Content Summary (Results Summary) */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">5. 교육 결과<br />요약 및 성과</td>
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] min-h-[140px] align-top">
+                      {summary || '(교육 수료 내용 및 이수 평가 기재)'}
+                    </td>
+                  </tr>
+
+                  {/* Row 10: Future Plan */}
+                  <tr>
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">6. 향후 현업<br />적용 계획 및<br />기대효과</td>
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] min-h-[120px] align-top">
+                      {futurePlan || '(교육 내용의 현업 환류 적용 과제 및 정량적/정성적 기대효과 기재)'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Bottom Signature / Footer Area */}
+            <div className="text-center pt-6 border-t border-gray-100 mt-auto">
+              <p className="text-xs text-gray-500 leading-relaxed mb-10">
+                위와 같이 연간 교육 계획 및 기안 내용에 따라 사내/사외 위탁 위와 동일한 교육 과정을 성실히 수행 완료하였기에,<br />
+                교육 결과 및 실무 전파 계획을 보고드립니다.
+              </p>
+
+              <p className="text-sm font-bold text-gray-700 tracking-wider mb-6">
+                {getFormattedKoreanDate(reportDate)}
+              </p>
+
+              <div className="flex flex-col items-center">
+                <p className="text-md font-extrabold tracking-widest text-gray-900">
+                  (주) 대 성 스 틸
+                </p>
+                <p className="text-xs text-gray-400 mt-1 font-semibold">대표이사 귀하</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Banner with helpful tips */}
+        <div className="w-full bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mt-4 text-xs text-indigo-800 no-print">
+          <div className="flex gap-2.5 items-start">
+            <Printer className="w-4.5 h-4.5 shrink-0 text-indigo-500 mt-0.5" />
+            <div>
+              <p className="font-bold">🖨️ 결과보고서 1페이지 인쇄 최적화</p>
+              <p className="mt-1 leading-relaxed font-medium">
+                '보고서 출력' 버튼 클릭 시, 브라우저 인쇄 화면에서 표 양식만 깔끔하게 정렬됩니다. '배경 그래픽 인쇄' 체크 시 테두리와 표 레이아웃 배경색이 정갈하게 그대로 나옵니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteTargetId !== null && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print font-sans">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-white rounded-2xl border border-gray-100 p-6 max-w-sm w-full shadow-2xl space-y-4 text-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-500">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-sm font-bold text-gray-800">보고서를 삭제하시겠습니까?</h4>
+                <p className="text-xs text-gray-400">
+                  삭제된 결과보고서는 복구할 수 없으며, 구글 스프레드시트에서도 즉시 삭제됩니다.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTargetId(null)}
+                  className="flex-1 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  아니요
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteReport(deleteTargetId);
+                    setDeleteTargetId(null);
+                  }}
+                  className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  확인
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Iframe Sandbox Print Warning Modal */}
+      <AnimatePresence>
+        {showPrintIframeWarning && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print font-sans">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-white rounded-2xl border border-gray-100 p-6 max-w-md w-full shadow-2xl space-y-4 text-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto text-indigo-500">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-sm font-bold text-gray-800">보안 및 브라우저 환경 안내</h4>
+                <p className="text-xs text-gray-500 leading-relaxed text-left bg-gray-50 p-3.5 rounded-xl border border-gray-150">
+                  현재 AI Studio 미리보기(Iframe Sandbox) 내부에서는 보안 규정으로 인해 인쇄 창을 직접 열 수 없습니다.<br /><br />
+                  출력을 정상 진행하려면 우측 상단의 <span className="font-semibold text-indigo-600">[새 창에서 열기 (Open in new tab)]</span>를 클릭하여 새 탭에서 접속해 주십시오. 아래 버튼으로 바로 이동하실 수도 있습니다.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPrintIframeWarning(false)}
+                  className="flex-1 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  닫기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(window.location.href, '_blank');
+                    setShowPrintIframeWarning(false);
+                  }}
+                  className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  새 창으로 열기 (인쇄 실행)
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
