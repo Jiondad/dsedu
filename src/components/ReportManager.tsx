@@ -16,6 +16,9 @@ import {
   AlertCircle,
   PenTool,
   CheckCircle,
+  UploadCloud,
+  X,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -55,6 +58,57 @@ export default function ReportManager({
   const [purpose, setPurpose] = useState('');
   const [budgetBreakdown, setBudgetBreakdown] = useState('');
   const [satisfactionScore, setSatisfactionScore] = useState<number>(5.0);
+  const [certificateFile, setCertificateFile] = useState<string>(''); // Base64
+  const [certificateFileName, setCertificateFileName] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
+
+  const processFile = (file: File) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      triggerLocalNotification('JPG, PNG 형식의 이미지 파일만 업로드할 수 있습니다.', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCertificateFile(reader.result as string);
+      setCertificateFileName(file.name);
+      triggerLocalNotification('수료증 파일이 등록되었습니다.', 'success');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setCertificateFile('');
+    setCertificateFileName('');
+    triggerLocalNotification('수료증 파일이 삭제되었습니다.', 'info');
+  };
 
   // Helper parser for backward compatibility
   const parseDrafter = (drafterStr: string) => {
@@ -292,6 +346,8 @@ export default function ReportManager({
     setSummary(report.summary);
     setFuturePlan(report.future_plan);
     setSatisfactionScore(report.satisfaction_score || 5.0);
+    setCertificateFile(report.certificate_file || '');
+    setCertificateFileName(report.certificate_file_name || '');
     
     // Auto-load matched draft purpose and budget
     const matchedDraft = drafts.find((d) => d.plan_id === report.plan_id);
@@ -321,6 +377,8 @@ export default function ReportManager({
     setPurpose('');
     setBudgetBreakdown('');
     setSatisfactionScore(5.0);
+    setCertificateFile('');
+    setCertificateFileName('');
     setErrors({});
   };
 
@@ -389,6 +447,8 @@ export default function ReportManager({
       summary: summary.trim(),
       future_plan: futurePlan.trim(),
       satisfaction_score: Number(satisfactionScore) || 5.0,
+      certificate_file: certificateFile || undefined,
+      certificate_file_name: certificateFileName || undefined,
     };
 
     if (editingReportIndex !== null) {
@@ -713,6 +773,73 @@ export default function ReportManager({
               {errors.futurePlan && <p className="text-[10px] text-rose-500 font-bold mt-1.5">{errors.futurePlan}</p>}
             </div>
 
+            {/* Step 7. 수료증 업로드 (선택) */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                7. 수료증 업로드 (선택)
+              </label>
+              
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-xl p-5 transition-all flex flex-col items-center justify-center cursor-pointer text-center ${
+                  isDragging 
+                    ? 'border-indigo-500 bg-indigo-50/50' 
+                    : certificateFile 
+                      ? 'border-emerald-300 bg-emerald-50/10' 
+                      : 'border-gray-200 bg-gray-50/30 hover:border-indigo-400 hover:bg-gray-50/50'
+                }`}
+                onClick={() => document.getElementById('certificate-upload-input')?.click()}
+              >
+                <input
+                  id="certificate-upload-input"
+                  type="file"
+                  accept="image/jpeg, image/png, image/jpg"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                
+                {certificateFile ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <div className="text-xs font-bold text-gray-800 max-w-[280px] truncate">
+                      {certificateFileName}
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                      이미지 업로드 완료 (JPG / PNG)
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFile();
+                      }}
+                      className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg transition-all"
+                    >
+                      <X className="w-3 h-3" />
+                      파일 삭제
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                      <UploadCloud className="w-5 h-5" />
+                    </div>
+                    <div className="text-xs font-bold text-gray-700">
+                      클릭하여 파일 선택 또는 드래그 앤 드롭
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                      JPG, PNG 형식의 이미지 파일만 업로드 가능
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Action buttons */}
             <div className="flex gap-3 pt-2">
               <button
@@ -943,6 +1070,24 @@ export default function ReportManager({
                       </div>
                     </td>
                   </tr>
+
+                  {/* Row 11: Certificate attachment (if exists) */}
+                  {certificateFile && (
+                    <tr className="border-t border-black">
+                      <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">첨부 수료증</td>
+                      <td colSpan={3} className="p-2.5 text-center">
+                        <div className="flex flex-col items-center justify-center p-2 bg-gray-50/50 rounded-xl border border-gray-100 max-w-md mx-auto">
+                          <img
+                            src={certificateFile}
+                            alt="Certificate Attachment"
+                            className="max-h-[140px] max-w-full object-contain rounded-lg shadow-sm border border-gray-200"
+                            referrerPolicy="no-referrer"
+                          />
+                          <p className="text-[10px] text-gray-500 mt-1.5 font-bold font-mono">{certificateFileName}</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

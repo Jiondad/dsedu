@@ -38,6 +38,8 @@ export interface EducationReport {
   summary: string; // 교육 결과 요약 및 성과
   future_plan: string; // 향후 현업 적용 계획 및 기대효과
   satisfaction_score: number; // 만족도 점수 (1.0 ~ 5.0)
+  certificate_file?: string; // Base64 encoded file data
+  certificate_file_name?: string; // File name
 }
 
 export interface MetricSummary {
