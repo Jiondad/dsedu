@@ -21,8 +21,21 @@ import {
   Line,
   ComposedChart,
 } from 'recharts';
-import { Award, Clock, BookOpen, Layers, Star, TrendingUp, PieChart as PieIcon } from 'lucide-react';
-import { motion } from 'motion/react';
+import {
+  Award,
+  Clock,
+  BookOpen,
+  Layers,
+  Star,
+  TrendingUp,
+  PieChart as PieIcon,
+  Printer,
+  Eye,
+  X,
+  Check,
+  AlertCircle,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface StatisticsDashboardProps {
   plans: EducationPlan[];
@@ -118,6 +131,36 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
     };
   });
 
+  // States for preview modal & print sandbox warning
+  const [selectedReportDetail, setSelectedReportDetail] = React.useState<{
+    report: EducationReport;
+    plan: EducationPlan;
+    draft: EducationDraft;
+  } | null>(null);
+  const [showPrintIframeWarning, setShowPrintIframeWarning] = React.useState(false);
+
+  const getFormattedKoreanDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
+  };
+
+  const handlePrint = () => {
+    const isIframe = window.self !== window.top;
+    if (isIframe) {
+      console.warn('Iframe sandbox detected. Showing instructions for secure print.');
+      setShowPrintIframeWarning(true);
+    } else {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Print blocked or failed:', err);
+        setShowPrintIframeWarning(true);
+      }
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0, y: 15 },
     visible: {
@@ -187,7 +230,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
         </motion.div>
 
-        {/* Card 2: Actual Execution Cost - Standard weight and clean text as requested */}
+        {/* Card 2: Actual Execution Cost */}
         <motion.div
           variants={cardVariants}
           className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
@@ -197,7 +240,6 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">실제 집행 비용</p>
-            {/* Standard normal weight, no currency symbol, comma separated */}
             <p className="text-xl text-gray-700 tracking-tight mt-1 font-normal">
               {formatCurrency(totalCost)}원
             </p>
@@ -415,6 +457,360 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
         </div>
       </div>
+
+      {/* Education Performance List Table */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <Award className="w-4.5 h-4.5 text-indigo-500" />
+              <span>교육 실적 목록 (이수 완료)</span>
+            </h3>
+            <p className="text-[11px] text-gray-400 mt-0.5 font-medium">기안 및 결과보고 제출이 100% 완료된 실적 상세 현황입니다.</p>
+          </div>
+          <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
+            총 {completedReportsWithDetails.length}건 완료
+          </div>
+        </div>
+
+        <div className="w-full overflow-hidden border border-gray-150 rounded-2xl bg-white">
+          <table className="w-full table-fixed text-left border-collapse text-xs md:text-sm">
+            <thead>
+              <tr className="border-b border-gray-150 text-[11px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                <th style={{ width: '15%' }} className="py-3 px-3.5">보고서번호</th>
+                <th style={{ width: '29%' }} className="py-3 px-2">교육명</th>
+                <th style={{ width: '18%' }} className="py-3 px-2">작성자 정보</th>
+                <th style={{ width: '14%' }} className="py-3 px-2">교육일정</th>
+                <th style={{ width: '11%' }} className="py-3 px-2 text-right">실집행비용</th>
+                <th style={{ width: '5%' }} className="py-3 px-2 text-center">만족도</th>
+                <th style={{ width: '5%' }} className="py-3 px-2 text-center">수료증</th>
+                <th style={{ width: '3%' }} className="py-3 px-3.5 text-center">기능</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-150">
+              {completedReportsWithDetails.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-gray-400 font-medium">
+                    완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)
+                  </td>
+                </tr>
+              ) : (
+                completedReportsWithDetails.map(({ report, plan, draft }) => {
+                  return (
+                    <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="py-3.5 px-3.5 font-mono font-bold text-gray-700 truncate">{report.id}</td>
+                      <td className="py-3.5 px-2 font-semibold text-gray-800 break-words">{plan.title}</td>
+                      <td className="py-3.5 px-2 text-gray-600">
+                        <span className="block text-[11px] font-bold text-gray-700">{report.department}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">{report.drafter_name} {report.position}</span>
+                      </td>
+                      <td className="py-3.5 px-2 text-gray-600 font-mono text-[11px]">
+                        <div className="font-medium text-gray-700">{plan.edu_date}</div>
+                        <div className="text-gray-400 text-[10px]">{plan.total_hours}시간 ({plan.schedule})</div>
+                      </td>
+                      <td className="py-3.5 px-2 text-right font-mono font-bold text-emerald-700 text-[12px]">
+                        {formatCurrency(plan.estimated_cost)}
+                      </td>
+                      <td className="py-3.5 px-2 text-center font-bold text-indigo-700 text-[12px]">
+                        {report.satisfaction_score?.toFixed(1)}
+                      </td>
+                      <td className="py-3.5 px-2 text-center">
+                        {report.certificate_file ? (
+                          <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                            첨부 완료
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 font-bold">-</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3.5 text-center">
+                        <button
+                          onClick={() => setSelectedReportDetail({ report, plan, draft })}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all border border-indigo-100 cursor-pointer whitespace-nowrap"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          상세보기
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Detail View Modal */}
+      <AnimatePresence>
+        {selectedReportDetail && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto no-print font-sans print:bg-transparent print:static print:p-0 print:overflow-visible print:z-0">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-white rounded-3xl border border-gray-100 max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col my-8 print:border-none print:shadow-none print:my-0 print:p-0"
+            >
+              {/* Modal Top Header (Screen Only) */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 no-print">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <Award className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-800">교육 결과보고서 상세보기</h4>
+                    <p className="text-[11px] text-gray-400">최종 제출 및 이수 완료된 실적 합의 문서입니다.</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePrint}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs hover:shadow-md cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4" />
+                    인쇄 및 출력
+                  </button>
+                  <button
+                    onClick={() => setSelectedReportDetail(null)}
+                    className="p-1.5 hover:bg-gray-100 text-gray-400 hover:text-gray-600 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body: A4 Paper Preview */}
+              <div className="p-6 overflow-y-auto max-h-[75vh] bg-gray-100/50 flex justify-center print:bg-white print:p-0 print:overflow-visible print:max-h-none">
+                <div id="print-area-wrapper" className="w-full bg-white flex justify-center print:p-0">
+                  <div
+                    id="print-area"
+                    className="w-full max-w-[210mm] p-6 sm:p-[10mm] bg-white border border-gray-200 shadow-sm text-black relative flex flex-col justify-start gap-y-4 print:border-none print:shadow-none print:p-0"
+                    style={{ boxSizing: 'border-box' }}
+                  >
+                    {/* Header Stamp Grids */}
+                    <div>
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="text-[10px] text-gray-400 font-mono tracking-tight">
+                          {selectedReportDetail.report.id}
+                        </div>
+
+                        {/* APPROVAL STAMP GRIDS */}
+                        <table className="approval-table border-collapse border border-black text-center text-xs w-[180px]" style={{ borderCollapse: 'collapse', border: '1px solid #000000' }}>
+                          <tbody>
+                            <tr className="border-b border-black">
+                              <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]" style={{ border: '1px solid #000000' }}>
+                                결<br />재
+                              </td>
+                              <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>작 성</td>
+                              <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>검 토</td>
+                              <td className="p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>승 인</td>
+                            </tr>
+                            <tr style={{ height: '45px' }}>
+                              <td className="border-r border-black p-1 text-center font-bold text-gray-700 text-[10px]" style={{ border: '1px solid #000000', height: '45px', verticalAlign: 'middle' }}>
+                                {selectedReportDetail.report.drafter_name}
+                              </td>
+                              <td className="border-r border-black" style={{ border: '1px solid #000000', height: '45px' }}></td>
+                              <td style={{ border: '1px solid #000000', height: '45px' }}></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Central Title */}
+                      <div className="text-center mb-10">
+                        <h1 className="text-2xl font-black tracking-[0.4em] border-b-2 border-double border-black pb-2 inline-block pl-[0.4em]">
+                          교 육 결 과 보 고 서
+                        </h1>
+                      </div>
+
+                      {/* Meta Grid Corporate Table */}
+                      <table className="w-full border-collapse border border-black text-xs mb-3">
+                        <tbody>
+                          {/* Row 1: Report Number & Drafter Info */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고서번호</td>
+                            <td className="border-r border-black p-2.5 w-[32%] font-mono text-[11px]">{selectedReportDetail.report.id}</td>
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고자 정보</td>
+                            <td className="p-2.5 w-[32%] font-bold">
+                              {selectedReportDetail.report.department} {selectedReportDetail.report.drafter_name} {selectedReportDetail.report.position}
+                            </td>
+                          </tr>
+
+                          {/* Row 2: Draft Date & Category */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">보고일자</td>
+                            <td className="border-r border-black p-2.5">{getFormattedKoreanDate(selectedReportDetail.report.report_date)}</td>
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">기안연동번호</td>
+                            <td className="p-2.5 font-mono text-[10px] text-gray-600">
+                              {selectedReportDetail.report.draft_id}
+                            </td>
+                          </tr>
+
+                          {/* Row 3: Course Title */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교 육 명</td>
+                            <td colSpan={3} className="p-2.5 font-bold text-sm bg-gray-50/10">
+                              {selectedReportDetail.plan.title}
+                            </td>
+                          </tr>
+
+                          {/* Row 4: Institution & Instructor */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
+                            <td className="border-r border-black p-2.5">{selectedReportDetail.plan.agency}</td>
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
+                            <td className="p-2.5">{selectedReportDetail.plan.instructor}</td>
+                          </tr>
+
+                          {/* Row 5: Target Group & Dates */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
+                            <td className="border-r border-black p-2.5">{selectedReportDetail.plan.target_group}</td>
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
+                            <td className="p-2.5">{selectedReportDetail.plan.edu_date} ({selectedReportDetail.plan.schedule}) ({selectedReportDetail.plan.total_hours}시간)</td>
+                          </tr>
+
+                          {/* Row 6: Budget & Satisfaction */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
+                            <td className="border-r border-black p-2.5 font-bold text-emerald-800">
+                              ₩{formatCurrency(selectedReportDetail.plan.estimated_cost)}
+                            </td>
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
+                            <td className="p-2.5 font-bold text-indigo-700">
+                              만족도 {selectedReportDetail.report.satisfaction_score.toFixed(1)} / 5.0
+                            </td>
+                          </tr>
+
+                          {/* Row 7: Purpose */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>
+                            <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px]">
+                              {selectedReportDetail.draft.purpose}
+                            </td>
+                          </tr>
+
+                          {/* Row 8: Budget Breakdown */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">소요예산 상세</td>
+                            <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] text-gray-700">
+                              {selectedReportDetail.draft.budget_breakdown}
+                            </td>
+                          </tr>
+
+                          {/* Row 9: Content Summary */}
+                          <tr className="border-b border-black">
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육 결과<br />요약 및 성과</td>
+                            <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                              <div className="min-h-[168px] w-full">
+                                {selectedReportDetail.report.summary}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Row 10: Future Plan */}
+                          <tr>
+                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">향후 현업<br />적용 계획 및<br />기대효과</td>
+                            <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                              <div className="min-h-[60px] w-full">
+                                {selectedReportDetail.report.future_plan}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Row 11: Certificate attachment (if exists) */}
+                          {selectedReportDetail.report.certificate_file && (
+                            <tr className="border-t border-black">
+                              <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">첨부 수료증</td>
+                              <td colSpan={3} className="p-2.5 text-center">
+                                <div className="flex flex-col items-center justify-center p-2 bg-gray-50/50 rounded-xl border border-gray-100 max-w-md mx-auto">
+                                  <img
+                                    src={selectedReportDetail.report.certificate_file}
+                                    alt="Certificate Attachment"
+                                    className="max-h-[140px] max-w-full object-contain rounded-lg shadow-sm border border-gray-200"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  <p className="text-[10px] text-gray-500 mt-1.5 font-bold font-mono">{selectedReportDetail.report.certificate_file_name}</p>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Bottom Signature / Footer Area */}
+                    <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1.5 pb-0">
+                      <p className="text-[11px] sm:text-xs text-gray-500 tracking-tight leading-relaxed mb-2 print:mb-1.5 font-medium max-w-[95%] mx-auto">
+                        위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 교육 결과를 보고하오니,<br />
+                        검토 후 결재하여 주시기 바랍니다.
+                      </p>
+
+                      <p className="text-[11px] sm:text-xs font-bold text-gray-700 tracking-wider mb-2 print:mb-1.5">
+                        {getFormattedKoreanDate(selectedReportDetail.report.report_date)}
+                      </p>
+
+                      <div className="flex flex-col items-center">
+                        <p className="text-sm sm:text-md font-extrabold text-gray-900 leading-none">
+                          (주)대성스틸
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Iframe Sandbox Print Warning Modal */}
+      <AnimatePresence>
+        {showPrintIframeWarning && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print font-sans">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-white rounded-2xl border border-gray-100 p-6 max-w-md w-full shadow-2xl space-y-4 text-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto text-indigo-500">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-sm font-bold text-gray-800">보안 및 브라우저 환경 안내</h4>
+                <p className="text-xs text-gray-500 leading-relaxed text-left bg-gray-50 p-3.5 rounded-xl border border-gray-150">
+                  현재 AI Studio 미리보기(Iframe Sandbox) 내부에서는 보안 규정으로 인해 인쇄 창을 직접 열 수 없습니다.<br /><br />
+                  출력을 정상 진행하려면 우측 상단의 <span className="font-semibold text-indigo-600">[새 창에서 열기 (Open in new tab)]</span>를 클릭하여 새 탭에서 접속해 주십시오. 아래 버튼으로 바로 이동하실 수도 있습니다.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPrintIframeWarning(false)}
+                  className="flex-1 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  닫기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(window.location.href, '_blank');
+                    setShowPrintIframeWarning(false);
+                  }}
+                  className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 transition-all cursor-pointer"
+                >
+                  새 창으로 열기 (인쇄 실행)
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
