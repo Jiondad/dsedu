@@ -92,9 +92,43 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Force print layout to hide overflow elements safely */
+  body, html, #root, main, #print-area-wrapper, #print-area {
+    overflow-x: hidden !important;
+  }
 }
 
 @page {
   size: A4;
   margin: 0;
+}
+
+/* Global screens layout safeguards to prevent horizontal scrollbars on any screen resolution */
+html, body {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#print-area-wrapper {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+#print-area {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  word-break: break-all !important;
+}
+
+/* Prevent tables and cells from causing overflow by wrapping text universally */
+table, td, th {
+  word-break: break-all !important;
+}
+
+textarea, input {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }

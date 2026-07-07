@@ -500,7 +500,7 @@ export default function DraftManager({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative w-full max-w-full box-border overflow-x-hidden">
       {/* Local Toast Notification */}
       <AnimatePresence>
         {localNotification && (
@@ -937,12 +937,12 @@ export default function DraftManager({
         {/* Scrollable container for preview on screen */}
         <div
           id="print-area-wrapper"
-          className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-auto"
+          className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border"
         >
           {/* THE HOVER A4 PRINT PAPER SHEETS */}
           <div
             id="print-area"
-            className="w-[210mm] min-h-[297mm] p-[18mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-between shrink-0"
+            className="w-full max-w-[210mm] min-h-[297mm] p-4 sm:p-[18mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-between shrink-0 box-border overflow-x-hidden"
             style={{ boxSizing: 'border-box' }}
           >
             {/* Header Area */}
