@@ -893,23 +893,18 @@ export default function ReportManager({
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
                     <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target_group : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.edu_date} (${selectedPlan.schedule})` : ''}</td>
+                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.edu_date} (${selectedPlan.schedule}) (${selectedPlan.total_hours}시간)` : ''}</td>
                   </tr>
 
-                  {/* Row 6: Duration & Cost & Satisfaction */}
+                  {/* Row 6: Budget & Satisfaction */}
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육시간</td>
-                    <td className="border-r border-black p-2.5">
-                      {selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.total_hours}시간)` : ''}
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
+                    <td className="border-r border-black p-2.5 font-bold text-emerald-800">
+                      {selectedPlan ? `₩${formatCurrency(selectedPlan.estimated_cost)}` : ''}
                     </td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용 / 만족도</td>
-                    <td className="p-2.5">
-                      {selectedPlan ? (
-                        <div className="flex justify-between items-center w-full">
-                          <span className="font-bold text-emerald-800">₩{formatCurrency(selectedPlan.estimated_cost)}</span>
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50/50 border border-indigo-100 px-1.5 py-0.5 rounded-sm">만족도 {satisfactionScore.toFixed(1)} / 5.0</span>
-                        </div>
-                      ) : ''}
+                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
+                    <td className="p-2.5 font-bold text-indigo-700">
+                      {selectedPlan ? `만족도 ${satisfactionScore.toFixed(1)} / 5.0` : ''}
                     </td>
                   </tr>
 
