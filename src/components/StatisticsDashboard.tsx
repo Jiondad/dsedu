@@ -213,8 +213,8 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
             body > *:not(#root) {
               display: none !important;
             }
-            /* Ensure maximum printable area */
-            #root, main, main > div, .max-w-7xl {
+            /* Ensure maximum printable area and keep parents visible */
+            body, #root, main, .mt-4, .space-y-6, .space-y-4 {
               width: 100% !important;
               max-width: none !important;
               margin: 0 !important;
@@ -223,16 +223,12 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               border: none !important;
               box-shadow: none !important;
               background: transparent !important;
-            }
-            /* Hide other sections and dashboards from StatisticsDashboard view */
-            main > div > *:not(.print-report-table-container),
-            .space-y-6 > *:not(.print-report-table-container),
-            .space-y-4 > *:not(.print-report-table-container) {
-              display: none !important;
+              min-height: 0 !important;
             }
             /* Style the container sheet to fill horizontal paper space */
             .print-report-table-container {
               display: block !important;
+              visibility: visible !important;
               width: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
@@ -254,6 +250,8 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               font-weight: 700 !important;
               border: 1px solid #94a3b8 !important;
               padding: 6px 4px !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
             .print-report-table-container td {
               border: 1px solid #cbd5e1 !important;
@@ -296,8 +294,10 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-      {/* Header Info */}
-      <div className="bg-indigo-900 text-white p-6 rounded-3xl shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* All top dashboards & analytics are excluded from print */}
+      <div className="no-print space-y-6">
+        {/* Header Info */}
+        <div className="bg-indigo-900 text-white p-6 rounded-3xl shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-800/50 via-indigo-950 to-indigo-950 opacity-90 z-0" />
         <div className="relative z-10 space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-200 text-[10px] font-black uppercase tracking-wider rounded-full border border-indigo-500/30">
@@ -572,6 +572,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Education Performance List Table */}

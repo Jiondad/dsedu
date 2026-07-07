@@ -126,8 +126,8 @@ export default function PlanTable({
             body > *:not(#root) {
               display: none !important;
             }
-            /* Ensure maximum printable area */
-            #root, main, main > div, .max-w-7xl {
+            /* Ensure maximum printable area and keep parents visible */
+            body, #root, main, .mt-4, .space-y-6, .space-y-4 {
               width: 100% !important;
               max-width: none !important;
               margin: 0 !important;
@@ -136,16 +136,12 @@ export default function PlanTable({
               border: none !important;
               box-shadow: none !important;
               background: transparent !important;
-            }
-            /* Hide tab controls and dashboards from root layout */
-            main > div > *:not(.print-plan-table-container),
-            .space-y-6 > *:not(.print-plan-table-container),
-            .space-y-4 > *:not(.print-plan-table-container) {
-              display: none !important;
+              min-height: 0 !important;
             }
             /* Style the container sheet to fill horizontal paper space */
             .print-plan-table-container {
               display: block !important;
+              visibility: visible !important;
               width: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
@@ -167,6 +163,8 @@ export default function PlanTable({
               font-weight: 700 !important;
               border: 1px solid #94a3b8 !important;
               padding: 6px 4px !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
             .print-plan-table-container td {
               border: 1px solid #cbd5e1 !important;

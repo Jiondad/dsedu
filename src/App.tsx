@@ -639,11 +639,13 @@ export default function App() {
               {activeTab === 'plans' && (
                 <div className="space-y-6 sm:space-y-8">
                   {/* Dashboard / Analytics Panel */}
-                  <Dashboard metrics={metrics} />
+                  <div className="no-print">
+                    <Dashboard metrics={metrics} />
+                  </div>
 
                   {/* Plan List Panel */}
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center no-print">
                       <div>
                         <h2 className="text-md font-bold text-gray-800">연간 교육 계획 목록</h2>
                         <p className="text-xs text-gray-400 mt-0.5">총 {plans.length}개의 수립된 교육 프로그램</p>
