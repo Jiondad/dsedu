@@ -133,9 +133,9 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
               <th style={{ width: '8%' }} className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('estimated_cost')}>
                 예상비용 {sortField === 'estimated_cost' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '5%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">관리</th>
               <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">기안</th>
               <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">보고서</th>
+              <th style={{ width: '5%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -205,26 +205,6 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                     {formatCurrency(plan.estimated_cost)}
                   </td>
 
-                  {/* Actions */}
-                  <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => onEdit(plan, originalIndex)}
-                        className="p-1 rounded-lg text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                        title="수정"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => confirmDelete(originalIndex)}
-                        className="p-1 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                        title="삭제"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-
                   {/* Draft Column */}
                   <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
                     {drafts.some((d) => d.plan_id === plan.id) ? (
@@ -258,6 +238,26 @@ export default function PlanTable({ plans, drafts, onEdit, onDelete, onStartDraf
                         작성
                       </button>
                     )}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => onEdit(plan, originalIndex)}
+                        className="p-1 rounded-lg text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                        title="수정"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => confirmDelete(originalIndex)}
+                        className="p-1 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                        title="삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
