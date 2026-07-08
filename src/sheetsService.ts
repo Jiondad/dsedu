@@ -96,25 +96,63 @@ export async function fetchPlans(
   }
 }
 
-// src/sheetsService.ts (송신부 규격 단순화 및 정형화)
-export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: EducationPlan, rowIndex: number): Promise<void> {
+// ============================================================================
+// 1. 연간 교육 계획 (annual_plans) - 프론트엔드 발송 필드명 규격화 (최종 정석판)
+// ============================================================================
+
+export async function addPlan(spreadsheetId: string, accessToken: string | null, plan: any): Promise<void> {
   try {
-    await fetch(API_URL, {
+    // 💡 [정밀 교정] Payload가 들고 있는 엉뚱한 이름표들을 구글 시트 헤더명과 1:1로 정확하게 일치시킵니다.
+    const normalizedPlan = {
+      id: plan.id,
+      date: plan.date,
+      category: plan.category,
+      title: plan.title,
+      institution: plan.institution || plan.agency || '',                 // agency ➔ institution 변환
+      instructor: plan.instructor,
+      target: plan.target !== null && plan.target !== undefined ? plan.target : (plan.target_group || ''), // target_group ➔ target 변환
+      schedule: plan.schedule,
+      time_range: plan.time_range,
+      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0), // total_hours ➔ hours 변환
+      cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
+    };
+
+    const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
       body: JSON.stringify({ 
-        action: 'update',
-        sheetName: SHEET_TAB_NAME,
-        rowIndex: rowIndex,
-        // 💡 꼼수 부리지 않고 프론트엔드가 정의한 plan 객체를 그대로 정직하게 전달
-        ...plan 
+        action: 'create', 
+        sheetName: SHEET_TAB_NAME, 
+        ...normalizedPlan 
       }),
     });
-  } catch (err) { console.error(err); throw err; }
+    
+    if (!response.ok) throw new Error('Network response was not ok');
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error || '구글 시트 저장 실패');
+  } catch (err) { 
+    console.error('addPlan 실패:', err); 
+    throw err; 
+  }
 }
 
-export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: EducationPlan, rowIndex: number): Promise<void> {
+export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: any, rowIndex: number): Promise<void> {
   try {
+    // 💡 [정밀 교정] 수정 요청 시에도 동일하게 엉뚱한 필드명들을 정형화된 이름표로 변환하여 쏩니다.
+    const normalizedPlan = {
+      id: plan.id,
+      date: plan.date,
+      category: plan.category,
+      title: plan.title,
+      institution: plan.institution || plan.agency || '', 
+      instructor: plan.instructor,
+      target: plan.target !== null && plan.target !== undefined ? plan.target : (plan.target_group || ''),
+      schedule: plan.schedule,
+      time_range: plan.time_range,
+      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),
+      cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
+    };
+
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -122,9 +160,10 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
         action: 'update', 
         sheetName: SHEET_TAB_NAME, 
         rowIndex: rowIndex, 
-        ...plan 
+        ...normalizedPlan 
       }),
     });
+
     if (!response.ok) throw new Error('Network response was not ok');
     const res = await response.json();
     if (res.success === false) throw new Error(res.error || '구글 시트 수정 실패');
@@ -133,7 +172,6 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
     throw err; 
   }
 }
-
 export async function deletePlan(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
   try {
     const response = await fetch(API_URL, {
