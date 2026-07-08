@@ -110,31 +110,31 @@ export default function App() {
     }
   }, [isSettingsOpen]);
 
-  // Sheets DB Setup Flow using public/cached access
+// ⚡ 속도 개선판: Sheets DB Setup Flow (병렬 비동기 처리)
   const initializeSheetsDB = async (accessToken: string | null = null) => {
     setIsLoading(true);
-    setLoadingStep('구글 스프레드시트 데이터를 불러오는 중입니다...');
+    setLoadingStep('구글 클라우드 DB로부터 마스터 데이터를 동기화하는 중입니다...');
     setErrorMsg(null);
     try {
       const config = getSpreadsheetConfig();
       const sheetId = config.spreadsheetId;
       setSpreadsheetId(sheetId);
 
-      setLoadingStep('교육 계획 데이터를 불러오는 중입니다...');
-      const fetched = await fetchPlans(sheetId, accessToken);
-      if (Array.isArray(fetched)) {
-        setPlans(fetched);
+      // 💡 핵심: 3개의 fetch 요청을 구글 서버에 동시에 한 번에 던집니다! (비동기 병렬 처리)
+      const [fetchedPlans, fetchedDrafts, fetchedReports] = await Promise.all([
+        fetchPlans(sheetId, accessToken),
+        fetchDrafts(sheetId, accessToken),
+        fetchReports(sheetId, accessToken)
+      ]);
+
+      // 한 번에 도착한 데이터를 각각의 상태 주머니에 쏙 집어넣기
+      if (Array.isArray(fetchedPlans)) {
+        setPlans(fetchedPlans);
       } else {
         setPlans([]);
       }
-
-      setLoadingStep('교육 기안서 데이터를 불러오는 중입니다...');
-      const fetchedDrafts = await fetchDrafts(sheetId, accessToken);
-      setDrafts(fetchedDrafts);
-
-      setLoadingStep('교육 결과보고서 데이터를 불러오는 중입니다...');
-      const fetchedReports = await fetchReports(sheetId, accessToken);
-      setReports(fetchedReports);
+      setDrafts(fetchedDrafts || []);
+      setReports(fetchedReports || []);
 
       triggerNotification('구글 스프레드시트 DB 연동 완료!', 'success');
     } catch (err: any) {
