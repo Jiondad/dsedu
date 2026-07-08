@@ -102,7 +102,7 @@ export async function addPlan(spreadsheetId: string, accessToken: string | null,
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
       body: JSON.stringify({ 
-        action: 'create', 
+        action: 'create',          // 💡 구글 백엔드가 알아볼 수 있게 액션을 명확히 지정!
         sheetName: SHEET_TAB_NAME, 
         ...plan 
       }),
