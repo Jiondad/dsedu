@@ -85,7 +85,12 @@ export function validateTimeRange(timeRange: string): boolean {
 export function mapRowToPlan(row: any): EducationPlan {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
     const idVal = String(row.id ?? row.ID ?? '');
-    const dateVal = String(row.date ?? '');
+
+// 💡 날짜 뒤에 붙은 T15:00... 지저분한 문자열을 'T' 기준으로 잘라 앞의 날짜만 가져옵니다.
+let dateVal = String(row.date ?? row.edu_date ?? '');
+if (dateVal.includes('T')) {
+  dateVal = dateVal.split('T')[0];
+}
     const categoryVal = String(row.category ?? '') === '사외' ? '사외' : '사내';
     const titleVal = String(row.title ?? '');
     const institutionVal = String(row.institution ?? '');
