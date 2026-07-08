@@ -107,15 +107,15 @@ export async function addPlan(spreadsheetId: string, accessToken: string | null,
       action: 'create',
       sheetName: SHEET_TAB_NAME,
       id: plan.id || '',
-      date: plan.date || '',
+      date: plan.date || plan.edu_date || '',                                    // edu_date -> date 변환
       category: plan.category || '',
       title: plan.title || '',
       institution: plan.institution || plan.agency || '',
       instructor: plan.instructor || '',
-      target: plan.target || plan.target_participants || plan.target_group || '', // target 누락 방어
+      target: plan.target || plan.target_participants || plan.target_group || '',
       schedule: plan.schedule || '',
       time_range: plan.time_range || '',
-      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),     // total_hours -> hours 매핑
+      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),
       cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
     };
 
@@ -136,15 +136,15 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
       sheetName: SHEET_TAB_NAME,
       rowIndex: rowIndex,
       id: plan.id || '',
-      date: plan.date || '',
+      date: plan.date || plan.edu_date || '',                                    // edu_date -> date 변환
       category: plan.category || '',
       title: plan.title || '',
       institution: plan.institution || plan.agency || '',
       instructor: plan.instructor || '',
-      target: plan.target || plan.target_participants || plan.target_group || '', // target 누락 방어
+      target: plan.target || plan.target_participants || plan.target_group || '',
       schedule: plan.schedule || '',
       time_range: plan.time_range || '',
-      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),     // total_hours -> hours 매핑
+      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),
       cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
     };
 
