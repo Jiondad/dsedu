@@ -82,132 +82,71 @@ export async function findOrCreateSpreadsheet(accessToken?: string | null): Prom
 }
 
 // ============================================================================
-// 1. 연간 교육 계획 (annual_plans) - 조회 / 추가 / 수정 / 삭제
+// 1. 연간 교육 계획 (annual_plans) - 수정 및 보완된 전송 로직
 // ============================================================================
 
-/**
- * 모든 교육 계획 조회
- */
-export async function fetchPlans(
-  spreadsheetId: string,
-  accessToken?: string | null
-): Promise<EducationPlan[]> {
-  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_NAME}`;
-
+export async function addPlan(spreadsheetId: string, accessToken: string | null, plan: EducationPlan): Promise<void> {
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Plans fetch failed');
-
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      // 구글 앱스 스크립트와 대화할 때 가장 에러가 없는 순수 텍스트 전송 포맷으로 안전 장치 체결
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+      body: JSON.stringify({ 
+        action: 'create', 
+        sheetName: SHEET_TAB_NAME, 
+        ...plan 
+      }),
+    });
+    
+    if (!response.ok) throw new Error('Network response was not ok');
     const res = await response.json();
-    let rows = extractRowsFromData(res);
-
-    // 첫 행이 헤더일 경우 안전하게 필터링 및 슬라이스
-    if (rows.length > 0) {
-      const firstRow = rows[0];
-      const isHeader = Array.isArray(firstRow) 
-        ? firstRow.some(cell => typeof cell === 'string' && (cell.toLowerCase() === 'id' || cell.includes('date') || cell.includes('category')))
-        : firstRow && typeof firstRow === 'object' && Object.values(firstRow).some(cell => typeof cell === 'string' && (cell.toLowerCase() === 'id' || cell.includes('date')));
-      
-      if (isHeader) rows = rows.slice(1);
-    }
-
-    return rows
-      .filter((row: any) => {
-        if (!row || row.length === 0) return false;
-        // 배열 구조 또는 객체 구조에 상관없이 ID 필드 검증
-        const idVal = Array.isArray(row) ? row[0] : row.id || row.ID;
-        if (!idVal || idVal.toString().trim() === '' || idVal.toString().toLowerCase() === 'id') return false;
-        return true;
-      })
-      .map(mapRowToPlan);
-  } catch (err) {
-    console.error('Apps Script plans load failed:', err);
-    return [];
+    if (res.success === false) throw new Error(res.error || '구글 시트 저장 실패');
+  } catch (err) { 
+    console.error('addPlan 실패:', err); 
+    throw err; 
   }
 }
 
-/**
- * 신규 교육 계획 추가
- */
-export async function addPlan(
-  spreadsheetId: string,
-  accessToken: string | null,
-  plan: EducationPlan
-): Promise<void> {
-  const body = {
-    sheetName: SHEET_TAB_NAME,
-    ...plan
-  };
-
+export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: EducationPlan, rowIndex: number): Promise<void> {
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ 
+        action: 'update', 
+        sheetName: SHEET_TAB_NAME, 
+        rowIndex: rowIndex, // 몇 번째 줄을 고칠지 명확하게 전달
+        ...plan 
+      }),
     });
 
-    if (!response.ok) throw new Error('Plan append via Apps Script failed');
-  } catch (err) {
-    console.error('Apps Script save plan failed:', err);
-    throw err;
+    if (!response.ok) throw new Error('Network response was not ok');
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error || '구글 시트 수정 실패');
+  } catch (err) { 
+    console.error('updatePlan 실패:', err); 
+    throw err; 
   }
 }
 
-/**
- * 기존 교육 계획 수정
- */
-export async function updatePlan(
-  spreadsheetId: string,
-  accessToken: string | null,
-  plan: EducationPlan,
-  rowIndex: number
-): Promise<void> {
-  const body = {
-    action: 'update',
-    sheetName: SHEET_TAB_NAME,
-    rowIndex: rowIndex, // 백엔드 처리용 인덱스
-    ...plan
-  };
-
+export async function deletePlan(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ 
+        action: 'delete', 
+        sheetName: SHEET_TAB_NAME, 
+        rowIndex: rowIndex 
+      }),
     });
 
-    if (!response.ok) throw new Error('Plan update via Apps Script failed');
-  } catch (err) {
-    console.error('Apps Script update plan failed:', err);
-    throw err;
-  }
-}
-
-/**
- * 교육 계획 삭제
- */
-export async function deletePlan(
-  spreadsheetId: string,
-  accessToken: string | null,
-  rowIndex: number
-): Promise<void> {
-  const body = {
-    action: 'delete',
-    sheetName: SHEET_TAB_NAME,
-    rowIndex: rowIndex
-  };
-
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) throw new Error('Plan deletion via Apps Script failed');
-  } catch (err) {
-    console.error('Apps Script delete plan failed:', err);
-    throw err;
+    if (!response.ok) throw new Error('Network response was not ok');
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error || '구글 시트 삭제 실패');
+  } catch (err) { 
+    console.error('deletePlan 실패:', err); 
+    throw err; 
   }
 }
 
