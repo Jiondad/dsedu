@@ -102,94 +102,59 @@ export async function fetchPlans(
 
 export async function addPlan(spreadsheetId: string, accessToken: string | null, plan: any): Promise<void> {
   try {
-    // 💡 [정밀 교정] Payload가 들고 있는 엉뚱한 이름표들을 구글 시트 헤더명과 1:1로 정확하게 일치시킵니다.
-    const normalizedPlan = {
-      id: plan.id,
-      date: plan.date,
-      category: plan.category,
-      title: plan.title,
-      institution: plan.institution || plan.agency || '',                 // agency ➔ institution 변환
-      instructor: plan.instructor,
-      target: plan.target !== null && plan.target !== undefined ? plan.target : (plan.target_group || ''), // target_group ➔ target 변환
-      schedule: plan.schedule,
-      time_range: plan.time_range,
-      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0), // total_hours ➔ hours 변환
+    const payload = {
+      action: 'create',
+      sheetName: SHEET_TAB_NAME,
+      id: plan.id || '',
+      date: plan.date || '',
+      category: plan.category || '',
+      title: plan.title || '',
+      institution: plan.institution || plan.agency || '',
+      instructor: plan.instructor || '',
+      target: plan.target || plan.target_participants || plan.target_group || '', // target 누락 방어
+      schedule: plan.schedule || '',
+      time_range: plan.time_range || '',
+      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),     // total_hours -> hours 매핑
       cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
     };
 
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-      body: JSON.stringify({ 
-        action: 'create', 
-        sheetName: SHEET_TAB_NAME, 
-        ...normalizedPlan 
-      }),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
     });
-    
-    if (!response.ok) throw new Error('Network response was not ok');
     const res = await response.json();
-    if (res.success === false) throw new Error(res.error || '구글 시트 저장 실패');
-  } catch (err) { 
-    console.error('addPlan 실패:', err); 
-    throw err; 
-  }
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) { console.error(err); throw err; }
 }
 
 export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: any, rowIndex: number): Promise<void> {
   try {
-    // 💡 [정밀 교정] 수정 요청 시에도 동일하게 엉뚱한 필드명들을 정형화된 이름표로 변환하여 쏩니다.
-    const normalizedPlan = {
-      id: plan.id,
-      date: plan.date,
-      category: plan.category,
-      title: plan.title,
-      institution: plan.institution || plan.agency || '', 
-      instructor: plan.instructor,
-      target: plan.target !== null && plan.target !== undefined ? plan.target : (plan.target_group || ''),
-      schedule: plan.schedule,
-      time_range: plan.time_range,
-      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),
+    const payload = {
+      action: 'update',
+      sheetName: SHEET_TAB_NAME,
+      rowIndex: rowIndex,
+      id: plan.id || '',
+      date: plan.date || '',
+      category: plan.category || '',
+      title: plan.title || '',
+      institution: plan.institution || plan.agency || '',
+      instructor: plan.instructor || '',
+      target: plan.target || plan.target_participants || plan.target_group || '', // target 누락 방어
+      schedule: plan.schedule || '',
+      time_range: plan.time_range || '',
+      hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),     // total_hours -> hours 매핑
       cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
     };
 
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ 
-        action: 'update', 
-        sheetName: SHEET_TAB_NAME, 
-        rowIndex: rowIndex, 
-        ...normalizedPlan 
-      }),
+      body: JSON.stringify(payload),
     });
-
-    if (!response.ok) throw new Error('Network response was not ok');
     const res = await response.json();
-    if (res.success === false) throw new Error(res.error || '구글 시트 수정 실패');
-  } catch (err) { 
-    console.error('updatePlan 실패:', err); 
-    throw err; 
-  }
-}
-export async function deletePlan(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ 
-        action: 'delete', 
-        sheetName: SHEET_TAB_NAME, 
-        rowIndex: rowIndex 
-      }),
-    });
-    if (!response.ok) throw new Error('Network response was not ok');
-    const res = await response.json();
-    if (res.success === false) throw new Error(res.error || '구글 시트 삭제 실패');
-  } catch (err) { 
-    console.error('deletePlan 실패:', err); 
-    throw err; 
-  }
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) { console.error(err); throw err; }
 }
 
 // ============================================================================
