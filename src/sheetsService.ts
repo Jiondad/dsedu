@@ -22,7 +22,6 @@ const SHEET_TAB_REPORT_NAME = 'education_reports';
 const SPREADSHEET_ID = (import.meta as any).env?.VITE_SPREADSHEET_ID || (import.meta as any).env?.APP_URL || '1u3MYYrV9QBq-yOPimkntzg2niDuQUsPLycDW-0aM6IY';
 
 // 구글 앱스 스크립트(Apps Script) 배포 주소를 모든 데이터 통신의 베이스 URL로 강제 통일합니다.
-// (※ 구글 앱스 스크립트에서 새로 생성한 배포 URL 주소가 있다면 아래 문자열 자리에 교체해 넣어주시면 됩니다.)
 const API_URL = (import.meta as any).env?.VITE_APP_URL || 
                 (import.meta as any).env?.APP_URL || 
                 'https://script.google.com/macros/s/1PNdiWIScbCkAbtUS9cBxzLksJ3V7IjK3xJyB6aKc8MU/exec';
