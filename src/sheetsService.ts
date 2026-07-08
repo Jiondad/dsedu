@@ -13,396 +13,124 @@ import {
   mapReportToRow,
 } from './utils';
 
-const SPREADSHEET_NAME = '연간교육계획수립_DB';
-const SHEET_TAB_NAME = '교육계획';
+const SPREADSHEET_NAME = '대성스틸_교육관리_DB';
+const SHEET_TAB_NAME = 'annual_plans';
 const SHEET_TAB_DRAFT_NAME = 'education_drafts';
 const SHEET_TAB_REPORT_NAME = 'education_reports';
 
-const SHEET_ID = 0;
-const DRAFT_SHEET_ID = 1;
-const REPORT_SHEET_ID = 2;
+// 새로 만드신 영문 규격 구글 스프레드시트 고유 ID를 확실하게 Fallback으로 고정합니다.
+const SPREADSHEET_ID = (import.meta as any).env?.VITE_SPREADSHEET_ID || (import.meta as any).env?.APP_URL || '1u3MYYrV9QBq-yOPimkntzg2niDuQUsPLycDW-0aM6IY';
 
-
+// 구글 앱스 스크립트(Apps Script) 배포 주소를 모든 데이터 통신의 베이스 URL로 강제 통일합니다.
+// (※ 구글 앱스 스크립트에서 새로 생성한 배포 URL 주소가 있다면 아래 문자열 자리에 교체해 넣어주시면 됩니다.)
+const API_URL = (import.meta as any).env?.VITE_APP_URL || 
+                (import.meta as any).env?.APP_URL || 
+                'https://script.google.com/macros/s/1PNdiWIScbCkAbtUS9cBxzLksJ3V7IjK3xJyB6aKc8MU/exec';
 
 /**
- * Returns spreadsheet configuration from env or localStorage
+ * 낡은 API Key 의존성을 제거하고 앱스 스크립트 기반 설정을 반환합니다.
  */
 export function getSpreadsheetConfig() {
-  const metaEnv = (import.meta as any).env || {};
-  
-  const spreadsheetId = 
-    metaEnv.VITE_SPREADSHEET_ID || 
-    localStorage.getItem('ds_steel_spreadsheet_id') || 
-    '1v0E0Zz6-mO1TWhRz-H8bX9K4rVMyF4ZpXW0p_2gO0Hk'; // Standard fallback public sheet
-
-  const apiKey = 
-    metaEnv.VITE_GOOGLE_API_KEY || 
-    localStorage.getItem('ds_steel_google_api_key') || 
-    'AIzaSyBBsSXc9iGdFMC5sd3afRZIvr3UND8QjDE'; // Shared API key
-
-  return { spreadsheetId, apiKey };
+  const spreadsheetId = localStorage.getItem('ds_steel_spreadsheet_id') || SPREADSHEET_ID;
+  return { spreadsheetId, apiUrl: API_URL };
 }
 
 /**
- * Searches Google Drive for a spreadsheet with the DB name.
+ * Apps Script 백엔드가 반환하는 다양한 형태의 응답에서 배열 로우를 견고하게 추출합니다.
  */
-async function searchSpreadsheet(accessToken: string): Promise<string | null> {
-  const query = encodeURIComponent(
-    `name = '${SPREADSHEET_NAME}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`
-  );
-  const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`;
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error('Failed to search spreadsheet:', errorBody);
-    throw new Error('Google Drive search failed');
+export function extractRowsFromData(data: any): any[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (data.values && Array.isArray(data.values)) return data.values;
+  if (data.data) {
+    if (Array.isArray(data.data)) return data.data;
+    if (data.data.values && Array.isArray(data.data.values)) return data.data.values;
   }
-
-  const data = await response.json();
-  if (data.files && data.files.length > 0) {
-    return data.files[0].id;
-  }
-  return null;
+  return [];
 }
 
 /**
- * Creates a new Google Sheet spreadsheet with the standard schema and header.
+ * 공용 주소 변환 함수 (기존 구글 드라이브 검색 호환용)
  */
-async function createSpreadsheet(accessToken: string): Promise<string> {
-  const url = 'https://sheets.googleapis.com/v4/spreadsheets';
-  const body = {
-    properties: {
-      title: SPREADSHEET_NAME,
-    },
-    sheets: [
-      {
-        properties: {
-          sheetId: SHEET_ID,
-          title: SHEET_TAB_NAME,
-          gridProperties: {
-            rowCount: 200,
-            columnCount: 11,
-          },
-        },
-      },
-      {
-        properties: {
-          sheetId: DRAFT_SHEET_ID,
-          title: SHEET_TAB_DRAFT_NAME,
-          gridProperties: {
-            rowCount: 200,
-            columnCount: 7,
-          },
-        },
-      },
-      {
-        properties: {
-          sheetId: REPORT_SHEET_ID,
-          title: SHEET_TAB_REPORT_NAME,
-          gridProperties: {
-            rowCount: 200,
-            columnCount: 10,
-          },
-        },
-      },
-    ],
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error('Failed to create spreadsheet:', errorBody);
-    throw new Error('Spreadsheet creation failed');
-  }
-
-  const data = await response.json();
-  const spreadsheetId = data.spreadsheetId;
-
-  // Initialize plans headers
-  const headers = [
-    'ID',
-    '교육일자',
-    '구분',
-    '교육명',
-    '교육기관',
-    '강사',
-    '대상자',
-    '교육일정',
-    '교육시간',
-    '시간',
-    '예상비용',
-  ];
-  await writeHeaders(spreadsheetId, accessToken, SHEET_TAB_NAME, headers, 'A1:K1');
-
-  // Initialize drafts headers
-  const draftHeaders = [
-    '기안번호',
-    '교육계획ID',
-    '기안자',
-    '기안일자',
-    '교육목적',
-    '교육내용',
-    '소요예산 상세내역',
-  ];
-  await writeHeaders(spreadsheetId, accessToken, SHEET_TAB_DRAFT_NAME, draftHeaders, 'A1:G1');
-
-  // Initialize reports headers
-  const reportHeaders = [
-    '보고서번호',
-    '기안번호',
-    '교육계획ID',
-    '부서',
-    '직급',
-    '성명',
-    '보고일자',
-    '교육결과 및 성과',
-    '향후 적용계획 및 기대효과',
-    '만족도점수',
-  ];
-  await writeHeaders(spreadsheetId, accessToken, SHEET_TAB_REPORT_NAME, reportHeaders, 'A1:J1');
-
+export async function findOrCreateSpreadsheet(accessToken?: string | null): Promise<string> {
+  const { spreadsheetId } = getSpreadsheetConfig();
   return spreadsheetId;
 }
 
-/**
- * Writes headers to the spreadsheet.
- */
-async function writeHeaders(
-  spreadsheetId: string,
-  accessToken: string,
-  tabName: string,
-  headers: string[],
-  rangeSelector: string
-): Promise<void> {
-  const range = `${tabName}!${rangeSelector}`;
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-    range
-  )}?valueInputOption=USER_ENTERED`;
-
-  const body = {
-    values: [headers],
-  };
-
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`Failed to write headers for ${tabName}:`, errorBody);
-    throw new Error(`Header initialization failed for ${tabName}`);
-  }
-}
+// ============================================================================
+// 1. 연간 교육 계획 (annual_plans) - 조회 / 추가 / 수정 / 삭제
+// ============================================================================
 
 /**
- * Ensures that the education_drafts sheet tab exists.
- */
-async function ensureDraftTabExists(spreadsheetId: string, accessToken: string): Promise<void> {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch spreadsheet metadata');
-  }
-
-  const data = await response.json();
-  const sheets = data.sheets || [];
-  const hasDraftsTab = sheets.some(
-    (sheet: any) => sheet.properties.title === SHEET_TAB_DRAFT_NAME
-  );
-
-  if (!hasDraftsTab) {
-    console.log('education_drafts tab not found. Creating it...');
-    const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
-    const updateBody = {
-      requests: [
-        {
-          addSheet: {
-            properties: {
-              sheetId: DRAFT_SHEET_ID,
-              title: SHEET_TAB_DRAFT_NAME,
-              gridProperties: {
-                rowCount: 200,
-                columnCount: 7,
-              },
-            },
-          },
-        },
-      ],
-    };
-
-    const updateResponse = await fetch(updateUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateBody),
-    });
-
-    if (!updateResponse.ok) {
-      console.error('Failed to create education_drafts tab:', await updateResponse.text());
-      return;
-    }
-
-    // Write draft headers
-    const draftHeaders = [
-      '기안번호',
-      '교육계획ID',
-      '기안자',
-      '기안일자',
-      '교육목적',
-      '교육내용',
-      '소요예산 상세내역',
-    ];
-    await writeHeaders(spreadsheetId, accessToken, SHEET_TAB_DRAFT_NAME, draftHeaders, 'A1:G1');
-    console.log('education_drafts tab created and initialized successfully.');
-  }
-}
-
-/**
- * Public method to find or create the database spreadsheet.
- */
-export async function findOrCreateSpreadsheet(accessToken?: string | null): Promise<string> {
-  if (!accessToken) {
-    const { spreadsheetId } = getSpreadsheetConfig();
-    return spreadsheetId;
-  }
-  let id = await searchSpreadsheet(accessToken);
-  if (!id) {
-    id = await createSpreadsheet(accessToken);
-  } else {
-    // If spreadsheet already exists, double check if drafts tab is there
-    await ensureDraftTabExists(id, accessToken);
-  }
-  return id;
-}
-
-/**
- * Fetches all education plans from the Google Sheet.
+ * 모든 교육 계획 조회
  */
 export async function fetchPlans(
   spreadsheetId: string,
   accessToken?: string | null
 ): Promise<EducationPlan[]> {
-  const range = `${SHEET_TAB_NAME}!A2:K1000`;
-  const { apiKey } = getSpreadsheetConfig();
-  
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
-  
-  const headers: HeadersInit = {};
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `?key=${apiKey}`;
-  }
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_NAME}`;
 
   try {
-    const response = await fetch(url, { headers });
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Plans fetch failed');
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('Failed to fetch plans from spreadsheet:', errorBody);
-      throw new Error('Plans fetch failed');
+    const res = await response.json();
+    let rows = extractRowsFromData(res);
+
+    // 첫 행이 헤더일 경우 안전하게 필터링 및 슬라이스
+    if (rows.length > 0) {
+      const firstRow = rows[0];
+      const isHeader = Array.isArray(firstRow) 
+        ? firstRow.some(cell => typeof cell === 'string' && (cell.toLowerCase() === 'id' || cell.includes('date') || cell.includes('category')))
+        : firstRow && typeof firstRow === 'object' && Object.values(firstRow).some(cell => typeof cell === 'string' && (cell.toLowerCase() === 'id' || cell.includes('date')));
+      
+      if (isHeader) rows = rows.slice(1);
     }
 
-    const data = await response.json();
-    const rows = data.values || [];
-
-    const plans = rows
-      .filter((row: any[]) => row && row.length > 0 && row[0] !== '')
+    return rows
+      .filter((row: any) => {
+        if (!row || row.length === 0) return false;
+        // 배열 구조 또는 객체 구조에 상관없이 ID 필드 검증
+        const idVal = Array.isArray(row) ? row[0] : row.id || row.ID;
+        if (!idVal || idVal.toString().trim() === '' || idVal.toString().toLowerCase() === 'id') return false;
+        return true;
+      })
       .map(mapRowToPlan);
-
-    // Save cache locally on success
-    localStorage.setItem('ds_steel_plans_cache', JSON.stringify(plans));
-    return plans;
   } catch (err) {
-    console.error('Google Sheets API plans load failed:', err);
+    console.error('Apps Script plans load failed:', err);
     return [];
   }
 }
 
 /**
- * Appends a new education plan to the Google Sheet.
+ * 신규 교육 계획 추가
  */
 export async function addPlan(
   spreadsheetId: string,
   accessToken: string | null,
   plan: EducationPlan
 ): Promise<void> {
-  // Update local storage cache first to guarantee persistence
-  try {
-    const cached = localStorage.getItem('ds_steel_plans_cache');
-    const plans: EducationPlan[] = cached ? JSON.parse(cached) : [];
-    plans.push(plan);
-    localStorage.setItem('ds_steel_plans_cache', JSON.stringify(plans));
-  } catch (err) {
-    console.error('Failed to update local cache in addPlan:', err);
-  }
-
-  const range = `${SHEET_TAB_NAME}!A:K`;
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-    range
-  )}:append?valueInputOption=USER_ENTERED`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, saved plan to local cache only');
-    return;
-  }
-
   const body = {
-    values: [mapPlanToRow(plan)],
+    sheetName: SHEET_TAB_NAME,
+    ...plan
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(API_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets append failed (public mode might be read-only):', errorBody);
-      if (!accessToken) return; // In public mode, treat local storage success as primary
-      throw new Error('Plan append failed');
-    }
+    if (!response.ok) throw new Error('Plan append via Apps Script failed');
   } catch (err) {
-    console.error('Remote Google Sheets save failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script save plan failed:', err);
+    throw err;
   }
 }
 
 /**
- * Updates an existing education plan at a specific row.
+ * 기존 교육 계획 수정
  */
 export async function updatePlan(
   spreadsheetId: string,
@@ -410,246 +138,124 @@ export async function updatePlan(
   plan: EducationPlan,
   rowIndex: number
 ): Promise<void> {
-  // Update local storage cache
-  try {
-    const cached = localStorage.getItem('ds_steel_plans_cache');
-    if (cached) {
-      const plans: EducationPlan[] = JSON.parse(cached);
-      const index = plans.findIndex(p => p.id === plan.id);
-      if (index !== -1) {
-        plans[index] = plan;
-      } else if (rowIndex >= 0 && rowIndex < plans.length) {
-        plans[rowIndex] = plan;
-      }
-      localStorage.setItem('ds_steel_plans_cache', JSON.stringify(plans));
-    }
-  } catch (err) {
-    console.error('Failed to update local cache in updatePlan:', err);
-  }
-
-  const sheetRow = rowIndex + 2;
-  const range = `${SHEET_TAB_NAME}!A${sheetRow}:K${sheetRow}`;
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-    range
-  )}?valueInputOption=USER_ENTERED`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, updated plan in local cache only');
-    return;
-  }
-
   const body = {
-    values: [mapPlanToRow(plan)],
+    action: 'update',
+    sheetName: SHEET_TAB_NAME,
+    rowIndex: rowIndex, // 백엔드 처리용 인덱스
+    ...plan
   };
 
   try {
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers,
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets update failed (public mode might be read-only):', errorBody);
-      if (!accessToken) return;
-      throw new Error('Plan update failed');
-    }
+    if (!response.ok) throw new Error('Plan update via Apps Script failed');
   } catch (err) {
-    console.error('Remote Google Sheets update failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script update plan failed:', err);
+    throw err;
   }
 }
 
 /**
- * Deletes an education plan row.
+ * 교육 계획 삭제
  */
 export async function deletePlan(
   spreadsheetId: string,
   accessToken: string | null,
   rowIndex: number
 ): Promise<void> {
-  // Update local cache
-  try {
-    const cached = localStorage.getItem('ds_steel_plans_cache');
-    if (cached) {
-      const plans: EducationPlan[] = JSON.parse(cached);
-      if (rowIndex >= 0 && rowIndex < plans.length) {
-        plans.splice(rowIndex, 1);
-      }
-      localStorage.setItem('ds_steel_plans_cache', JSON.stringify(plans));
-    }
-  } catch (err) {
-    console.error('Failed to delete from local cache in deletePlan:', err);
-  }
-
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, deleted plan from local cache only');
-    return;
-  }
-
-  const startIndex = rowIndex + 1; // 0-based index inclusive
-  const endIndex = rowIndex + 2;   // 0-based index exclusive
-
   const body = {
-    requests: [
-      {
-        deleteDimension: {
-          range: {
-            sheetId: SHEET_ID,
-            dimension: 'ROWS',
-            startIndex,
-            endIndex,
-          },
-        },
-      },
-    ],
+    action: 'delete',
+    sheetName: SHEET_TAB_NAME,
+    rowIndex: rowIndex
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(API_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets delete failed (public mode might be read-only):', errorBody);
-      if (!accessToken) return;
-      throw new Error('Plan deletion failed');
-    }
+    if (!response.ok) throw new Error('Plan deletion via Apps Script failed');
   } catch (err) {
-    console.error('Remote Google Sheets delete failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script delete plan failed:', err);
+    throw err;
   }
 }
 
+// ============================================================================
+// 2. 교육 기안서 (education_drafts) - 조회 / 추가 / 수정 / 삭제
+// ============================================================================
+
 /**
- * Fetches all drafts from the education_drafts sheet tab.
+ * 모든 기안서 조회
  */
 export async function fetchDrafts(
   spreadsheetId: string,
   accessToken?: string | null
 ): Promise<EducationDraft[]> {
-  const range = `${SHEET_TAB_DRAFT_NAME}!A2:G1000`;
-  const { apiKey } = getSpreadsheetConfig();
-  
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
-  
-  const headers: HeadersInit = {};
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `?key=${apiKey}`;
-  }
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_DRAFT_NAME}`;
 
   try {
-    const response = await fetch(url, { headers });
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Drafts fetch failed');
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('Failed to fetch drafts from spreadsheet:', errorBody);
-      throw new Error('Drafts fetch failed');
+    const res = await response.json();
+    let rows = extractRowsFromData(res);
+
+    if (rows.length > 0) {
+      const firstRow = rows[0];
+      const isHeader = Array.isArray(firstRow)
+        ? firstRow.some(cell => typeof cell === 'string' && (cell.toLowerCase() === 'id' || cell.includes('draft') || cell.includes('기안')))
+        : firstRow && typeof firstRow === 'object' && Object.values(firstRow).some(cell => typeof cell === 'string' && (cell.toLowerCase() === 'id'));
+      if (isHeader) rows = rows.slice(1);
     }
 
-    const data = await response.json();
-    const rows = data.values || [];
-
-    const drafts = rows
-      .filter((row: any[]) => row && row.length > 0 && row[0] !== '')
+    return rows
+      .filter((row: any) => {
+        if (!row || row.length === 0) return false;
+        const idVal = Array.isArray(row) ? row[0] : row.id || row.draftId;
+        if (!idVal || idVal.toString().trim() === '') return false;
+        return true;
+      })
       .map(mapRowToDraft);
-
-    localStorage.setItem('ds_steel_drafts_cache', JSON.stringify(drafts));
-    return drafts;
   } catch (err) {
-    console.error('Google Sheets API drafts load failed:', err);
+    console.error('Apps Script drafts load failed:', err);
     return [];
   }
 }
 
 /**
- * Appends a new draft to the education_drafts sheet tab.
+ * 기안서 추가
  */
 export async function addDraft(
   spreadsheetId: string,
   accessToken: string | null,
   draft: EducationDraft
 ): Promise<void> {
-  // Update local storage cache
-  try {
-    const cached = localStorage.getItem('ds_steel_drafts_cache');
-    const drafts: EducationDraft[] = cached ? JSON.parse(cached) : [];
-    drafts.push(draft);
-    localStorage.setItem('ds_steel_drafts_cache', JSON.stringify(drafts));
-  } catch (err) {
-    console.error('Failed to update local cache in addDraft:', err);
-  }
-
-  const range = `${SHEET_TAB_DRAFT_NAME}!A:G`;
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-    range
-  )}:append?valueInputOption=USER_ENTERED`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, saved draft to local cache only');
-    return;
-  }
-
   const body = {
-    values: [mapDraftToRow(draft)],
+    sheetName: SHEET_TAB_DRAFT_NAME,
+    ...draft
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(API_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets append draft failed:', errorBody);
-      if (!accessToken) return;
-      throw new Error('Draft append failed');
-    }
+    if (!response.ok) throw new Error('Draft append failed');
   } catch (err) {
-    console.error('Remote Google Sheets append draft failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script add draft failed:', err);
   }
 }
 
 /**
- * Updates an existing draft at a specific row.
+ * 기안서 수정
  */
 export async function updateDraft(
   spreadsheetId: string,
@@ -657,246 +263,120 @@ export async function updateDraft(
   draft: EducationDraft,
   rowIndex: number
 ): Promise<void> {
-  // Update local storage cache
-  try {
-    const cached = localStorage.getItem('ds_steel_drafts_cache');
-    if (cached) {
-      const drafts: EducationDraft[] = JSON.parse(cached);
-      const index = drafts.findIndex(d => d.id === draft.id);
-      if (index !== -1) {
-        drafts[index] = draft;
-      } else if (rowIndex >= 0 && rowIndex < drafts.length) {
-        drafts[rowIndex] = draft;
-      }
-      localStorage.setItem('ds_steel_drafts_cache', JSON.stringify(drafts));
-    }
-  } catch (err) {
-    console.error('Failed to update local cache in updateDraft:', err);
-  }
-
-  const sheetRow = rowIndex + 2;
-  const range = `${SHEET_TAB_DRAFT_NAME}!A${sheetRow}:G${sheetRow}`;
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-    range
-  )}?valueInputOption=USER_ENTERED`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, updated draft in local cache only');
-    return;
-  }
-
   const body = {
-    values: [mapDraftToRow(draft)],
+    action: 'update',
+    sheetName: SHEET_TAB_DRAFT_NAME,
+    rowIndex: rowIndex,
+    ...draft
   };
 
   try {
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers,
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets update draft failed:', errorBody);
-      if (!accessToken) return;
-      throw new Error('Draft update failed');
-    }
+    if (!response.ok) throw new Error('Draft update failed');
   } catch (err) {
-    console.error('Remote Google Sheets update draft failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script update draft failed:', err);
   }
 }
 
 /**
- * Deletes a draft row.
+ * 기안서 삭제
  */
 export async function deleteDraft(
   spreadsheetId: string,
   accessToken: string | null,
   rowIndex: number
 ): Promise<void> {
-  // Update local storage cache
-  try {
-    const cached = localStorage.getItem('ds_steel_drafts_cache');
-    if (cached) {
-      const drafts: EducationDraft[] = JSON.parse(cached);
-      if (rowIndex >= 0 && rowIndex < drafts.length) {
-        drafts.splice(rowIndex, 1);
-      }
-      localStorage.setItem('ds_steel_drafts_cache', JSON.stringify(drafts));
-    }
-  } catch (err) {
-    console.error('Failed to delete from local cache in deleteDraft:', err);
-  }
-
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, deleted draft from local cache only');
-    return;
-  }
-
-  const startIndex = rowIndex + 1; // 0-based index inclusive
-  const endIndex = rowIndex + 2;   // 0-based index exclusive
-
   const body = {
-    requests: [
-      {
-        deleteDimension: {
-          range: {
-            sheetId: DRAFT_SHEET_ID,
-            dimension: 'ROWS',
-            startIndex,
-            endIndex,
-          },
-        },
-      },
-    ],
+    action: 'delete',
+    sheetName: SHEET_TAB_DRAFT_NAME,
+    rowIndex: rowIndex
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(API_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets delete draft failed:', errorBody);
-      if (!accessToken) return;
-      throw new Error('Draft deletion failed');
-    }
+    if (!response.ok) throw new Error('Draft deletion failed');
   } catch (err) {
-    console.error('Remote Google Sheets delete draft failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script delete draft failed:', err);
   }
 }
 
+// ============================================================================
+// 3. 결과 보고서 (education_reports) - 조회 / 추가 / 수정 / 삭제
+// ============================================================================
+
 /**
- * Fetches all reports from the education_reports sheet tab.
+ * 모든 보고서 조회
  */
 export async function fetchReports(
   spreadsheetId: string,
   accessToken?: string | null
 ): Promise<EducationReport[]> {
-  const range = `${SHEET_TAB_REPORT_NAME}!A2:J1000`;
-  const { apiKey } = getSpreadsheetConfig();
-  
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
-  
-  const headers: HeadersInit = {};
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `?key=${apiKey}`;
-  }
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_REPORT_NAME}`;
 
   try {
-    const response = await fetch(url, { headers });
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Reports fetch failed');
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('Failed to fetch reports from spreadsheet:', errorBody);
-      throw new Error('Reports fetch failed');
+    const res = await response.json();
+    let rows = extractRowsFromData(res);
+
+    if (rows.length > 0) {
+      const firstRow = rows[0];
+      const isHeader = Array.isArray(firstRow)
+        ? firstRow.some(cell => typeof cell === 'string' && (cell.toLowerCase() === 'id' || cell.includes('report') || cell.includes('보고')))
+        : firstRow && typeof firstRow === 'object' && Object.values(firstRow).some(cell => typeof cell === 'string' && (cell.toLowerCase() === 'id'));
+      if (isHeader) rows = rows.slice(1);
     }
 
-    const data = await response.json();
-    const rows = data.values || [];
-
-    const reports = rows
-      .filter((row: any[]) => row && row.length > 0 && row[0] !== '')
+    return rows
+      .filter((row: any) => {
+        if (!row || row.length === 0) return false;
+        const idVal = Array.isArray(row) ? row[0] : row.id || row.reportId;
+        if (!idVal || idVal.toString().trim() === '') return false;
+        return true;
+      })
       .map(mapRowToReport);
-
-    localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
-    return reports;
   } catch (err) {
-    console.error('Google Sheets API reports load failed:', err);
+    console.error('Apps Script reports load failed:', err);
     return [];
   }
 }
 
 /**
- * Appends a new report to the education_reports sheet tab.
+ * 보고서 추가
  */
 export async function addReport(
   spreadsheetId: string,
   accessToken: string | null,
   report: EducationReport
 ): Promise<void> {
-  // Update local storage cache
-  try {
-    const cached = localStorage.getItem('ds_steel_reports_cache');
-    const reports: EducationReport[] = cached ? JSON.parse(cached) : [];
-    reports.push(report);
-    localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
-  } catch (err) {
-    console.error('Failed to update local cache in addReport:', err);
-  }
-
-  const range = `${SHEET_TAB_REPORT_NAME}!A:J`;
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-    range
-  )}:append?valueInputOption=USER_ENTERED`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, saved report to local cache only');
-    return;
-  }
-
   const body = {
-    values: [mapReportToRow(report)],
+    sheetName: SHEET_TAB_REPORT_NAME,
+    ...report
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(API_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets append report failed:', errorBody);
-      if (!accessToken) return;
-      throw new Error('Report append failed');
-    }
+    if (!response.ok) throw new Error('Report append failed');
   } catch (err) {
-    console.error('Remote Google Sheets append report failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script add report failed:', err);
   }
 }
 
 /**
- * Updates an existing report at a specific row.
+ * 보고서 수정
  */
 export async function updateReport(
   spreadsheetId: string,
@@ -904,137 +384,47 @@ export async function updateReport(
   report: EducationReport,
   rowIndex: number
 ): Promise<void> {
-  // Update local storage cache
-  try {
-    const cached = localStorage.getItem('ds_steel_reports_cache');
-    if (cached) {
-      const reports: EducationReport[] = JSON.parse(cached);
-      const index = reports.findIndex(r => r.id === report.id);
-      if (index !== -1) {
-        reports[index] = report;
-      } else if (rowIndex >= 0 && rowIndex < reports.length) {
-        reports[rowIndex] = report;
-      }
-      localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
-    }
-  } catch (err) {
-    console.error('Failed to update local cache in updateReport:', err);
-  }
-
-  const sheetRow = rowIndex + 2;
-  const range = `${SHEET_TAB_REPORT_NAME}!A${sheetRow}:J${sheetRow}`;
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-    range
-  )}?valueInputOption=USER_ENTERED`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, updated report in local cache only');
-    return;
-  }
-
   const body = {
-    values: [mapReportToRow(report)],
+    action: 'update',
+    sheetName: SHEET_TAB_REPORT_NAME,
+    rowIndex: rowIndex,
+    ...report
   };
 
   try {
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers,
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets update report failed:', errorBody);
-      if (!accessToken) return;
-      throw new Error('Report update failed');
-    }
+    if (!response.ok) throw new Error('Report update failed');
   } catch (err) {
-    console.error('Remote Google Sheets update report failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script update report failed:', err);
   }
 }
 
 /**
- * Deletes a report row.
+ * 보고서 삭제
  */
 export async function deleteReport(
   spreadsheetId: string,
   accessToken: string | null,
   rowIndex: number
 ): Promise<void> {
-  // Update local storage cache
-  try {
-    const cached = localStorage.getItem('ds_steel_reports_cache');
-    if (cached) {
-      const reports: EducationReport[] = JSON.parse(cached);
-      if (rowIndex >= 0 && rowIndex < reports.length) {
-        reports.splice(rowIndex, 1);
-      }
-      localStorage.setItem('ds_steel_reports_cache', JSON.stringify(reports));
-    }
-  } catch (err) {
-    console.error('Failed to delete from local cache in deleteReport:', err);
-  }
-
-  const { apiKey } = getSpreadsheetConfig();
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  } else if (apiKey) {
-    url += `&key=${apiKey}`;
-  } else {
-    console.log('No auth credentials, deleted report from local cache only');
-    return;
-  }
-
-  const startIndex = rowIndex + 1; // 0-based index inclusive
-  const endIndex = rowIndex + 2;   // 0-based index exclusive
-
   const body = {
-    requests: [
-      {
-        deleteDimension: {
-          range: {
-            sheetId: REPORT_SHEET_ID,
-            dimension: 'ROWS',
-            startIndex,
-            endIndex,
-          },
-        },
-      },
-    ],
+    action: 'delete',
+    sheetName: SHEET_TAB_REPORT_NAME,
+    rowIndex: rowIndex
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(API_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.warn('Google Sheets delete report failed:', errorBody);
-      if (!accessToken) return;
-      throw new Error('Report deletion failed');
-    }
+    if (!response.ok) throw new Error('Report deletion failed');
   } catch (err) {
-    console.error('Remote Google Sheets delete report failed:', err);
-    if (accessToken) throw err;
+    console.error('Apps Script delete report failed:', err);
   }
 }

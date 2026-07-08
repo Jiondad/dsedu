@@ -76,21 +76,73 @@ export function validateTimeRange(timeRange: string): boolean {
 }
 
 /**
- * Maps a sheet row (array of strings) back to an EducationPlan object.
+ * Maps a sheet row back to an EducationPlan object.
+ * Supports both array rows (Google Sheets values) and object-based rows.
  */
-export function mapRowToPlan(row: any[]): EducationPlan {
+export function mapRowToPlan(row: any): EducationPlan {
+  if (row && typeof row === 'object' && !Array.isArray(row)) {
+    const idVal = String(row.id ?? '');
+    const dateVal = String(row.date ?? '');
+    const categoryVal = String(row.category ?? '') === '사외' ? '사외' : '사내';
+    const titleVal = String(row.title ?? '');
+    const institutionVal = String(row.institution ?? '');
+    const instructorVal = String(row.instructor ?? '');
+    const targetVal = String(row.target ?? '');
+    const scheduleVal = String(row.schedule ?? '');
+    const timeRangeVal = String(row.time_range ?? '');
+    const hoursVal = Number(row.hours) || 0;
+    const costVal = Number(row.cost) || 0;
+
+    return {
+      id: idVal,
+      edu_date: dateVal,
+      date: dateVal,
+      category: categoryVal,
+      title: titleVal,
+      agency: institutionVal,
+      institution: institutionVal,
+      instructor: instructorVal,
+      target_group: targetVal,
+      target: targetVal,
+      schedule: scheduleVal,
+      time_range: timeRangeVal,
+      total_hours: hoursVal,
+      hours: hoursVal,
+      estimated_cost: costVal,
+      cost: costVal,
+    };
+  }
+
+  const r = Array.isArray(row) ? row : [];
+  const idVal = String(r[0] || '');
+  const dateVal = String(r[1] || '');
+  const categoryVal = String(r[2] || '') === '사외' ? '사외' : '사내';
+  const titleVal = String(r[3] || '');
+  const institutionVal = String(r[4] || '');
+  const instructorVal = String(r[5] || '');
+  const targetVal = String(r[6] || '');
+  const scheduleVal = String(r[7] || '');
+  const timeRangeVal = String(r[8] || '');
+  const hoursVal = Number(r[9]) || 0;
+  const costVal = Number(r[10]) || 0;
+
   return {
-    id: String(row[0] || ''),
-    edu_date: String(row[1] || ''),
-    category: row[2] === '사외' ? '사외' : '사내',
-    title: String(row[3] || ''),
-    agency: String(row[4] || ''),
-    instructor: String(row[5] || ''),
-    target_group: String(row[6] || ''),
-    schedule: String(row[7] || ''),
-    time_range: String(row[8] || ''),
-    total_hours: Number(row[9]) || 0,
-    estimated_cost: Number(row[10]) || 0,
+    id: idVal,
+    edu_date: dateVal,
+    date: dateVal,
+    category: categoryVal,
+    title: titleVal,
+    agency: institutionVal,
+    institution: institutionVal,
+    instructor: instructorVal,
+    target_group: targetVal,
+    target: targetVal,
+    schedule: scheduleVal,
+    time_range: timeRangeVal,
+    total_hours: hoursVal,
+    hours: hoursVal,
+    estimated_cost: costVal,
+    cost: costVal,
   };
 }
 
@@ -114,17 +166,31 @@ export function mapPlanToRow(plan: EducationPlan): any[] {
 }
 
 /**
- * Maps a sheet row (array of strings) back to an EducationDraft object.
+ * Maps a sheet row back to an EducationDraft object.
+ * Supports both array rows and object-based rows.
  */
-export function mapRowToDraft(row: any[]): EducationDraft {
+export function mapRowToDraft(row: any): EducationDraft {
+  if (row && typeof row === 'object' && !Array.isArray(row)) {
+    return {
+      id: String(row.id ?? row.ID ?? row['기안번호'] ?? ''),
+      plan_id: String(row.plan_id ?? row.planId ?? row['교육계획ID'] ?? ''),
+      drafter: String(row.drafter ?? row['기안자'] ?? ''),
+      draft_date: String(row.draft_date ?? row.draftDate ?? row['기안일자'] ?? ''),
+      purpose: String(row.purpose ?? row['교육목적'] ?? ''),
+      content_summary: String(row.content_summary ?? row.contentSummary ?? row['교육내용'] ?? ''),
+      budget_breakdown: String(row.budget_breakdown ?? row.budgetBreakdown ?? row['소요예산 상세내역'] ?? ''),
+    };
+  }
+
+  const r = Array.isArray(row) ? row : [];
   return {
-    id: String(row[0] || ''),
-    plan_id: String(row[1] || ''),
-    drafter: String(row[2] || ''),
-    draft_date: String(row[3] || ''),
-    purpose: String(row[4] || ''),
-    content_summary: String(row[5] || ''),
-    budget_breakdown: String(row[6] || ''),
+    id: String(r[0] || ''),
+    plan_id: String(r[1] || ''),
+    drafter: String(r[2] || ''),
+    draft_date: String(r[3] || ''),
+    purpose: String(r[4] || ''),
+    content_summary: String(r[5] || ''),
+    budget_breakdown: String(r[6] || ''),
   };
 }
 
@@ -144,20 +210,37 @@ export function mapDraftToRow(draft: EducationDraft): any[] {
 }
 
 /**
- * Maps a sheet row (array of strings) back to an EducationReport object.
+ * Maps a sheet row back to an EducationReport object.
+ * Supports both array rows and object-based rows.
  */
-export function mapRowToReport(row: any[]): EducationReport {
+export function mapRowToReport(row: any): EducationReport {
+  if (row && typeof row === 'object' && !Array.isArray(row)) {
+    return {
+      id: String(row.id ?? row.ID ?? row['보고서번호'] ?? ''),
+      draft_id: String(row.draft_id ?? row.draftId ?? row['기안번호'] ?? ''),
+      plan_id: String(row.plan_id ?? row.planId ?? row['교육계획ID'] ?? ''),
+      department: String(row.department ?? row['부서'] ?? ''),
+      position: String(row.position ?? row['직급'] ?? ''),
+      drafter_name: String(row.drafter_name ?? row.drafterName ?? row['성명'] ?? ''),
+      report_date: String(row.report_date ?? row.reportDate ?? row['보고일자'] ?? ''),
+      summary: String(row.summary ?? row['교육결과 및 성과'] ?? ''),
+      future_plan: String(row.future_plan ?? row.futurePlan ?? row['향후 적용계획 및 기대효과'] ?? ''),
+      satisfaction_score: Number(row.satisfaction_score ?? row.satisfactionScore ?? row['만족도점수'] ?? 5.0),
+    };
+  }
+
+  const r = Array.isArray(row) ? row : [];
   return {
-    id: String(row[0] || ''),
-    draft_id: String(row[1] || ''),
-    plan_id: String(row[2] || ''),
-    department: String(row[3] || ''),
-    position: String(row[4] || ''),
-    drafter_name: String(row[5] || ''),
-    report_date: String(row[6] || ''),
-    summary: String(row[7] || ''),
-    future_plan: String(row[8] || ''),
-    satisfaction_score: Number(row[9]) || 5.0,
+    id: String(r[0] || ''),
+    draft_id: String(r[1] || ''),
+    plan_id: String(r[2] || ''),
+    department: String(r[3] || ''),
+    position: String(r[4] || ''),
+    drafter_name: String(r[5] || ''),
+    report_date: String(r[6] || ''),
+    summary: String(r[7] || ''),
+    future_plan: String(r[8] || ''),
+    satisfaction_score: Number(r[9]) || 5.0,
   };
 }
 

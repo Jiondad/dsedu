@@ -122,7 +122,11 @@ export default function App() {
 
       setLoadingStep('교육 계획 데이터를 불러오는 중입니다...');
       const fetched = await fetchPlans(sheetId, accessToken);
-      setPlans(fetched);
+      if (Array.isArray(fetched)) {
+        setPlans(fetched);
+      } else {
+        setPlans([]);
+      }
 
       setLoadingStep('교육 기안서 데이터를 불러오는 중입니다...');
       const fetchedDrafts = await fetchDrafts(sheetId, accessToken);
@@ -301,10 +305,9 @@ export default function App() {
         id: finalId,
       };
 
-      // 3. Update state & cache optimistically before remote request
+      // 3. Update state optimistically before remote request
       const updatedDrafts = [...latestDrafts, finalizedDraft];
       setDrafts(updatedDrafts);
-      localStorage.setItem('ds_steel_drafts_cache', JSON.stringify(updatedDrafts));
 
       setLoadingStep('기안서를 저장하는 중입니다...');
       // 4. Save to remote Google Sheet
@@ -420,10 +423,9 @@ export default function App() {
         id: finalUniqueId,
       };
 
-      // 3. Update local state and cache
+      // 3. Update local state
       const updatedReports = [...latestReports, finalizedReport];
       setReports(updatedReports);
-      localStorage.setItem('ds_steel_reports_cache', JSON.stringify(updatedReports));
 
       setLoadingStep('결과보고서를 저장하는 중입니다...');
       // 4. Save to remote Google Sheet
