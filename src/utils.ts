@@ -22,10 +22,12 @@ export function computeMetrics(plans: EducationPlan[]): CategoryMetrics {
     count: 0,
   };
 
-  plans.forEach((plan) => {
-    // 💡 sheetsService 및 UI 규격과 일치하도록 plan.hours 및 plan.cost를 참조합니다.
-    const hours = Number(plan.hours) || 0;
-    const cost = Number(plan.cost) || 0;
+plans.forEach((plan) => {
+  // 💡 아래 로그를 넣어 브라우저 콘솔(F12)에서 데이터 구조를 직접 확인해 봅니다.
+  console.log("통계 계산 중인 plan 객체:", plan);
+  
+  const hours = Number(plan.hours) || 0;
+  const cost = Number(plan.cost) || Number(plan.estimated_cost) || 0; // ➔ 이렇게 방어 코드를 짜두면 안전합니다!
 
     if (plan.category === '사내') {
       inHouse.totalHours += hours;
