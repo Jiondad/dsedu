@@ -40,12 +40,37 @@ export function getSpreadsheetConfig() {
  */
 export function extractRowsFromData(data: any): any[] {
   if (!data) return [];
-  if (Array.isArray(data)) return data;
-  if (data.values && Array.isArray(data.values)) return data.values;
-  if (data.data) {
-    if (Array.isArray(data.data)) return data.data;
-    if (data.data.values && Array.isArray(data.data.values)) return data.data.values;
+
+  // 1. 이미 순수 배열 형태인 경우 ([{id: ...}, {id: ...}])
+  if (Array.isArray(data)) {
+    return data;
   }
+
+  // 2. { data: [...] } 또는 { data: { data: [...] } } 형태로 감싸져 있는 경우 방어
+  if (data.data) {
+    if (Array.isArray(data.data)) {
+      return data.data;
+    }
+    if (data.data.data && Array.isArray(data.data.data)) {
+      return data.data.data;
+    }
+    if (data.data.values && Array.isArray(data.data.values)) {
+      return data.data.values;
+    }
+  }
+
+  // 3. Google Sheets v4 API 대응 규격인 경우
+  if (data.values && Array.isArray(data.values)) {
+    return data.values;
+  }
+
+  // 4. 어떤 키값 안에 배열이 숨어있든 싹 찾아내기 (오브젝트 스캔)
+  for (const key of Object.keys(data)) {
+    if (Array.isArray(data[key])) {
+      return data[key];
+    }
+  }
+
   return [];
 }
 
