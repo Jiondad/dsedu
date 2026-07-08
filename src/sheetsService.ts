@@ -96,24 +96,21 @@ export async function fetchPlans(
   }
 }
 
-export async function addPlan(spreadsheetId: string, accessToken: string | null, plan: EducationPlan): Promise<void> {
+// src/sheetsService.ts (송신부 규격 단순화 및 정형화)
+export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: EducationPlan, rowIndex: number): Promise<void> {
   try {
-    const response = await fetch(API_URL, {
+    await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ 
-        action: 'create',          // 💡 구글 백엔드가 알아볼 수 있게 액션을 명확히 지정!
-        sheetName: SHEET_TAB_NAME, 
+        action: 'update',
+        sheetName: SHEET_TAB_NAME,
+        rowIndex: rowIndex,
+        // 💡 꼼수 부리지 않고 프론트엔드가 정의한 plan 객체를 그대로 정직하게 전달
         ...plan 
       }),
     });
-    if (!response.ok) throw new Error('Network response was not ok');
-    const res = await response.json();
-    if (res.success === false) throw new Error(res.error || '구글 시트 저장 실패');
-  } catch (err) { 
-    console.error('addPlan 실패:', err); 
-    throw err; 
-  }
+  } catch (err) { console.error(err); throw err; }
 }
 
 export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: EducationPlan, rowIndex: number): Promise<void> {
