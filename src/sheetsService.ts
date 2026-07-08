@@ -21,7 +21,7 @@ const SHEET_TAB_REPORT_NAME = 'education_reports';
 // 진짜 올바른 구글 스프레드시트 고유 ID 고정
 const SPREADSHEET_ID = (import.meta as any).env?.VITE_SPREADSHEET_ID || (import.meta as any).env?.APP_URL || '1u3MYYrV9QBq-yOPimkntzg2niDuQUsPLycDW-0aM6IY';
 
-// 대문자 I(아이)가 완벽하게 검증된 진짜 구글 앱스 스크립트 배포 주소
+// 💡 대문자 I(아이)가 완벽하게 검증된 진짜 구글 앱스 스크립트 배포 주소
 const API_URL = (import.meta as any).env?.VITE_APP_URL || 
                 (import.meta as any).env?.APP_URL || 
                 'https://script.google.com/macros/s/1PNdiWIScbCkAbtUS9cBxzLksJ3V7IjK3xJyB6aKc8MU/exec';
@@ -31,7 +31,8 @@ const API_URL = (import.meta as any).env?.VITE_APP_URL ||
  */
 export function getSpreadsheetConfig() {
   const spreadsheetId = localStorage.getItem('ds_steel_spreadsheet_id') || SPREADSHEET_ID;
-  return { spreadsheetId, apiUrl: API_URL };
+  const apiKey = localStorage.getItem('ds_steel_google_api_key') || 'AIzaSyBBsSXc9iGdFMC5sd3afRZIvr3UND8QjDE';
+  return { spreadsheetId, apiKey, apiUrl: API_URL };
 }
 
 /**
@@ -57,7 +58,7 @@ export async function findOrCreateSpreadsheet(accessToken?: string | null): Prom
 }
 
 // ============================================================================
-// 1. 연간 교육 계획 (annual_plans) - 조회 / 추가 / 수정 / 삭제
+// 1. 연간 교육 계획 (annual_plans) - 수정 및 보완된 전송 로직
 // ============================================================================
 
 export async function fetchPlans(
@@ -157,6 +158,27 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
   } catch (err) { console.error(err); throw err; }
 }
 
+export async function deletePlan(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ 
+        action: 'delete', 
+        sheetName: SHEET_TAB_NAME, 
+        rowIndex: rowIndex 
+      }),
+    });
+
+    if (!response.ok) throw new Error('Network response was not ok');
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error || '구글 시트 삭제 실패');
+  } catch (err) { 
+    console.error('deletePlan 실패:', err); 
+    throw err; 
+  }
+}
+
 // ============================================================================
 // 2. 교육 기안서 (education_drafts) - 조회 / 추가 / 수정 / 삭제
 // ============================================================================
@@ -174,15 +196,15 @@ export async function fetchDrafts(spreadsheetId: string, accessToken?: string | 
 }
 
 export async function addDraft(spreadsheetId: string, accessToken: string | null, draft: EducationDraft): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'create', sheetName: SHEET_TAB_DRAFT_NAME, ...draft }) }); } catch (err) { console.error(err); }
+  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sheetName: SHEET_TAB_DRAFT_NAME, ...draft }) }); } catch (err) { console.error(err); }
 }
 
 export async function updateDraft(spreadsheetId: string, accessToken: string | null, draft: EducationDraft, rowIndex: number): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'update', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex, ...draft }) }); } catch (err) { console.error(err); }
+  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex, ...draft }) }); } catch (err) { console.error(err); }
 }
 
 export async function deleteDraft(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex }) }); } catch (err) { console.error(err); }
+  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex }) }); } catch (err) { console.error(err); }
 }
 
 // ============================================================================
@@ -202,13 +224,13 @@ export async function fetchReports(spreadsheetId: string, accessToken?: string |
 }
 
 export async function addReport(spreadsheetId: string, accessToken: string | null, report: EducationReport): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'create', sheetName: SHEET_TAB_REPORT_NAME, ...report }) }); } catch (err) { console.error(err); }
+  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sheetName: SHEET_TAB_REPORT_NAME, ...report }) }); } catch (err) { console.error(err); }
 }
 
 export async function updateReport(spreadsheetId: string, accessToken: string | null, report: EducationReport, rowIndex: number): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'update', sheetName: SHEET_TAB_REPORT_NAME, rowIndex, ...report }) }); } catch (err) { console.error(err); }
+  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', sheetName: SHEET_TAB_REPORT_NAME, rowIndex, ...report }) }); } catch (err) { console.error(err); }
 }
 
 export async function deleteReport(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_REPORT_NAME, rowIndex }) }); } catch (err) { console.error(err); }
+  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_REPORT_NAME, rowIndex }) }); } catch (err) { console.error(err); }
 }
