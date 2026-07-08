@@ -6,8 +6,8 @@
 import { EducationPlan, CategoryMetrics, EducationDraft, EducationReport } from './types';
 
 /**
- * Computes metrics from education plans, calculating totals and counts
- * categorized by '사내' (In-house) and '사외' (External).
+ * 구글 시트에서 가져온 영문 규격 필드(hours, cost)를 기반으로 
+ * 대시보드 통계를 정확하게 산출하도록 교정했습니다.
  */
 export function computeMetrics(plans: EducationPlan[]): CategoryMetrics {
   const inHouse: { totalHours: number; totalCost: number; count: number } = {
@@ -23,8 +23,9 @@ export function computeMetrics(plans: EducationPlan[]): CategoryMetrics {
   };
 
   plans.forEach((plan) => {
-    const hours = Number(plan.total_hours) || 0;
-    const cost = Number(plan.estimated_cost) || 0;
+    // 💡 sheetsService 및 UI 규격과 일치하도록 plan.hours 및 plan.cost를 참조합니다.
+    const hours = Number(plan.hours) || 0;
+    const cost = Number(plan.cost) || 0;
 
     if (plan.category === '사내') {
       inHouse.totalHours += hours;
@@ -77,11 +78,11 @@ export function validateTimeRange(timeRange: string): boolean {
 
 /**
  * Maps a sheet row back to an EducationPlan object.
- * Supports both array rows (Google Sheets values) and object-based rows.
+ * 프론트엔드 UI 컴포넌트와 백엔드 API가 완벽하게 교감하도록 매핑 규칙을 통일했습니다.
  */
 export function mapRowToPlan(row: any): EducationPlan {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
-    const idVal = String(row.id ?? '');
+    const idVal = String(row.id ?? row.ID ?? '');
     const dateVal = String(row.date ?? '');
     const categoryVal = String(row.category ?? '') === '사외' ? '사외' : '사내';
     const titleVal = String(row.title ?? '');
@@ -89,7 +90,7 @@ export function mapRowToPlan(row: any): EducationPlan {
     const instructorVal = String(row.instructor ?? '');
     const targetVal = String(row.target ?? '');
     const scheduleVal = String(row.schedule ?? '');
-    const timeRangeVal = String(row.time_range ?? '');
+    const timeRangeVal = String(row.time_range ?? row.timeRange ?? '');
     const hoursVal = Number(row.hours) || 0;
     const costVal = Number(row.cost) || 0;
 
@@ -106,10 +107,10 @@ export function mapRowToPlan(row: any): EducationPlan {
       target: targetVal,
       schedule: scheduleVal,
       time_range: timeRangeVal,
-      total_hours: hoursVal,
-      hours: hoursVal,
-      estimated_cost: costVal,
-      cost: costVal,
+      total_hours: hoursVal, // 호환성 유지
+      hours: hoursVal,       // 진짜 UI 매핑용
+      estimated_cost: costVal, // 호환성 유지
+      cost: costVal,         // 진짜 UI 매핑용
     };
   }
 
@@ -152,22 +153,21 @@ export function mapRowToPlan(row: any): EducationPlan {
 export function mapPlanToRow(plan: EducationPlan): any[] {
   return [
     plan.id,
-    plan.edu_date,
+    plan.date || plan.edu_date,
     plan.category,
     plan.title,
-    plan.agency,
+    plan.institution || plan.agency,
     plan.instructor,
-    plan.target_group,
+    plan.target || plan.target_group,
     plan.schedule,
     plan.time_range,
-    plan.total_hours,
-    plan.estimated_cost,
+    plan.hours !== undefined ? plan.hours : plan.total_hours,
+    plan.cost !== undefined ? plan.cost : plan.estimated_cost,
   ];
 }
 
 /**
  * Maps a sheet row back to an EducationDraft object.
- * Supports both array rows and object-based rows.
  */
 export function mapRowToDraft(row: any): EducationDraft {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
@@ -211,7 +211,6 @@ export function mapDraftToRow(draft: EducationDraft): any[] {
 
 /**
  * Maps a sheet row back to an EducationReport object.
- * Supports both array rows and object-based rows.
  */
 export function mapRowToReport(row: any): EducationReport {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
@@ -261,4 +260,3 @@ export function mapReportToRow(report: EducationReport): any[] {
     report.satisfaction_score || 5.0,
   ];
 }
-
