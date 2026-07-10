@@ -855,18 +855,27 @@ export default function ReportManager({
           <div id="print-area" className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
             <style>{`
               @media print {
+                #print-area-wrapper, #print-area {
+                  border: none !important;
+                  box-shadow: none !important;
+                  background: transparent !important;
+                }
                 #print-area {
-                  max-width: 170mm !important; /* 오른쪽 테두리 잘림 완벽 방지 */
+                  max-width: 165mm !important; /* 오른쪽 테두리 잘림 완벽 방지 */
                   width: 80% !important;
                   margin: 0 auto !important;
+                  padding-left: 0 !important;
+                  padding-right: 0 !important;
+                  padding-bottom: 40px !important; /* 최하단 자름 방지 */
+                  margin-bottom: 30px !important;
                 }
                 #print-area table td {
-                  padding: 14px 10px !important; /* 표 내부 행 높이를 여유 있게 조정 */
+                  padding: 10px 8px !important; /* 표 내부 행 높이를 여유 있게 조정 */
                 }
                 
                 /* 결과보고서 전용 인쇄 박스 높이 확보 */
-                .report-summary-box { min-height: 195px !important; }
-                .report-future-box { min-height: 105px !important; }
+                .report-summary-box { min-height: 140px !important; }
+                .report-future-box { min-height: 75px !important; }
               }
             `}</style>
             <div>
