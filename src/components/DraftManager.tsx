@@ -588,9 +588,21 @@ export default function DraftManager({
                 <option value="">-- 연간교육계획을 선택해 주세요 --</option>
                 {plans
                   .filter((p) => {
-                    if (planCategoryFilter === '전체') return true;
+                    // 1. 카테고리 필터 매칭 여부 검사
+                    const categoryMatch = planCategoryFilter === '전체' || p.category === planCategoryFilter;
+
+                    // 2. 이미 기안서 목록(drafts)에 존재하는지 대조 (수정 모드일 때는 자기 자신 기안서 제외)
+                    const isDraftedInAnother = drafts.some((d, idx) => {
+                      if (editingDraftIndex !== null) {
+                        return d.plan_id === p.id && idx !== editingDraftIndex;
+                      }
+                      return d.plan_id === p.id;
+                    });
+
+                    // 3. 예외 조항: 현재 선택된 값(selectedPlanId)이라면 상태 깨짐 방지를 위해 무조건 노출 보장
                     if (p.id === selectedPlanId) return true;
-                    return p.category === planCategoryFilter;
+
+                    return categoryMatch && !isDraftedInAnother;
                   })
                   .map((p) => (
                     <option key={p.id} value={p.id}>
