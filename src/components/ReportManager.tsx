@@ -855,15 +855,27 @@ export default function ReportManager({
           <div id="print-area" className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
             <style>{`
               @media print {
-                #print-area-wrapper, #print-area {
+                body, html, #print-area, #print-area * {
+                  box-shadow: none !important;
+                  text-shadow: none !important;
+                }
+                #print-area-wrapper {
                   border: none !important;
                   box-shadow: none !important;
                   background: transparent !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
                 }
                 #print-area {
-                  max-width: 165mm !important; /* 오른쪽 테두리 잘림 완벽 방지 */
-                  width: 80% !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  background: transparent !important;
+                  width: 170mm !important;
+                  max-width: 170mm !important;
                   margin: 0 auto !important;
+                  position: relative !important;
+                  left: 0 !important;
+                  right: 0 !important;
                   padding-left: 0 !important;
                   padding-right: 0 !important;
                   padding-bottom: 40px !important; /* 최하단 자름 방지 */

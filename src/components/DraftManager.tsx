@@ -828,15 +828,27 @@ export default function DraftManager({
           >
             <style>{`
               @media print {
-                #print-area-wrapper, #print-area {
+                body, html, #print-area, #print-area * {
+                  box-shadow: none !important;
+                  text-shadow: none !important;
+                }
+                #print-area-wrapper {
                   border: none !important;
                   box-shadow: none !important;
                   background: transparent !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
                 }
                 #print-area {
-                  max-width: 165mm !important; /* 오른쪽 테두리 잘림 완벽 방지 */
-                  width: 80% !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  background: transparent !important;
+                  width: 170mm !important;
+                  max-width: 170mm !important;
                   margin: 0 auto !important;
+                  position: relative !important;
+                  left: 0 !important;
+                  right: 0 !important;
                   padding-left: 0 !important;
                   padding-right: 0 !important;
                   padding-bottom: 40px !important; /* 최하단 자름 방지 */
