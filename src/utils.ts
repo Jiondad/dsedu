@@ -22,12 +22,11 @@ export function computeMetrics(plans: EducationPlan[]): CategoryMetrics {
     count: 0,
   };
 
-plans.forEach((plan) => {
-  // 💡 아래 로그를 넣어 브라우저 콘솔(F12)에서 데이터 구조를 직접 확인해 봅니다.
-  console.log("통계 계산 중인 plan 객체:", plan);
+  plans.forEach((plan) => {
+    console.log("통계 계산 중인 plan 객체:", plan);
 
-  const hours = Number(plan.hours) || 0;
-  const cost = Number(plan.cost) || Number(plan.estimated_cost) || 0; // ➔ 이렇게 방어 코드를 짜두면 안전합니다!
+    const hours = Number(plan.hours) || 0;
+    const cost = Number(plan.cost) || Number(plan.estimated_cost) || 0;
 
     if (plan.category === '사내') {
       inHouse.totalHours += hours;
@@ -74,23 +73,21 @@ export function validateSchedule(schedule: string): boolean {
  * Validates 'HH~HH' or 'HH:MM~HH:MM' format.
  */
 export function validateTimeRange(timeRange: string): boolean {
-  const regex = /^\d{2}~\d{2}$/;
+  const regex = /^\d{2}\/\d{2}$|^\d{2}~\d{2}$/;
   return regex.test(timeRange);
 }
 
 /**
  * Maps a sheet row back to an EducationPlan object.
- * 프론트엔드 UI 컴포넌트와 백엔드 API가 완벽하게 교감하도록 매핑 규칙을 통일했습니다.
  */
 export function mapRowToPlan(row: any): EducationPlan {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
-const idVal = String(row.id ?? row.ID ?? '');
+    const idVal = String(row.id ?? row.ID ?? '');
 
-// 💡 날짜 뒤에 붙은 T15:00... 지저분한 문자열을 'T' 기준으로 잘라 앞의 날짜만 가져옵니다.
-let dateVal = String(row.date ?? row.edu_date ?? '');
-if (dateVal.includes('T')) {
-  dateVal = dateVal.split('T')[0];
-}
+    let dateVal = String(row.date ?? row.edu_date ?? '');
+    if (dateVal.includes('T')) {
+      dateVal = dateVal.split('T')[0];
+    }
     const categoryVal = String(row.category ?? '') === '사외' ? '사외' : '사내';
     const titleVal = String(row.title ?? '');
     const institutionVal = String(row.institution ?? '');
@@ -114,10 +111,10 @@ if (dateVal.includes('T')) {
       target: targetVal,
       schedule: scheduleVal,
       time_range: timeRangeVal,
-      total_hours: hoursVal, // 호환성 유지
-      hours: hoursVal,       // 진짜 UI 매핑용
-      estimated_cost: costVal, // 호환성 유지
-      cost: costVal,         // 진짜 UI 매핑용
+      total_hours: hoursVal,
+      hours: hoursVal,
+      estimated_cost: costVal,
+      cost: costVal,
     };
   }
 
@@ -175,17 +172,18 @@ export function mapPlanToRow(plan: EducationPlan): any[] {
 
 /**
  * Maps a sheet row back to an EducationDraft object.
+ * [정밀 교정] 구글 시트 영문 소문자 헤더와 React 필드명을 완벽 동기화하여 새로고침 증발 버그를 차단합니다.
  */
 export function mapRowToDraft(row: any): EducationDraft {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
     return {
-      id: String(row.id ?? row.ID ?? row['기안번호'] ?? ''),
-      plan_id: String(row.plan_id ?? row.planId ?? row['교육계획ID'] ?? ''),
-      drafter: String(row.drafter ?? row['기안자'] ?? ''),
-      draft_date: String(row.draft_date ?? row.draftDate ?? row['기안일자'] ?? ''),
-      purpose: String(row.purpose ?? row['교육목적'] ?? ''),
-      content_summary: String(row.content_summary ?? row.contentSummary ?? row['교육내용'] ?? ''),
-      budget_breakdown: String(row.budget_breakdown ?? row.budgetBreakdown ?? row['소요예산 상세내역'] ?? ''),
+      id: String(row.id ?? row.ID ?? ''),
+      plan_id: String(row.plan_id ?? row.planId ?? ''),
+      drafter: String(row.drafter ?? ''),
+      draft_date: String(row.draft_date ?? row.draftDate ?? ''),
+      purpose: String(row.purpose ?? ''),
+      content_summary: String(row.content_summary ?? row.contentSummary ?? ''),
+      budget_breakdown: String(row.budget_breakdown ?? row.budgetBreakdown ?? ''),
     };
   }
 
@@ -222,16 +220,16 @@ export function mapDraftToRow(draft: EducationDraft): any[] {
 export function mapRowToReport(row: any): EducationReport {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
     return {
-      id: String(row.id ?? row.ID ?? row['보고서번호'] ?? ''),
-      draft_id: String(row.draft_id ?? row.draftId ?? row['기안번호'] ?? ''),
-      plan_id: String(row.plan_id ?? row.planId ?? row['교육계획ID'] ?? ''),
-      department: String(row.department ?? row['부서'] ?? ''),
-      position: String(row.position ?? row['직급'] ?? ''),
-      drafter_name: String(row.drafter_name ?? row.drafterName ?? row['성명'] ?? ''),
-      report_date: String(row.report_date ?? row.reportDate ?? row['보고일자'] ?? ''),
-      summary: String(row.summary ?? row['교육결과 및 성과'] ?? ''),
-      future_plan: String(row.future_plan ?? row.futurePlan ?? row['향후 적용계획 및 기대효과'] ?? ''),
-      satisfaction_score: Number(row.satisfaction_score ?? row.satisfactionScore ?? row['만족도점수'] ?? 5.0),
+      id: String(row.id ?? row.ID ?? ''),
+      draft_id: String(row.draft_id ?? row.draftId ?? ''),
+      plan_id: String(row.plan_id ?? row.planId ?? ''),
+      department: String(row.department ?? ''),
+      position: String(row.position ?? ''),
+      drafter_name: String(row.drafter_name ?? row.drafterName ?? ''),
+      report_date: String(row.report_date ?? row.reportDate ?? ''),
+      summary: String(row.summary ?? ''),
+      future_plan: String(row.future_plan ?? row.futurePlan ?? ''),
+      satisfaction_score: Number(row.satisfaction_score ?? row.satisfactionScore ?? 5.0),
     };
   }
 
