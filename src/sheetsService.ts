@@ -182,24 +182,37 @@ export async function fetchDrafts(spreadsheetId: string, accessToken?: string | 
     const response = await fetch(url);
     if (!response.ok) throw new Error('Drafts fetch failed');
     const res = await response.json();
-    let rows = extractRowsFromData(res);
-    if (rows.length > 0 && (Array.isArray(rows[0]) ? rows[0].some(c => typeof c === 'string' && c.toLowerCase() === 'id') : rows[0]?.id)) rows = rows.slice(1);
+    const rows = extractRowsFromData(res);
     
-    // 💡 백엔드가 객체나 배열 어떤 것을 주든 유연하게 캐치하도록 이중 안전 처리
-    return rows.filter((row: any) => {
+    if (rows.length === 0) return [];
+
+    // 💡 [버그 종결 방어선] 시트 헤더 행(['id', 'plan_id', ...])이 섞여 들어오면 무조건 원천 차단 및 필터링
+    const cleanRows = rows.filter((row: any) => {
       if (!row) return false;
-      const idVal = Array.isArray(row) ? row[0] : row.id;
-      return idVal && idVal.toString().trim() !== '';
-    }).map(row => {
-      // 만약 외부 utils에서 파싱이 깨질 경우를 대비해 수신 데이터 명세 강제 동기화
+      
+      // 배열 구조일 때 첫 번째 칸이 'id'이거나 공백이면 제외
+      if (Array.isArray(row)) {
+        const firstCell = String(row[0] || '').trim().toLowerCase();
+        return firstCell !== '' && firstCell !== 'id';
+      }
+      
+      // 객체 구조일 때 id 값이 'id'이거나 공백이면 제외
+      const idVal = String(row.id || '').trim().toLowerCase();
+      return idVal !== '' && idVal !== 'id';
+    });
+
+    return cleanRows.map((row: any) => {
       const parsed = mapRowToDraft(row);
+      // 오브젝트 형태 복원 호환성 보완
       if (row && typeof row === 'object' && !Array.isArray(row)) {
         if (row.plan_id) parsed.plan_id = row.plan_id;
-        if (row.draft_date) parsed.draft_date = row.draft_date;
       }
       return parsed;
     });
-  } catch (err) { console.error(err); return []; }
+  } catch (err) { 
+    console.error('fetchDrafts 최종 로드 실패:', err); 
+    return []; 
+  }
 }
 
 export async function addDraft(spreadsheetId: string, accessToken: string | null, draft: any): Promise<void> {
