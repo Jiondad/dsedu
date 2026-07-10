@@ -118,12 +118,14 @@ export default function DraftManager({
   // Auto-generate sequential draft ID based on selected date and year-based sequence
   const generateDraftIdForDate = (date: string) => {
     if (!date) return '';
-    const year = date.substring(0, 4); // YYYY
-    const dateStr = date.replace(/-/g, ''); // YYYYMMDD
+    const cleanDate = date.split('T')[0].split(' ')[0];
+    const year = cleanDate.substring(0, 4); // YYYY
+    const dateStr = cleanDate.replace(/-/g, ''); // YYYYMMDD
 
     // Filter existing drafts that belong to the same year
     const sameYearDrafts = drafts.filter((d) => {
-      const dateMatch = d.draft_date && d.draft_date.substring(0, 4) === year;
+      const cleanDDate = d.draft_date ? d.draft_date.split('T')[0].split(' ')[0] : '';
+      const dateMatch = cleanDDate && cleanDDate.substring(0, 4) === year;
       const idMatch = d.id && (d.id.startsWith(`DSEDU-${year}`) || d.id.startsWith(`DSED-${year}`));
       return dateMatch || idMatch;
     });
@@ -148,7 +150,6 @@ export default function DraftManager({
   // Auto-generate draft ID when selected date or drafts change (only in NEW mode)
   useEffect(() => {
     if (editingDraftIndex === null && draftDate && selectedPlanId) {
-      // Verify first if there is an existing draft for this plan to prevent overwriting
       const existing = drafts.find((d) => d.plan_id === selectedPlanId);
       if (existing) {
         return;
@@ -156,7 +157,6 @@ export default function DraftManager({
       const nextId = generateDraftIdForDate(draftDate);
       setDraftId(nextId);
       
-      // Clear draft ID validation error if any
       if (errors.draftId) {
         setErrors((prev) => {
           const copy = { ...prev };
@@ -182,10 +182,8 @@ export default function DraftManager({
     if (preselectedPlanId) {
       const plan = plans.find((p) => p.id === preselectedPlanId);
       if (plan) {
-        // Set the active plan ID
         setSelectedPlanId(preselectedPlanId);
 
-        // Check if an existing draft already exists for this plan
         const existingDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
         if (existingDraft) {
           const index = drafts.findIndex((d) => d.plan_id === preselectedPlanId);
@@ -197,14 +195,14 @@ export default function DraftManager({
           setPosition(parts.pos);
           setDrafterName(parts.name);
 
-          setDraftDate(existingDraft.draft_date);
+          const rawDate = existingDraft.draft_date || '';
+          setDraftDate(rawDate.split('T')[0].split(' ')[0]);
           setPurpose(existingDraft.purpose);
           setContentSummary(existingDraft.content_summary);
           setBudgetBreakdown(existingDraft.budget_breakdown);
           setErrors({});
           triggerLocalNotification('이미 작성된 기안서가 존재하여 해당 기안서를 불러왔습니다.', 'info');
         } else {
-          // If no draft exists, start a brand new draft
           setEditingDraftIndex(null);
           const nextId = generateDraftIdForDate(draftDate);
           setDraftId(nextId);
@@ -222,13 +220,10 @@ export default function DraftManager({
     }
   }, [preselectedPlanId, plans, drafts, draftDate]);
 
-  // Find the currently selected plan details
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
 
-  // Auto-map selected plan data to details if desired
   useEffect(() => {
     if (selectedPlan && editingDraftIndex === null) {
-      // Provide smart default for content summary and budget breakdown if they are empty
       if (!contentSummary) {
         setContentSummary(
           `본 교육은 [${selectedPlan.institution}]에서 주관하는 [${selectedPlan.title}] 교육과정으로서, ` +
@@ -248,7 +243,6 @@ export default function DraftManager({
     }
   }, [selectedPlanId, editingDraftIndex]);
 
-  // Handle plan selection change from dropdown with defense check for existing drafts
   const handlePlanSelection = (planId: string) => {
     setSelectedPlanId(planId);
     if (errors.selectedPlanId) {
@@ -264,10 +258,8 @@ export default function DraftManager({
       return;
     }
 
-    // Check if an existing draft for this plan already exists
     const existingDraft = drafts.find((d) => d.plan_id === planId);
     if (existingDraft) {
-      // If we are creating a brand new draft or editing a different draft, show warning immediately
       if (editingDraftIndex === null || drafts[editingDraftIndex].plan_id !== planId) {
         setErrors((prev) => ({
           ...prev,
@@ -278,7 +270,6 @@ export default function DraftManager({
           alert('이미 기안서가 작성된 교육계획입니다.');
         } catch (_) {}
         
-        // Reset draft details to prevent creating duplicate content
         const nextId = generateDraftIdForDate(draftDate);
         setDraftId(nextId);
         setDepartment('');
@@ -290,8 +281,6 @@ export default function DraftManager({
         return;
       }
     } else {
-      // It's a brand new draft for this plan (no existing draft exists for it)
-      // Only reset/clean inputs if we are in new draft mode, so we don't clear an active edit session
       if (editingDraftIndex === null) {
         const nextId = generateDraftIdForDate(draftDate);
         setDraftId(nextId);
@@ -305,7 +294,6 @@ export default function DraftManager({
     }
   };
 
-  // Load selected draft for editing from history
   const handleSelectDraftForEdit = (draft: EducationDraft, index: number) => {
     setEditingDraftIndex(index);
     setSelectedPlanId(draft.plan_id);
@@ -316,14 +304,14 @@ export default function DraftManager({
     setPosition(parts.pos);
     setDrafterName(parts.name);
 
-    setDraftDate(draft.draft_date);
+    const rawDate = draft.draft_date || '';
+    setDraftDate(rawDate.split('T')[0].split(' ')[0]);
     setPurpose(draft.purpose);
     setContentSummary(draft.content_summary);
     setBudgetBreakdown(draft.budget_breakdown);
     setErrors({});
   };
 
-  // Reset form to start a new draft
   const handleResetForm = () => {
     setEditingDraftIndex(null);
     setSelectedPlanId('');
@@ -338,24 +326,19 @@ export default function DraftManager({
     setErrors({});
   };
 
-  // Delete draft helper using draftId with instant optimistic UI update
   const handleDeleteDraft = (draftId: string) => {
-    // 1. Find target index in original state array before filtering
     const targetIndex = drafts.findIndex((d) => d.id === draftId || (d as any).draft_id === draftId);
     
-    // 2. Immediate optimistic update on the frontend
     if (setDrafts) {
       setDrafts((prev) => prev.filter((d) => d.id !== draftId && (d as any).draft_id !== draftId));
     }
     
-    // 3. Clear editing form if the current form was editing the deleted draft
     if (editingDraftIndex === targetIndex && targetIndex !== -1) {
       handleResetForm();
     } else if (editingDraftIndex !== null && targetIndex !== -1 && targetIndex < editingDraftIndex) {
       setEditingDraftIndex((prev) => (prev !== null ? prev - 1 : null));
     }
 
-    // 4. Delegate server action in the background
     if (targetIndex !== -1) {
       onDeleteDraft(targetIndex).catch((err) => {
         console.error('Failed to sync deletion on spreadsheet:', err);
@@ -364,17 +347,14 @@ export default function DraftManager({
     }
   };
 
-  // High-reliability print handler that detects iframe environments and provides solutions
   const handlePrint = () => {
     const isIframe = window.self !== window.top;
     if (isIframe) {
-      console.warn('Iframe sandbox detected. Showing instructions for secure print.');
       setShowPrintIframeWarning(true);
     } else {
       try {
         window.print();
       } catch (err) {
-        console.error('Print blocked or failed:', err);
         setShowPrintIframeWarning(true);
       }
     }
@@ -385,27 +365,31 @@ export default function DraftManager({
     if (!selectedPlanId) {
       newErrors.selectedPlanId = '연관 교육 계획을 선택해주세요.';
     } else {
-      // Check if another draft already has this plan_id
       if (editingDraftIndex === null) {
         const existingDraft = drafts.find((d) => d.plan_id === selectedPlanId);
         if (existingDraft) {
           newErrors.selectedPlanId = '이미 기안서가 작성된 교육계획입니다.';
-          triggerLocalNotification('이미 기안서가 작성된 교육계획입니다.', 'error');
-          try {
-            alert('이미 기안서가 작성된 교육계획입니다.');
-          } catch (_) {}
+          alert('이미 기안서가 작성된 교육계획입니다.');
         }
       } else {
         const otherDraft = drafts.find((d, idx) => d.plan_id === selectedPlanId && idx !== editingDraftIndex);
         if (otherDraft) {
           newErrors.selectedPlanId = '이미 기안서가 작성된 교육계획입니다.';
-          triggerLocalNotification('이미 기안서가 작성된 교육계획입니다.', 'error');
-          try {
-            alert('이미 기안서가 작성된 교육계획입니다.');
-          } catch (_) {}
+          alert('이미 기안서가 작성된 교육계획입니다.');
         }
       }
     }
+
+    // 💡 기안일자 <= 교육시작일 검증 (시차 개입을 완전히 차단하는 문자열 기반 정밀 비교)
+    if (draftDate && selectedPlan) {
+      const draftDateClean = draftDate.split('T')[0].split(' ')[0];
+      const eduDateClean = selectedPlan.date.split('T')[0].split(' ')[0];
+      if (draftDateClean > eduDateClean) {
+        newErrors.draftDate = '기안일자는 교육 시작일보다 같거나 먼저여야 합니다.';
+        alert('❌ 기안일자는 교육 시작일보다 같거나 먼저여야 합니다.');
+      }
+    }
+
     if (!draftId.trim()) newErrors.draftId = '기안서 번호를 입력해주세요.';
     if (!department.trim()) newErrors.department = '부서를 입력해주세요.';
     if (!position.trim()) newErrors.position = '직급을 입력해주세요.';
@@ -419,16 +403,18 @@ export default function DraftManager({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Save draft
   const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+
+    // 💡 [2중 기안 저장부 정밀 타격] 전송 페이로드에 UTC 타임스탬프가 붙지 않도록 완벽하게 날짜 가공 격리
+    const cleanDraftDate = draftDate.split('T')[0].split(' ')[0];
 
     const draftData: EducationDraft = {
       id: draftId.trim(),
       plan_id: selectedPlanId,
       drafter: drafter.trim(),
-      draft_date: draftDate,
+      draft_date: cleanDraftDate,
       purpose: purpose.trim(),
       content_summary: contentSummary.trim(),
       budget_breakdown: budgetBreakdown.trim(),
@@ -436,8 +422,8 @@ export default function DraftManager({
 
     if (editingDraftIndex !== null) {
       await onUpdateDraft(draftData, editingDraftIndex);
+      triggerLocalNotification('기안서 수정이 완료되었습니다.', 'success');
     } else {
-      // Check for duplicate draft ID
       if (drafts.some((d) => d.id === draftData.id)) {
         setErrors((prev) => ({
           ...prev,
@@ -450,18 +436,17 @@ export default function DraftManager({
         if (finalId) {
           setDraftId(finalId);
         }
+        triggerLocalNotification('기안서가 신규 저장되었습니다.', 'success');
       } catch (err) {
         console.error('Failed to add draft:', err);
       }
     }
   };
 
-  // Pre-fill a sample draft for convenience if there are plans
   const handleLoadSample = () => {
     if (plans.length === 0) return;
     const firstPlan = plans[0];
     
-    // Check if there is already a draft for this plan
     const existingIndex = drafts.findIndex((d) => d.plan_id === firstPlan.id);
     if (existingIndex !== -1) {
       handleSelectDraftForEdit(drafts[existingIndex], existingIndex);
@@ -491,17 +476,16 @@ export default function DraftManager({
     setEditingDraftIndex(null);
   };
 
-  // Display date formatting for corporate preview
   const getFormattedKoreanDate = (dateStr: string) => {
     if (!dateStr) return '';
-    const parts = dateStr.split('-');
+    let cleanDate = dateStr.split('T')[0].split(' ')[0];
+    const parts = cleanDate.split('-');
     if (parts.length !== 3) return dateStr;
     return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative w-full max-w-full box-border overflow-x-hidden">
-      {/* Local Toast Notification */}
       <AnimatePresence>
         {localNotification && (
           <motion.div
@@ -532,9 +516,8 @@ export default function DraftManager({
         )}
       </AnimatePresence>
 
-      {/* LEFT COLUMN: Input Form & History (5 cols) */}
+      {/* LEFT COLUMN */}
       <div className="lg:col-span-5 space-y-6 no-print">
-        {/* Sample Load Alert if empty */}
         {plans.length === 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs font-semibold text-amber-700 flex gap-2.5">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -547,7 +530,6 @@ export default function DraftManager({
           </div>
         )}
 
-        {/* Writing Form Panel */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5 space-y-5">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
@@ -558,7 +540,7 @@ export default function DraftManager({
               <button
                 type="button"
                 onClick={handleResetForm}
-                className="text-xs font-bold text-indigo-600 hover:underline animate-pulse"
+                className="text-xs font-bold text-indigo-600 hover:underline"
               >
                 신규 작성 전환
               </button>
@@ -576,14 +558,11 @@ export default function DraftManager({
           </div>
 
           <form onSubmit={handleSaveDraft} className="space-y-4">
-            {/* Plan Select */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-semibold text-gray-500">
                   1. 연관 교육 계획 선택 <span className="text-rose-500">*</span>
                 </label>
-                
-                {/* Category Filter segmented control */}
                 <div className="flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-bold">
                   {(['전체', '사내', '사외'] as const).map((cat) => (
                     <button
@@ -612,7 +591,7 @@ export default function DraftManager({
                 {plans
                   .filter((p) => {
                     if (planCategoryFilter === '전체') return true;
-                    if (p.id === selectedPlanId) return true; // Keep selected plan visible
+                    if (p.id === selectedPlanId) return true;
                     return p.category === planCategoryFilter;
                   })
                   .map((p) => (
@@ -643,7 +622,6 @@ export default function DraftManager({
               )}
             </div>
 
-            {/* Selected Plan Info Card (Read only) */}
             {selectedPlan && (
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs text-gray-600 flex justify-between items-center gap-4">
                 <div className="space-y-1.5 flex-1">
@@ -666,7 +644,6 @@ export default function DraftManager({
               </div>
             )}
 
-            {/* Step 2. 문서 번호 및 일자 (Grid 배치) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">
@@ -705,7 +682,6 @@ export default function DraftManager({
               </div>
             </div>
 
-            {/* Step 3. 작성자 정보 (3열 Grid 배치) */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                 3. 작성자 정보 <span className="text-rose-500">*</span>
@@ -715,16 +691,7 @@ export default function DraftManager({
                   <input
                     type="text"
                     value={department}
-                    onChange={(e) => {
-                      setDepartment(e.target.value);
-                      if (errors.department) {
-                        setErrors((prev) => {
-                          const copy = { ...prev };
-                          delete copy.department;
-                          return copy;
-                        });
-                      }
-                    }}
+                    onChange={(e) => setDepartment(e.target.value)}
                     placeholder="예: 관리팀"
                     className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
                   />
@@ -734,16 +701,7 @@ export default function DraftManager({
                   <input
                     type="text"
                     value={position}
-                    onChange={(e) => {
-                      setPosition(e.target.value);
-                      if (errors.position) {
-                        setErrors((prev) => {
-                          const copy = { ...prev };
-                          delete copy.position;
-                          return copy;
-                        });
-                      }
-                    }}
+                    onChange={(e) => setPosition(e.target.value)}
                     placeholder="예: 과장"
                     className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
                   />
@@ -753,16 +711,7 @@ export default function DraftManager({
                   <input
                     type="text"
                     value={drafterName}
-                    onChange={(e) => {
-                      setDrafterName(e.target.value);
-                      if (errors.drafterName) {
-                        setErrors((prev) => {
-                          const copy = { ...prev };
-                          delete copy.drafterName;
-                          return copy;
-                        });
-                      }
-                    }}
+                    onChange={(e) => setDrafterName(e.target.value)}
                     placeholder="예: 염지원"
                     className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
                   />
@@ -771,7 +720,6 @@ export default function DraftManager({
               </div>
             </div>
 
-            {/* Step 4. 교육 목적 */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                 4. 교육 목적 <span className="text-rose-500">*</span>
@@ -779,39 +727,20 @@ export default function DraftManager({
               <input
                 type="text"
                 value={purpose}
-                onChange={(e) => {
-                  setPurpose(e.target.value);
-                  if (errors.purpose) {
-                    setErrors((prev) => {
-                      const copy = { ...prev };
-                      delete copy.purpose;
-                      return copy;
-                    });
-                  }
-                }}
+                onChange={(e) => setPurpose(e.target.value)}
                 placeholder="예) 최신 클라우드 보안 아키텍처 역량 함양"
                 className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
               />
               {errors.purpose && <p className="text-xs text-rose-500 mt-1">{errors.purpose}</p>}
             </div>
 
-            {/* Step 5. 메인 내용 요약 */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                 5. 교육내용 요약 (6. 교육내용 요약) <span className="text-rose-500">*</span>
               </label>
               <textarea
                 value={contentSummary}
-                onChange={(e) => {
-                  setContentSummary(e.target.value);
-                  if (errors.contentSummary) {
-                    setErrors((prev) => {
-                      const copy = { ...prev };
-                      delete copy.contentSummary;
-                      return copy;
-                    });
-                  }
-                }}
+                onChange={(e) => setContentSummary(e.target.value)}
                 placeholder="상세 교육 커리큘럼, 내용 개요 등을 기재해 주세요..."
                 rows={8}
                 className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all resize-y"
@@ -821,23 +750,13 @@ export default function DraftManager({
               )}
             </div>
 
-            {/* Step 6. 상세 내역 및 효과 */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                 6. 소요예산 상세내역 (7. 소요예산 상세내역) <span className="text-rose-500">*</span>
               </label>
               <textarea
                 value={budgetBreakdown}
-                onChange={(e) => {
-                  setBudgetBreakdown(e.target.value);
-                  if (errors.budgetBreakdown) {
-                    setErrors((prev) => {
-                      const copy = { ...prev };
-                      delete copy.budgetBreakdown;
-                      return copy;
-                    });
-                  }
-                }}
+                onChange={(e) => setBudgetBreakdown(e.target.value)}
                 placeholder="예) 1. 교육 수강료: ₩1,200,000 (1인)\n2. 교통비 및 식대: 지원 없음..."
                 rows={3}
                 className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all resize-y"
@@ -847,7 +766,6 @@ export default function DraftManager({
               )}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-2 border-t border-gray-100 pt-4 mt-6">
               <button
                 type="submit"
@@ -867,7 +785,7 @@ export default function DraftManager({
               <button
                 type="button"
                 onClick={handlePrint}
-                className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-4 py-3 transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-pulse"
+                className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-4 py-3 transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Printer className="w-4 h-4 text-gray-500" />
                 <span>기안서 출력</span>
@@ -876,7 +794,6 @@ export default function DraftManager({
           </form>
         </div>
 
-        {/* Saved Drafts History Panel */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5">
           <h3 className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2.5 mb-3 flex items-center gap-2">
             <FileText className="w-4.5 h-4.5 text-emerald-500" />
@@ -910,7 +827,7 @@ export default function DraftManager({
                         <span>•</span>
                         <span>기안자: {d.drafter}</span>
                       </div>
-                      <p className="text-[10px] text-gray-400">기안일: {d.draft_date}</p>
+                      <p className="text-[10px] text-gray-400">기안일: {d.draft_date ? d.draft_date.split('T')[0] : ''}</p>
                     </div>
 
                     <button
@@ -932,28 +849,23 @@ export default function DraftManager({
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Real-Time Preview Area (7 cols) */}
+      {/* RIGHT COLUMN */}
       <div className="lg:col-span-7 flex flex-col items-center">
-        {/* Scrollable container for preview on screen */}
         <div
           id="print-area-wrapper"
           className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border"
         >
-          {/* THE HOVER A4 PRINT PAPER SHEETS */}
           <div
             id="print-area"
             className="w-full max-w-[210mm] h-auto min-h-0 p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden"
             style={{ boxSizing: 'border-box' }}
           >
-            {/* Header Area */}
             <div>
               <div className="flex justify-between items-start mb-4">
-                {/* Spacer or Left corner header */}
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">
                   {draftId || 'DSEDU-YYYYMMDD-XXX'}
                 </div>
 
-                {/* APPROVAL STAMP GRIDS (결재방) */}
                 <table className="approval-table border-collapse border border-black text-center text-xs w-[180px]" style={{ borderCollapse: 'collapse', border: '1px solid #000000' }}>
                   <tbody>
                     <tr className="border-b border-black">
@@ -973,230 +885,102 @@ export default function DraftManager({
                 </table>
               </div>
 
-              {/* Central Title */}
               <div className="text-center mb-10">
                 <h1 className="text-2xl font-black tracking-[0.8em] border-b-2 border-double border-black pb-2 inline-block pl-[0.8em]">
                   교 육 기 안 서
                 </h1>
               </div>
 
-              {/* Meta Grid Corporate Table */}
               <table className="w-full border-collapse border border-black text-xs mb-3">
                 <tbody>
-                  {/* Row 1: Draft Number & Drafter */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">기안번호</td>
                     <td className="border-r border-black p-2.5 w-[32%]">{draftId || '(기안 완료 시 부여)'}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">기안자</td>
                     <td className="p-2.5 w-[32%]">
-                      {drafterName ? (
-                        `${department} ${position} ${drafterName}`.trim()
-                      ) : (
-                        '(기안서 입력)'
-                      )}
+                      {drafterName ? `${department} ${position} ${drafterName}`.trim() : '(기안서 입력)'}
                     </td>
                   </tr>
-
-                  {/* Row 2: Draft Date & Category */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">기안일자</td>
                     <td className="border-r border-black p-2.5">{getFormattedKoreanDate(draftDate)}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육구분</td>
-                    <td className="p-2.5">
-                      {selectedPlan ? (
-                        <span className="font-bold">[{selectedPlan.category} 교육]</span>
-                      ) : (
-                        ''
-                      )}
-                    </td>
+                    <td className="p-2.5">{selectedPlan ? <span className="font-bold">[{selectedPlan.category} 교육]</span> : ''}</td>
                   </tr>
-
-                  {/* Row 3: Course Title */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교 육 명</td>
-                    <td colSpan={3} className="p-2.5 font-bold text-sm bg-gray-50/10">
-                      {selectedPlan ? selectedPlan.title : '(연관교육계획 선택 필요)'}
-                    </td>
+                    <td colSpan={3} className="p-2.5 font-bold text-sm bg-gray-50/10">{selectedPlan ? selectedPlan.title : '(연관교육계획 선택 필요)'}</td>
                   </tr>
-
-                  {/* Row 4: Institution & Instructor */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
                     <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.institution : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
                     <td className="p-2.5">{selectedPlan ? selectedPlan.instructor : ''}</td>
                   </tr>
-
-                  {/* Row 5: Target Group & Dates */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
                     <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date} (${selectedPlan.schedule})` : ''}</td>
+                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule})` : ''}</td>
                   </tr>
-
-                  {/* Row 6: Duration & Cost */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육시간</td>
-                    <td className="border-r border-black p-2.5">
-                      {selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.hours}시간)` : ''}
-                    </td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.hours}시간)` : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">예상소요비용</td>
-                    <td className="p-2.5 font-bold">
-                      {selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}
-                    </td>
+                    <td className="p-2.5 font-bold">{selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}</td>
                   </tr>
-
-                  {/* Row 7: Purpose */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed">
-                      {purpose || '(교육 목적 기재)'}
-                    </td>
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed">{purpose || '(교육 목적 기재)'}</td>
                   </tr>
-
-                  {/* Row 8: Content Summary */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육요약 및<br />상세내용</td>
                     <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                      <div className="min-h-[240px] w-full">
-                        {contentSummary || '(교육 개요 및 커리큘럼 요약 기재)'}
-                      </div>
+                      <div className="min-h-[240px] w-full">{contentSummary || '(교육 개요 및 커리큘럼 요약 기재)'}</div>
                     </td>
                   </tr>
-
-                  {/* Row 9: Budget Breakdown */}
                   <tr>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">예산상세내역</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] min-h-[80px] align-top">
-                      {budgetBreakdown || '(지출 품목, 한도 및 산출 내역 기재)'}
-                    </td>
+                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] min-h-[80px] align-top">{budgetBreakdown || '(지출 품목, 한도 및 산출 내역 기재)'}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            {/* Bottom Signature / Footer Area */}
             <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1.5 pb-0">
               <p className="text-[11px] sm:text-xs text-gray-500 tracking-tight leading-relaxed mb-2 print:mb-1.5 font-medium max-w-[95%] mx-auto">
                 위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 교육 과정을 수행코자 하오니,<br />
                 검토 후 재가하여 주시기 바랍니다.
               </p>
-
-              <p className="text-[11px] sm:text-xs font-bold text-gray-700 tracking-wider mb-2 print:mb-1.5">
-                {getFormattedKoreanDate(draftDate)}
-              </p>
-
+              <p className="text-[11px] sm:text-xs font-bold text-gray-700 tracking-wider mb-2 print:mb-1.5">{getFormattedKoreanDate(draftDate)}</p>
               <div className="flex flex-col items-center">
-                <p className="text-sm sm:text-md font-extrabold text-gray-900 leading-none">
-                  (주)대성스틸
-                </p>
+                <p className="text-sm sm:text-md font-extrabold text-gray-900 leading-none">(주)대성스틸</p>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Banner with helpful tips */}
-        <div className="w-full bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mt-4 text-xs text-indigo-800 no-print">
-          <div className="flex gap-2.5 items-start">
-            <Printer className="w-4.5 h-4.5 shrink-0 text-indigo-500 mt-0.5" />
-            <div>
-              <p className="font-bold">🖨️ 최적화된 1페이지 인쇄 가이드</p>
-              <p className="mt-1 leading-relaxed font-medium">
-                '기안서 출력'을 클릭하면 배경, 사이드바 등 불필요한 영역은 모두 숨겨지고 아래 A4 기안서 양식만 출력창에 맞춰 정갈하게 인쇄됩니다.
-              </p>
-              <p className="mt-1.5 text-[11px] text-gray-500 leading-relaxed">
-                Tip 1: 브라우저 인쇄 옵션에서 <span className="font-semibold text-indigo-700">'배경 그래픽 인쇄'</span>를 체크하시면 표 머리글 배경색과 테두리 레이아웃이 원본 그대로 완벽하게 인쇄됩니다.<br />
-                Tip 2: 만약 구글 크롬 등 브라우저 보안 정책(iframe sandbox)에 의해 출력창이 팝업되지 않을 경우, 우측 상단의 <span className="font-semibold text-indigo-700">'새 창에서 열기(Open in new tab)'</span>를 통해 새 창으로 접속하시면 정상적으로 출력창이 실행됩니다.
-              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation */}
       <AnimatePresence>
         {deleteTargetId !== null && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="bg-white rounded-2xl border border-gray-100 p-6 max-w-sm w-full shadow-2xl space-y-4 text-center"
+              className="bg-white rounded-2xl p-6 max-w-sm w-full text-center space-y-4"
             >
               <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-500">
                 <Trash2 className="w-6 h-6" />
               </div>
-              <div className="space-y-1.5">
+              <div>
                 <h4 className="text-sm font-bold text-gray-800">삭제하시겠습니까?</h4>
-                <p className="text-xs text-gray-400">
-                  삭제된 기안서 정보는 복구할 수 없으며, 구글 스프레드시트에서도 즉시 동기화되어 지워집니다.
-                </p>
+                <p className="text-xs text-gray-400 mt-1">구글 스프레드시트에서도 즉시 삭제됩니다.</p>
               </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setDeleteTargetId(null)}
-                  className="flex-1 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold py-2.5 transition-all cursor-pointer"
-                >
-                  아니요
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleDeleteDraft(deleteTargetId);
-                    setDeleteTargetId(null);
-                  }}
-                  className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 transition-all cursor-pointer"
-                >
-                  확인
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Iframe Sandbox Print Warning Modal */}
-      <AnimatePresence>
-        {showPrintIframeWarning && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="bg-white rounded-2xl border border-gray-100 p-6 max-w-md w-full shadow-2xl space-y-4 text-center"
-            >
-              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto text-indigo-500">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1.5">
-                <h4 className="text-sm font-bold text-gray-800">보안 및 브라우저 환경 안내</h4>
-                <p className="text-xs text-gray-500 leading-relaxed text-left bg-gray-50 p-3.5 rounded-xl border border-gray-150">
-                  현재 AI Studio 미리보기 창(Iframe Sandbox) 내부에서는 브라우저 보안 규정으로 인해 <span className="font-semibold text-rose-600">인쇄 팝업을 직접 열 수 없습니다.</span><br /><br />
-                  인쇄를 정상적으로 진행하려면 우측 상단의 <span className="font-semibold text-indigo-600">[새 창에서 열기 (Open in new tab)]</span> 아이콘을 클릭하여 새 탭에서 접속해 주시기 바랍니다. 아래 버튼을 클릭하여 바로 새 창으로 이동하실 수도 있습니다.
-                </p>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPrintIframeWarning(false)}
-                  className="flex-1 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold py-2.5 transition-all cursor-pointer"
-                >
-                  닫기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.open(window.location.href, '_blank');
-                    setShowPrintIframeWarning(false);
-                  }}
-                  className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 transition-all cursor-pointer"
-                >
-                  새 창으로 열기 (인쇄 실행)
-                </button>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setDeleteTargetId(null)} className="flex-1 rounded-xl border border-gray-200 py-2 text-xs font-bold">아니요</button>
+                <button type="button" onClick={() => { handleDeleteDraft(deleteTargetId); setDeleteTargetId(null); }} className="flex-1 rounded-xl bg-rose-600 text-white text-xs font-bold py-2">확인</button>
               </div>
             </motion.div>
           </div>
