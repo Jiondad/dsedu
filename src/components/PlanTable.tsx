@@ -26,6 +26,7 @@ interface PlanTableProps {
   plans: EducationPlan[];
   drafts: EducationDraft[];
   reports?: EducationReport[];
+  selectedYear?: string;
   onEdit: (plan: EducationPlan, index: number) => void;
   onDelete: (index: number) => void;
   onStartDraft: (plan: EducationPlan) => void;
@@ -36,6 +37,7 @@ export default function PlanTable({
   plans,
   drafts,
   reports = [],
+  selectedYear,
   onEdit,
   onDelete,
   onStartDraft,
@@ -189,7 +191,7 @@ export default function PlanTable({
       {/* 인쇄 전용 헤더 */}
       <div className="hidden print:block mb-6 w-full">
         <div className="flex justify-between items-baseline border-b-2 border-slate-800 pb-2.5">
-          <h1 className="text-lg font-black text-slate-900">대성스틸 연간 교육 계획 목록</h1>
+          <h1 className="text-lg font-black text-slate-900">{selectedYear ? `${selectedYear}년도 ` : ''}대성스틸 연간 교육 계획 목록</h1>
           <span className="text-xs text-slate-500 font-mono font-bold">
             출력일자: {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
           </span>

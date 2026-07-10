@@ -44,6 +44,18 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
+  // System Year Filter (Default to current year)
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+
+  // Dynamic Year Array Generation (2025 to currentYear + 1)
+  const startYear = 2025;
+  const currentYear = new Date().getFullYear();
+  const endYear = currentYear + 1;
+  const years = Array.from(
+    { length: endYear - startYear + 1 },
+    (_, i) => String(startYear + i)
+  );
+
   // Sheets DB state
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
   const [plans, setPlans] = useState<EducationPlan[]>([]);
@@ -91,15 +103,15 @@ export default function App() {
     }, 4000);
   };
 
-  // Load configuration and data on mount
+  // Load configuration and data on mount & year change
   useEffect(() => {
     const config = getSpreadsheetConfig();
     setSpreadsheetId(config.spreadsheetId);
     setSettingsSpreadsheetId(config.spreadsheetId);
     setSettingsApiKey(config.apiKey);
     
-    initializeSheetsDB(null);
-  }, []);
+    initializeSheetsDB(null, selectedYear);
+  }, [selectedYear]);
 
   // Sync settings inputs when settings open
   useEffect(() => {
@@ -111,7 +123,7 @@ export default function App() {
   }, [isSettingsOpen]);
 
 // ⚡ 속도 개선판: Sheets DB Setup Flow (병렬 비동기 처리)
-  const initializeSheetsDB = async (accessToken: string | null = null) => {
+  const initializeSheetsDB = async (accessToken: string | null = null, year: string = selectedYear) => {
     setIsLoading(true);
     setLoadingStep('구글 클라우드 DB로부터 마스터 데이터를 동기화하는 중입니다...');
     setErrorMsg(null);
@@ -122,9 +134,9 @@ export default function App() {
 
       // 💡 핵심: 3개의 fetch 요청을 구글 서버에 동시에 한 번에 던집니다! (비동기 병렬 처리)
       const [fetchedPlans, fetchedDrafts, fetchedReports] = await Promise.all([
-        fetchPlans(sheetId, accessToken),
-        fetchDrafts(sheetId, accessToken),
-        fetchReports(sheetId, accessToken)
+        fetchPlans(sheetId, accessToken, year),
+        fetchDrafts(sheetId, accessToken, year),
+        fetchReports(sheetId, accessToken, year)
       ]);
 
       // 한 번에 도착한 데이터를 각각의 상태 주머니에 쏙 집어넣기
@@ -167,13 +179,13 @@ export default function App() {
       const sheetId = spreadsheetId || config.spreadsheetId;
       setSpreadsheetId(sheetId);
 
-      const fetched = await fetchPlans(sheetId, null);
+      const fetched = await fetchPlans(sheetId, null, selectedYear);
       setPlans(fetched);
 
-      const fetchedDrafts = await fetchDrafts(sheetId, null);
+      const fetchedDrafts = await fetchDrafts(sheetId, null, selectedYear);
       setDrafts(fetchedDrafts);
 
-      const fetchedReports = await fetchReports(sheetId, null);
+      const fetchedReports = await fetchReports(sheetId, null, selectedYear);
       setReports(fetchedReports);
 
       triggerNotification('성공적으로 동기화되었습니다.', 'success');
@@ -210,7 +222,7 @@ export default function App() {
       triggerNotification('교육 계획이 수정되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
       try {
-        await updatePlan(activeSheetId, null, updatedPlan, index);
+        await updatePlan(activeSheetId, null, updatedPlan, index, selectedYear);
       } catch (err) {
         console.error('업데이트 동기화 실패:', err);
         setPlans(originalPlans); // Revert
@@ -229,7 +241,7 @@ export default function App() {
       triggerNotification('새 교육 계획이 등록되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
       try {
-        await addPlan(activeSheetId, null, newPlan);
+        await addPlan(activeSheetId, null, newPlan, selectedYear);
       } catch (err) {
         console.error('추가 동기화 실패:', err);
         setPlans(originalPlans); // Revert
@@ -251,7 +263,7 @@ export default function App() {
     triggerNotification('교육 계획이 삭제되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await deletePlan(activeSheetId, null, index);
+      await deletePlan(activeSheetId, null, index, undefined, selectedYear);
     } catch (err) {
       console.error('삭제 동기화 실패:', err);
       setPlans(originalPlans); // Revert
@@ -270,7 +282,7 @@ export default function App() {
 
     try {
       // 1. Fetch absolute latest drafts to ensure no sequence numbering overlaps
-      const latestDrafts = await fetchDrafts(activeSheetId, null);
+      const latestDrafts = await fetchDrafts(activeSheetId, null, selectedYear);
       
       // 2. Generate the unique sequential draft ID
       const draftDate = newDraft.draft_date;
@@ -311,7 +323,7 @@ export default function App() {
 
       setLoadingStep('기안서를 저장하는 중입니다...');
       // 4. Save to remote Google Sheet
-      await addDraft(activeSheetId, null, finalizedDraft);
+      await addDraft(activeSheetId, null, finalizedDraft, selectedYear);
       triggerNotification(`기안서가 저장되었습니다. (기안번호: ${finalId})`, 'success');
 
       return finalId;
@@ -336,7 +348,7 @@ export default function App() {
     triggerNotification('기안서가 수정되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await updateDraft(activeSheetId, null, updatedDraft, index);
+      await updateDraft(activeSheetId, null, updatedDraft, index, selectedYear);
     } catch (err) {
       console.error('기안서 수정 동기화 실패:', err);
       setDrafts(originalDrafts); // Revert
@@ -354,7 +366,7 @@ export default function App() {
     triggerNotification('기안서가 삭제되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await deleteDraft(activeSheetId, null, index);
+      await deleteDraft(activeSheetId, null, index, undefined, selectedYear);
     } catch (err) {
       console.error('기안서 삭제 동기화 실패:', err);
       setDrafts(originalDrafts); // Revert
@@ -373,7 +385,7 @@ export default function App() {
 
     try {
       // 1. Fetch latest reports
-      const latestReports = await fetchReports(activeSheetId, null);
+      const latestReports = await fetchReports(activeSheetId, null, selectedYear);
 
       // 2. Determine non-duplicate Report ID
       let finalId = newReport.id;
@@ -429,7 +441,7 @@ export default function App() {
 
       setLoadingStep('결과보고서를 저장하는 중입니다...');
       // 4. Save to remote Google Sheet
-      await addReport(activeSheetId, null, finalizedReport);
+      await addReport(activeSheetId, null, finalizedReport, selectedYear);
       triggerNotification(`결과보고서가 저장되었습니다. (보고서번호: ${finalUniqueId})`, 'success');
 
       return finalUniqueId;
@@ -454,7 +466,7 @@ export default function App() {
     triggerNotification('결과보고서가 수정되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await updateReport(activeSheetId, null, updatedReport, index);
+      await updateReport(activeSheetId, null, updatedReport, index, selectedYear);
     } catch (err) {
       console.error('결과보고서 수정 동기화 실패:', err);
       setReports(originalReports); // Revert
@@ -472,7 +484,7 @@ export default function App() {
     triggerNotification('결과보고서가 삭제되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await deleteReport(activeSheetId, null, index);
+      await deleteReport(activeSheetId, null, index, undefined, selectedYear);
     } catch (err) {
       console.error('결과보고서 삭제 동기화 실패:', err);
       setReports(originalReports); // Revert
@@ -537,6 +549,21 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3 self-stretch sm:self-auto justify-end">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-500">조회 연도:</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl py-1.5 px-3 text-xs font-semibold focus:outline-none cursor-pointer"
+              >
+                {years.map((yr) => (
+                  <option key={yr} value={yr}>
+                    {yr}년
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <button
               onClick={handleResync}
               disabled={isLoading}
@@ -667,6 +694,7 @@ export default function App() {
                       plans={plans}
                       drafts={drafts}
                       reports={reports}
+                      selectedYear={selectedYear}
                       onEdit={handleOpenEditModal}
                       onDelete={handleDeletePlan}
                       onStartDraft={handleStartDraft}

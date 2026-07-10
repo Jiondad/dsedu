@@ -3,6 +3,36 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * 💡 [백엔드 Apps Script 연동 가이드]
+ * 구글 앱스 스크립트(Google Apps Script)가 e.parameter.year를 수신하여 "tab_name_" + year 형태로 동적 시트 조회를 수행할 수 있는 가이드입니다.
+ * 
+ * [GET (doGet) 처리 예시]
+ * function doGet(e) {
+ *   const year = e.parameter.year || "2026"; // 기본값 지정
+ *   const sheetName = e.parameter.sheetName; // 예: annual_plans, education_drafts, education_reports
+ *   const targetSheetName = sheetName + "_" + year; // 동적 시트 이름 구성 (예: annual_plans_2026)
+ *   
+ *   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+ *   let sheet = ss.getSheetByName(targetSheetName);
+ *   if (!sheet) {
+ *     // 시트가 존재하지 않으면 새로 생성하거나 기존 시트를 fallback으로 사용 가능
+ *     sheet = ss.getSheetByName(sheetName); 
+ *   }
+ *   ...
+ * }
+ * 
+ * [POST (doPost) 처리 예시]
+ * function doPost(e) {
+ *   const year = e.parameter.year || "2026"; // URL 파라미터로 넘어오는 year 수신
+ *   const postData = JSON.parse(e.postData.contents);
+ *   const yearFromBody = postData.year || year; // payload 내부의 year도 함께 대조
+ *   const sheetName = postData.sheetName;
+ *   const targetSheetName = sheetName + "_" + yearFromBody;
+ *   ...
+ * }
+ */
+
 import { EducationPlan, EducationDraft, EducationReport } from './types';
 import {
   mapRowToPlan,
@@ -63,9 +93,10 @@ export async function findOrCreateSpreadsheet(accessToken?: string | null): Prom
 
 export async function fetchPlans(
   spreadsheetId: string,
-  accessToken?: string | null
+  accessToken?: string | null,
+  year?: string
 ): Promise<EducationPlan[]> {
-  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_NAME}`;
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_NAME}${year ? `&year=${year}` : ''}`;
 
   try {
     const response = await fetch(url);
@@ -97,11 +128,12 @@ export async function fetchPlans(
   }
 }
 
-export async function addPlan(spreadsheetId: string, accessToken: string | null, plan: any): Promise<void> {
+export async function addPlan(spreadsheetId: string, accessToken: string | null, plan: any, year?: string): Promise<void> {
   try {
     const payload = {
       action: 'create',
       sheetName: SHEET_TAB_NAME,
+      year: year || '',
       id: plan.id || '',
       date: plan.date || plan.edu_date || '',
       category: plan.category || '',
@@ -115,7 +147,8 @@ export async function addPlan(spreadsheetId: string, accessToken: string | null,
       cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
     };
 
-    const response = await fetch(API_URL, {
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
@@ -125,12 +158,13 @@ export async function addPlan(spreadsheetId: string, accessToken: string | null,
   } catch (err) { console.error(err); throw err; }
 }
 
-export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: any, rowIndex: number): Promise<void> {
+export async function updatePlan(spreadsheetId: string, accessToken: string | null, plan: any, rowIndex: number, year?: string): Promise<void> {
   try {
     const payload = {
       action: 'update',
       sheetName: SHEET_TAB_NAME,
       rowIndex: rowIndex,
+      year: year || '',
       id: plan.id || '',
       date: plan.date || plan.edu_date || '',
       category: plan.category || '',
@@ -144,7 +178,8 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
       cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
     };
 
-    const response = await fetch(API_URL, {
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
@@ -154,16 +189,18 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
   } catch (err) { console.error(err); throw err; }
 }
 
-export async function deletePlan(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string): Promise<void> {
+export async function deletePlan(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string, year?: string): Promise<void> {
   try {
-    const response = await fetch(API_URL, {
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ 
         action: 'delete', 
         sheetName: SHEET_TAB_NAME, 
         rowIndex: rowIndex,
-        id: id
+        id: id,
+        year: year || ''
       }),
     });
     if (!response.ok) throw new Error('Network response was not ok');
@@ -176,8 +213,8 @@ export async function deletePlan(spreadsheetId: string, accessToken: string | nu
 // 2. 교육 기안서 (education_drafts) - 조회 / 추가 / 수정 / 삭제
 // ============================================================================
 
-export async function fetchDrafts(spreadsheetId: string, accessToken?: string | null): Promise<EducationDraft[]> {
-  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_DRAFT_NAME}`;
+export async function fetchDrafts(spreadsheetId: string, accessToken?: string | null, year?: string): Promise<EducationDraft[]> {
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_DRAFT_NAME}${year ? `&year=${year}` : ''}`;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Drafts fetch failed');
@@ -215,11 +252,12 @@ export async function fetchDrafts(spreadsheetId: string, accessToken?: string | 
   }
 }
 
-export async function addDraft(spreadsheetId: string, accessToken: string | null, draft: any): Promise<void> {
+export async function addDraft(spreadsheetId: string, accessToken: string | null, draft: any, year?: string): Promise<void> {
   try {
     const payload = {
       action: 'create',
       sheetName: SHEET_TAB_DRAFT_NAME,
+      year: year || '',
       id: draft.id || '',
       plan_id: draft.plan_id || '',
       draft_date: draft.draft_date || '',
@@ -229,7 +267,8 @@ export async function addDraft(spreadsheetId: string, accessToken: string | null
       budget_breakdown: draft.budget_breakdown || ''
     };
 
-    const response = await fetch(API_URL, { 
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, { 
        method: 'POST', 
        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
        body: JSON.stringify(payload) 
@@ -239,12 +278,13 @@ export async function addDraft(spreadsheetId: string, accessToken: string | null
   } catch (err) { console.error('addDraft 실패:', err); throw err; }
 }
 
-export async function updateDraft(spreadsheetId: string, accessToken: string | null, draft: any, rowIndex: number): Promise<void> {
+export async function updateDraft(spreadsheetId: string, accessToken: string | null, draft: any, rowIndex: number, year?: string): Promise<void> {
   try {
     const payload = {
       action: 'update',
       sheetName: SHEET_TAB_DRAFT_NAME,
       rowIndex: rowIndex,
+      year: year || '',
       id: draft.id || '',
       plan_id: draft.plan_id || '',
       draft_date: draft.draft_date || '',
@@ -254,7 +294,8 @@ export async function updateDraft(spreadsheetId: string, accessToken: string | n
       budget_breakdown: draft.budget_breakdown || ''
     };
 
-    const response = await fetch(API_URL, { 
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, { 
        method: 'POST', 
        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
        body: JSON.stringify(payload) 
@@ -264,12 +305,13 @@ export async function updateDraft(spreadsheetId: string, accessToken: string | n
   } catch (err) { console.error('updateDraft 실패:', err); throw err; }
 }
 
-export async function deleteDraft(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string): Promise<void> {
+export async function deleteDraft(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string, year?: string): Promise<void> {
   try { 
-    await fetch(API_URL, { 
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    await fetch(url, { 
       method: 'POST', 
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-      body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex, id }) 
+      body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex, id, year: year || '' }) 
     }); 
   } catch (err) { console.error('deleteDraft 실패:', err); throw err; }
 }
@@ -278,8 +320,8 @@ export async function deleteDraft(spreadsheetId: string, accessToken: string | n
 // 3. 결과 보고서 (education_reports) - 조회 / 추가 / 수정 / 삭제 (구조 통일 최적화)
 // ============================================================================
 
-export async function fetchReports(spreadsheetId: string, accessToken?: string | null): Promise<EducationReport[]> {
-  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_REPORT_NAME}`;
+export async function fetchReports(spreadsheetId: string, accessToken?: string | null, year?: string): Promise<EducationReport[]> {
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_REPORT_NAME}${year ? `&year=${year}` : ''}`;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Reports fetch failed');
@@ -290,14 +332,16 @@ export async function fetchReports(spreadsheetId: string, accessToken?: string |
   } catch (err) { console.error(err); return []; }
 }
 
-export async function addReport(spreadsheetId: string, accessToken: string | null, report: any): Promise<void> {
+export async function addReport(spreadsheetId: string, accessToken: string | null, report: any, year?: string): Promise<void> {
   try { 
-    const response = await fetch(API_URL, { 
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, { 
       method: 'POST', 
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
       body: JSON.stringify({ 
         action: 'create',
         sheetName: SHEET_TAB_REPORT_NAME, 
+        year: year || '',
         ...report 
       }) 
     }); 
@@ -306,15 +350,17 @@ export async function addReport(spreadsheetId: string, accessToken: string | nul
   } catch (err) { console.error('addReport 실패:', err); throw err; }
 }
 
-export async function updateReport(spreadsheetId: string, accessToken: string | null, report: any, rowIndex: number): Promise<void> {
+export async function updateReport(spreadsheetId: string, accessToken: string | null, report: any, rowIndex: number, year?: string): Promise<void> {
   try { 
-    const response = await fetch(API_URL, { 
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, { 
       method: 'POST', 
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
       body: JSON.stringify({ 
         action: 'update', 
         sheetName: SHEET_TAB_REPORT_NAME, 
         rowIndex, 
+        year: year || '',
         ...report 
       }) 
     }); 
@@ -323,16 +369,18 @@ export async function updateReport(spreadsheetId: string, accessToken: string | 
   } catch (err) { console.error('updateReport 실패:', err); throw err; }
 }
 
-export async function deleteReport(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string): Promise<void> {
+export async function deleteReport(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string, year?: string): Promise<void> {
   try { 
-    const response = await fetch(API_URL, { 
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, { 
       method: 'POST', 
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
       body: JSON.stringify({ 
         action: 'delete', 
         sheetName: SHEET_TAB_REPORT_NAME, 
         rowIndex,
-        id
+        id,
+        year: year || ''
       }) 
     }); 
     const res = await response.json();
