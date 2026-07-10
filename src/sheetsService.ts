@@ -180,7 +180,7 @@ export async function deletePlan(spreadsheetId: string, accessToken: string | nu
 }
 
 // ============================================================================
-// 2. 교육 기안서 (education_drafts) - 조회 / 추가 / 수정 / 삭제
+// 2. 교육 기안서 (education_drafts) - 조회 / 추가 / 수정 / 삭제 (최종 완료판)
 // ============================================================================
 
 export async function fetchDrafts(spreadsheetId: string, accessToken?: string | null): Promise<EducationDraft[]> {
@@ -195,16 +195,65 @@ export async function fetchDrafts(spreadsheetId: string, accessToken?: string | 
   } catch (err) { console.error(err); return []; }
 }
 
-export async function addDraft(spreadsheetId: string, accessToken: string | null, draft: EducationDraft): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sheetName: SHEET_TAB_DRAFT_NAME, ...draft }) }); } catch (err) { console.error(err); }
+export async function addDraft(spreadsheetId: string, accessToken: string | null, draft: any): Promise<void> {
+  try {
+    // 💡 팩트 체크된 진짜 영문 필드명으로만 규격화하여 구글 백엔드로 전송
+    const payload = {
+      action: 'create',
+      sheetName: SHEET_TAB_DRAFT_NAME,
+      id: draft.id || '',
+      plan_id: draft.plan_id || '',
+      draft_date: draft.draft_date || '',
+      drafter: draft.drafter || '',
+      purpose: draft.purpose || '',
+      content_summary: draft.content_summary || '',
+      budget_breakdown: draft.budget_breakdown || ''
+    };
+
+    const response = await fetch(API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // 구글 웹앱 전용 안전 포맷
+      body: JSON.stringify(payload) 
+    });
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) { console.error('addDraft 실패:', err); }
 }
 
-export async function updateDraft(spreadsheetId: string, accessToken: string | null, draft: EducationDraft, rowIndex: number): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex, ...draft }) }); } catch (err) { console.error(err); }
+export async function updateDraft(spreadsheetId: string, accessToken: string | null, draft: any, rowIndex: number): Promise<void> {
+  try {
+    // 💡 수정 요청 시에도 동일하게 7개 고유 필드명 정밀 매핑 적용
+    const payload = {
+      action: 'update',
+      sheetName: SHEET_TAB_DRAFT_NAME,
+      rowIndex: rowIndex,
+      id: draft.id || '',
+      plan_id: draft.plan_id || '',
+      draft_date: draft.draft_date || '',
+      drafter: draft.drafter || '',
+      purpose: draft.purpose || '',
+      content_summary: draft.content_summary || '',
+      budget_breakdown: draft.budget_breakdown || ''
+    };
+
+    const response = await fetch(API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+      body: JSON.stringify(payload) 
+    });
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) { console.error('updateDraft 실패:', err); }
 }
 
 export async function deleteDraft(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex }) }); } catch (err) { console.error(err); }
+  try { 
+    await fetch(API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+      body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex }) 
+    }); 
+  } catch (err) { console.error('deleteDraft 실패:', err); }
 }
 
 // ============================================================================
