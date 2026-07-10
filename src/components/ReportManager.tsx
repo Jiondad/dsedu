@@ -856,16 +856,17 @@ export default function ReportManager({
             <style>{`
               @media print {
                 #print-area {
-                  max-width: 200mm !important; /* 오른쪽 테두리 잘림 완벽 방지 */
-                  width: 100% !important;
+                  max-width: 170mm !important; /* 오른쪽 테두리 잘림 완벽 방지 */
+                  width: 80% !important;
+                  margin: 0 auto !important;
                 }
                 #print-area table td {
                   padding: 14px 10px !important; /* 표 내부 행 높이를 여유 있게 조정 */
                 }
                 
                 /* 결과보고서 전용 인쇄 박스 높이 확보 */
-                .report-summary-box { min-height: 280px !important; }
-                .report-future-box { min-height: 150px !important; }
+                .report-summary-box { min-height: 195px !important; }
+                .report-future-box { min-height: 105px !important; }
               }
             `}</style>
             <div>

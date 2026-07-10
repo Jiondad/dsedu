@@ -829,16 +829,17 @@ export default function DraftManager({
             <style>{`
               @media print {
                 #print-area {
-                  max-width: 200mm !important; /* 오른쪽 테두리 잘림 완벽 방지 */
-                  width: 100% !important;
+                  max-width: 170mm !important; /* 오른쪽 테두리 잘림 완벽 방지 */
+                  width: 80% !important;
+                  margin: 0 auto !important;
                 }
                 #print-area table td {
                   padding: 14px 10px !important; /* 표 내부 행 높이를 여유 있게 조정 */
                 }
                 
                 /* 기안서 전용 인쇄 박스 높이 확보 */
-                .draft-summary-box { min-height: 380px !important; }
-                .draft-budget-box { min-height: 120px !important; }
+                .draft-summary-box { min-height: 250px !important; }
+                .draft-budget-box { min-height: 85px !important; }
               }
             `}</style>
             <div>
