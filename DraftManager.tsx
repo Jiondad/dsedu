@@ -118,12 +118,14 @@ export default function DraftManager({
   // Auto-generate sequential draft ID based on selected date and year-based sequence
   const generateDraftIdForDate = (date: string) => {
     if (!date) return '';
-    const year = date.substring(0, 4); // YYYY
-    const dateStr = date.replace(/-/g, ''); // YYYYMMDD
+    const cleanDate = date.split('T')[0].split(' ')[0];
+    const year = cleanDate.substring(0, 4); // YYYY
+    const dateStr = cleanDate.replace(/-/g, ''); // YYYYMMDD
 
     // Filter existing drafts that belong to the same year
     const sameYearDrafts = drafts.filter((d) => {
-      const dateMatch = d.draft_date && d.draft_date.substring(0, 4) === year;
+      const cleanDDate = d.draft_date ? d.draft_date.split('T')[0].split(' ')[0] : '';
+      const dateMatch = cleanDDate && cleanDDate.substring(0, 4) === year;
       const idMatch = d.id && (d.id.startsWith(`DSEDU-${year}`) || d.id.startsWith(`DSED-${year}`));
       return dateMatch || idMatch;
     });
@@ -193,7 +195,8 @@ export default function DraftManager({
           setPosition(parts.pos);
           setDrafterName(parts.name);
 
-          setDraftDate(existingDraft.draft_date);
+          const rawDate = existingDraft.draft_date || '';
+          setDraftDate(rawDate.split('T')[0].split(' ')[0]);
           setPurpose(existingDraft.purpose);
           setContentSummary(existingDraft.content_summary);
           setBudgetBreakdown(existingDraft.budget_breakdown);
@@ -301,7 +304,8 @@ export default function DraftManager({
     setPosition(parts.pos);
     setDrafterName(parts.name);
 
-    setDraftDate(draft.draft_date);
+    const rawDate = draft.draft_date || '';
+    setDraftDate(rawDate.split('T')[0].split(' ')[0]);
     setPurpose(draft.purpose);
     setContentSummary(draft.content_summary);
     setBudgetBreakdown(draft.budget_breakdown);
@@ -376,10 +380,10 @@ export default function DraftManager({
       }
     }
 
-    // 💡 [날짜 조건 적용] 기안일자 <= 교육시작일 검증
+    // 💡 기안일자 <= 교육시작일 검증
     if (draftDate && selectedPlan) {
-      const draftTime = new Date(draftDate).getTime();
-      const eduTime = new Date(selectedPlan.date).getTime();
+      const draftTime = new Date(draftDate.split('T')[0]).getTime();
+      const eduTime = new Date(selectedPlan.date.split('T')[0]).getTime();
       if (draftTime > eduTime) {
         newErrors.draftDate = '기안일자는 교육 시작일보다 같거나 먼저여야 합니다.';
         alert('❌ 기안일자는 교육 시작일보다 같거나 먼저여야 합니다.');
@@ -401,14 +405,16 @@ export default function DraftManager({
 
   const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 부모의 로딩이 켜지기 직전에 프론트 단에서 리턴을 걸어 무한 대기 버그 원천 차단
     if (!validate()) return;
+
+    // 💡 [2중 기안 저장부 정밀 타격] 타임스탬프 가비지가 절대 발붙이지 못하도록 정형화
+    const cleanDraftDate = draftDate.split('T')[0].split(' ')[0];
 
     const draftData: EducationDraft = {
       id: draftId.trim(),
       plan_id: selectedPlanId,
       drafter: drafter.trim(),
-      draft_date: draftDate,
+      draft_date: cleanDraftDate,
       purpose: purpose.trim(),
       content_summary: contentSummary.trim(),
       budget_breakdown: budgetBreakdown.trim(),
@@ -416,6 +422,7 @@ export default function DraftManager({
 
     if (editingDraftIndex !== null) {
       await onUpdateDraft(draftData, editingDraftIndex);
+      triggerLocalNotification('기안서 수정이 완료되었습니다.', 'success');
     } else {
       if (drafts.some((d) => d.id === draftData.id)) {
         setErrors((prev) => ({
@@ -429,6 +436,7 @@ export default function DraftManager({
         if (finalId) {
           setDraftId(finalId);
         }
+        triggerLocalNotification('기안서가 신규 저장되었습니다.', 'success');
       } catch (err) {
         console.error('Failed to add draft:', err);
       }
@@ -468,17 +476,13 @@ export default function DraftManager({
     setEditingDraftIndex(null);
   };
 
-// DraftManager.tsx 및 ReportManager.tsx 맨 아래의 이 함수를 아래 코드로 교체
-const getFormattedKoreanDate = (dateStr: string) => {
-  if (!dateStr) return '';
-  
-  // 💡 [2중 방어선] 과거 찌꺼기 데이터에 'T'나 공백 뒤에 타임스탬프가 붙어있다면 앞의 날짜만 싹둑 자릅니다.
-  let cleanDate = dateStr.split('T')[0].split(' ')[0];
-  
-  const parts = cleanDate.split('-');
-  if (parts.length !== 3) return dateStr;
-  return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
-};
+  const getFormattedKoreanDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    let cleanDate = dateStr.split('T')[0].split(' ')[0];
+    const parts = cleanDate.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative w-full max-w-full box-border overflow-x-hidden">
@@ -823,7 +827,7 @@ const getFormattedKoreanDate = (dateStr: string) => {
                         <span>•</span>
                         <span>기안자: {d.drafter}</span>
                       </div>
-                      <p className="text-[10px] text-gray-400">기안일: {d.draft_date}</p>
+                      <p className="text-[10px] text-gray-400">기안일: {d.draft_date ? d.draft_date.split('T')[0] : ''}</p>
                     </div>
 
                     <button
@@ -917,7 +921,7 @@ const getFormattedKoreanDate = (dateStr: string) => {
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
                     <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date} (${selectedPlan.schedule})` : ''}</td>
+                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule})` : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육시간</td>
