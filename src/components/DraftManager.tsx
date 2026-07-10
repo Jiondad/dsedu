@@ -231,13 +231,13 @@ export default function DraftManager({
       // Provide smart default for content summary and budget breakdown if they are empty
       if (!contentSummary) {
         setContentSummary(
-          `본 교육은 [${selectedPlan.agency}]에서 주관하는 [${selectedPlan.title}] 교육과정으로서, ` +
-            `참여 대상인 [${selectedPlan.target_group}]의 실무 전문 역량 및 지식 수준을 함양하기 위한 목적으로 기획되었습니다.`
+          `본 교육은 [${selectedPlan.institution}]에서 주관하는 [${selectedPlan.title}] 교육과정으로서, ` +
+            `참여 대상인 [${selectedPlan.target}]의 실무 전문 역량 및 지식 수준을 함양하기 위한 목적으로 기획되었습니다.`
         );
       }
       if (!budgetBreakdown) {
         setBudgetBreakdown(
-          `교육 수강료: ₩${formatCurrency(selectedPlan.estimated_cost)} (1인 기준)\n` +
+          `교육 수강료: ₩${formatCurrency(selectedPlan.cost)} (1인 기준)\n` +
             `교재 및 실습비 포함 여부: 포함\n` +
             `※ 연간 교육 예산 계획 범위 내 집행 예정`
         );
@@ -476,12 +476,12 @@ export default function DraftManager({
     setDraftDate(new Date().toISOString().split('T')[0]);
     setPurpose('신규 트렌드 기술 파악 및 실무 적용 방안 도출');
     setContentSummary(
-      `본 교육은 사내 핵심 기술 역량 강화를 위해 [${firstPlan.agency}]에서 실시하는 ` +
+      `본 교육은 사내 핵심 기술 역량 강화를 위해 [${firstPlan.institution}]에서 실시하는 ` +
         `[${firstPlan.title}] 교육에 참여하여, 최신 개발 패러다임과 핵심 요소 기술을 ` +
         `이해하고 실무 프로젝트에 성공적으로 적용하는 것을 목표로 합니다.`
     );
     setBudgetBreakdown(
-      `1. 교육 수강료: ₩${formatCurrency(firstPlan.estimated_cost)} (부가가치세 면제)\n` +
+      `1. 교육 수강료: ₩${formatCurrency(firstPlan.cost)} (부가가치세 면제)\n` +
         `2. 집행 과목: 인재개발원 - 직원 위탁교육 훈련비`
     );
     
@@ -617,7 +617,7 @@ export default function DraftManager({
                   })
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      [{p.category}] {p.title} ({p.edu_date})
+                      [{p.category}] {p.title} ({p.date})
                     </option>
                   ))}
               </select>
@@ -648,20 +648,20 @@ export default function DraftManager({
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs text-gray-600 flex justify-between items-center gap-4">
                 <div className="space-y-1.5 flex-1">
                   <p>
-                    <span className="font-bold text-gray-500">교육기관:</span> {selectedPlan.agency} |{' '}
+                    <span className="font-bold text-gray-500">교육기관:</span> {selectedPlan.institution} |{' '}
                     <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
                   </p>
                   <p>
                     <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
-                    <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.total_hours}시간
+                    <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.hours}시간
                   </p>
                   <p>
-                    <span className="font-bold text-gray-500">예상비용:</span> ₩{formatCurrency(selectedPlan.estimated_cost)}
+                    <span className="font-bold text-gray-500">예상비용:</span> ₩{formatCurrency(selectedPlan.cost)}
                   </p>
                 </div>
                 <div className="bg-white px-3 py-2 rounded-lg border border-gray-150 shrink-0 text-right shadow-2xs">
                   <p className="text-[9px] text-gray-400 font-bold tracking-wider mb-0.5">교육 대상자</p>
-                  <p className="font-bold text-indigo-600 text-[11px]">{selectedPlan.target_group || '미지정'}</p>
+                  <p className="font-bold text-indigo-600 text-[11px]">{selectedPlan.target || '미지정'}</p>
                 </div>
               </div>
             )}
@@ -1022,7 +1022,7 @@ export default function DraftManager({
                   {/* Row 4: Institution & Instructor */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.agency : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.institution : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
                     <td className="p-2.5">{selectedPlan ? selectedPlan.instructor : ''}</td>
                   </tr>
@@ -1030,20 +1030,20 @@ export default function DraftManager({
                   {/* Row 5: Target Group & Dates */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target_group : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.edu_date} (${selectedPlan.schedule})` : ''}</td>
+                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date} (${selectedPlan.schedule})` : ''}</td>
                   </tr>
 
                   {/* Row 6: Duration & Cost */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육시간</td>
                     <td className="border-r border-black p-2.5">
-                      {selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.total_hours}시간)` : ''}
+                      {selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.hours}시간)` : ''}
                     </td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">예상소요비용</td>
                     <td className="p-2.5 font-bold">
-                      {selectedPlan ? `₩${formatCurrency(selectedPlan.estimated_cost)}` : ''}
+                      {selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}
                     </td>
                   </tr>
 

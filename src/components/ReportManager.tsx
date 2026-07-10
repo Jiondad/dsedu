@@ -567,7 +567,7 @@ export default function ReportManager({
                 <option value="">-- 기안 완료된 교육 목록 선택 --</option>
                 {plansWithDrafts.map((plan) => (
                   <option key={plan.id} value={plan.id}>
-                    [{plan.category}] {plan.title} ({plan.edu_date})
+                    [{plan.category}] {plan.title} ({plan.date})
                   </option>
                 ))}
               </select>
@@ -584,15 +584,15 @@ export default function ReportManager({
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs text-gray-600 flex justify-between items-center gap-4">
                 <div className="space-y-1.5 flex-1">
                   <p>
-                    <span className="font-bold text-gray-500">교육기관:</span> {selectedPlan.agency} |{' '}
+                    <span className="font-bold text-gray-500">교육기관:</span> {selectedPlan.institution} |{' '}
                     <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
                   </p>
                   <p>
-                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target_group || '미지정'}
+                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target || '미지정'}
                   </p>
                   <p>
                     <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
-                    <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.total_hours}시간
+                    <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.hours}시간
                   </p>
                 </div>
               </div>
@@ -1010,7 +1010,7 @@ export default function ReportManager({
                   {/* Row 4: Institution & Instructor */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.agency : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.institution : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
                     <td className="p-2.5">{selectedPlan ? selectedPlan.instructor : ''}</td>
                   </tr>
@@ -1018,16 +1018,16 @@ export default function ReportManager({
                   {/* Row 5: Target Group & Dates */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target_group : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.edu_date} (${selectedPlan.schedule}) (${selectedPlan.total_hours}시간)` : ''}</td>
+                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
                   </tr>
 
                   {/* Row 6: Budget & Satisfaction */}
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
                     <td className="border-r border-black p-2.5 font-bold text-emerald-800">
-                      {selectedPlan ? `₩${formatCurrency(selectedPlan.estimated_cost)}` : ''}
+                      {selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}
                     </td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
                     <td className="p-2.5 font-bold text-indigo-700">

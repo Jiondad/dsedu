@@ -47,7 +47,7 @@ export default function PlanTable({
   const [showPrintIframeWarning, setShowPrintIframeWarning] = useState(false);
 
   // Sorting state
-  const [sortField, setSortField] = useState<keyof EducationPlan>('edu_date');
+  const [sortField, setSortField] = useState<keyof EducationPlan>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const handleSort = (field: keyof EducationPlan) => {
@@ -66,9 +66,9 @@ export default function PlanTable({
       const query = searchQuery.toLowerCase();
       const matchesSearch =
         plan.title.toLowerCase().includes(query) ||
-        plan.agency.toLowerCase().includes(query) ||
+        plan.institution.toLowerCase().includes(query) ||
         plan.instructor.toLowerCase().includes(query) ||
-        plan.target_group.toLowerCase().includes(query);
+        plan.target.toLowerCase().includes(query);
 
       const matchesCategory = categoryFilter === '전체' || plan.category === categoryFilter;
 
@@ -251,8 +251,8 @@ export default function PlanTable({
               <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">
                 No
               </th>
-              <th style={{ width: '9%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('edu_date')}>
-                교육일자 {sortField === 'edu_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+              <th style={{ width: '9%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('date')}>
+                교육일자 {sortField === 'date' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
               <th style={{ width: '5.5%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => handleSort('category')}>
                 구분 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
@@ -263,11 +263,11 @@ export default function PlanTable({
               <th style={{ width: '16%' }} className="py-3 px-1.5 md:px-2">교육기관 / 강사</th>
               <th style={{ width: '9%' }} className="py-3 px-1.5 md:px-2">대상자</th>
               <th style={{ width: '9%' }} className="py-3 px-1 md:px-1.5 whitespace-nowrap">교육일정</th>
-              <th style={{ width: '10.5%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('total_hours')}>
-                교육시간 {sortField === 'total_hours' && (sortDirection === 'asc' ? '▲' : '▼')}
+              <th style={{ width: '10.5%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('hours')}>
+                교육시간 {sortField === 'hours' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '8.5%' }} className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('estimated_cost')}>
-                예상비용 {sortField === 'estimated_cost' && (sortDirection === 'asc' ? '▲' : '▼')}
+              <th style={{ width: '8.5%' }} className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('cost')}>
+                예상비용 {sortField === 'cost' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
               <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">기안</th>
               <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">보고서</th>
@@ -291,7 +291,7 @@ export default function PlanTable({
 
                   {/* Date */}
                   <td className="py-3.5 px-1 md:px-1.5 font-medium text-gray-700 whitespace-nowrap">
-                    {plan.edu_date}
+                    {plan.date}
                   </td>
 
                   {/* Category */}
@@ -314,7 +314,7 @@ export default function PlanTable({
 
                   {/* Agency / Instructor */}
                   <td className="py-3.5 px-1.5 md:px-2 text-gray-500 break-all">
-                    <div className="font-medium text-gray-700 leading-snug">{plan.agency}</div>
+                    <div className="font-medium text-gray-700 leading-snug">{plan.institution}</div>
                     <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap">
                       <User className="w-3 h-3 shrink-0" /> <span className="whitespace-nowrap">{plan.instructor}</span>
                     </div>
@@ -322,7 +322,7 @@ export default function PlanTable({
 
                   {/* Target Group */}
                   <td className="py-3.5 px-1.5 md:px-2 text-gray-600 leading-snug break-all">
-                    {plan.target_group}
+                    {plan.target}
                   </td>
 
                   {/* Schedule */}
@@ -337,13 +337,13 @@ export default function PlanTable({
                   <td className="py-3.5 px-1 md:px-1.5 text-center text-gray-600 whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                       <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                      <span className="whitespace-nowrap">{plan.time_range} ({plan.total_hours}시간)</span>
+                      <span className="whitespace-nowrap">{plan.time_range} ({plan.hours}시간)</span>
                     </div>
                   </td>
 
                   {/* Estimated Cost */}
                   <td className="py-3.5 px-1 md:px-1.5 text-right text-gray-800 whitespace-nowrap font-mono">
-                    {formatCurrency(plan.estimated_cost)}
+                    {formatCurrency(plan.cost)}
                   </td>
 
                   {/* Draft Column */}

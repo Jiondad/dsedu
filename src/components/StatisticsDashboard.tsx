@@ -82,13 +82,13 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
   const inHouseCount = completedReportsWithDetails.filter((item) => item.plan.category === '사내').length;
   const externalCount = completedReportsWithDetails.filter((item) => item.plan.category === '사외').length;
 
-  const totalCost = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.estimated_cost || 0), 0);
-  const inHouseCost = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.estimated_cost || 0), 0);
-  const externalCost = completedReportsWithDetails.filter((item) => item.plan.category === '사외').reduce((sum, item) => sum + (item.plan.estimated_cost || 0), 0);
+  const totalCost = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.cost || 0), 0);
+  const inHouseCost = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.cost || 0), 0);
+  const externalCost = completedReportsWithDetails.filter((item) => item.plan.category === '사외').reduce((sum, item) => sum + (item.plan.cost || 0), 0);
 
-  const totalHours = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.total_hours || 0), 0);
-  const inHouseHours = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.total_hours || 0), 0);
-  const externalHours = completedReportsWithDetails.filter((item) => item.plan.category === '사외').reduce((sum, item) => sum + (item.plan.total_hours || 0), 0);
+  const totalHours = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.hours || 0), 0);
+  const inHouseHours = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.hours || 0), 0);
+  const externalHours = completedReportsWithDetails.filter((item) => item.plan.category === '사외').reduce((sum, item) => sum + (item.plan.hours || 0), 0);
 
   const avgSatisfaction =
     completedReportsWithDetails.length > 0
@@ -112,7 +112,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
     const monthNum = i + 1;
     const monthName = `${monthNum}월`;
     const monthItems = completedReportsWithDetails.filter((item) => {
-      const dateStr = item.plan.edu_date || item.report.report_date;
+      const dateStr = item.plan.date || item.report.report_date;
       if (!dateStr) return false;
       const parts = dateStr.split('-');
       if (parts.length >= 2) {
@@ -122,7 +122,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
     });
 
     const count = monthItems.length;
-    const trainees = monthItems.reduce((sum, item) => sum + parseTraineeCount(item.plan.target_group), 0);
+    const trainees = monthItems.reduce((sum, item) => sum + parseTraineeCount(item.plan.target), 0);
 
     return {
       name: monthName,
@@ -641,11 +641,11 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                         <span className="text-[10px] text-gray-400 font-medium">{report.drafter_name} {report.position}</span>
                       </td>
                       <td className="py-3.5 px-2 text-gray-600 font-mono text-[11px]">
-                        <div className="font-medium text-gray-700">{plan.edu_date}</div>
-                        <div className="text-gray-400 text-[10px]">{plan.total_hours}시간 ({plan.schedule})</div>
+                        <div className="font-medium text-gray-700">{plan.date}</div>
+                        <div className="text-gray-400 text-[10px]">{plan.hours}시간 ({plan.schedule})</div>
                       </td>
                       <td className="py-3.5 px-2 text-right font-mono font-bold text-emerald-700 text-[12px]">
-                        {formatCurrency(plan.estimated_cost)}
+                        {formatCurrency(plan.cost)}
                       </td>
                       <td className="py-3.5 px-2 text-center font-bold text-indigo-700 text-[12px]">
                         {report.satisfaction_score?.toFixed(1)}
@@ -796,7 +796,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                           {/* Row 4: Institution & Instructor */}
                           <tr className="border-b border-black">
                             <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
-                            <td className="border-r border-black p-2.5">{selectedReportDetail.plan.agency}</td>
+                            <td className="border-r border-black p-2.5">{selectedReportDetail.plan.institution}</td>
                             <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
                             <td className="p-2.5">{selectedReportDetail.plan.instructor}</td>
                           </tr>
@@ -804,16 +804,16 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                           {/* Row 5: Target Group & Dates */}
                           <tr className="border-b border-black">
                             <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                            <td className="border-r border-black p-2.5">{selectedReportDetail.plan.target_group}</td>
+                            <td className="border-r border-black p-2.5">{selectedReportDetail.plan.target}</td>
                             <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                            <td className="p-2.5">{selectedReportDetail.plan.edu_date} ({selectedReportDetail.plan.schedule}) ({selectedReportDetail.plan.total_hours}시간)</td>
+                            <td className="p-2.5">{selectedReportDetail.plan.date} ({selectedReportDetail.plan.schedule}) ({selectedReportDetail.plan.hours}시간)</td>
                           </tr>
 
                           {/* Row 6: Budget & Satisfaction */}
                           <tr className="border-b border-black">
                             <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
                             <td className="border-r border-black p-2.5 font-bold text-emerald-800">
-                              ₩{formatCurrency(selectedReportDetail.plan.estimated_cost)}
+                              ₩{formatCurrency(selectedReportDetail.plan.cost)}
                             </td>
                             <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
                             <td className="p-2.5 font-bold text-indigo-700">

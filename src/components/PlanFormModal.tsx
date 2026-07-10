@@ -34,16 +34,16 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
   useEffect(() => {
     if (editPlan) {
       setFormData({
-        edu_date: editPlan.edu_date || '',
+        edu_date: editPlan.date || editPlan.edu_date || '',
         category: editPlan.category || '사내',
         title: editPlan.title || '',
-        agency: editPlan.agency || '',
+        agency: editPlan.institution || editPlan.agency || '',
         instructor: editPlan.instructor || '',
-        target_group: editPlan.target_group || '',
+        target_group: editPlan.target || editPlan.target_group || '',
         schedule: editPlan.schedule || '',
         time_range: editPlan.time_range || '',
-        total_hours: String(editPlan.total_hours || ''),
-        estimated_cost: String(editPlan.estimated_cost || ''),
+        total_hours: String(editPlan.hours !== undefined ? editPlan.hours : (editPlan.total_hours || '')),
+        estimated_cost: String(editPlan.cost !== undefined ? editPlan.cost : (editPlan.estimated_cost || '')),
       });
       setErrors({});
     } else {
@@ -128,15 +128,20 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
 
     onSubmit({
       id: editPlan?.id,
+      date: formData.edu_date,
       edu_date: formData.edu_date,
       category: formData.category,
       title: formData.title.trim(),
+      institution: formData.agency.trim(),
       agency: formData.agency.trim(),
       instructor: formData.instructor.trim(),
+      target: formData.target_group.trim(),
       target_group: formData.target_group.trim(),
       schedule: formData.schedule.trim(),
       time_range: formData.time_range.trim(),
+      hours: Number(formData.total_hours),
       total_hours: Number(formData.total_hours),
+      cost: Number(formData.estimated_cost),
       estimated_cost: Number(formData.estimated_cost),
     });
     onClose();

@@ -25,7 +25,7 @@ export function computeMetrics(plans: EducationPlan[]): CategoryMetrics {
 plans.forEach((plan) => {
   // 💡 아래 로그를 넣어 브라우저 콘솔(F12)에서 데이터 구조를 직접 확인해 봅니다.
   console.log("통계 계산 중인 plan 객체:", plan);
-  
+
   const hours = Number(plan.hours) || 0;
   const cost = Number(plan.cost) || Number(plan.estimated_cost) || 0; // ➔ 이렇게 방어 코드를 짜두면 안전합니다!
 
@@ -84,7 +84,7 @@ export function validateTimeRange(timeRange: string): boolean {
  */
 export function mapRowToPlan(row: any): EducationPlan {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
-    const idVal = String(row.id ?? row.ID ?? '');
+const idVal = String(row.id ?? row.ID ?? '');
 
 // 💡 날짜 뒤에 붙은 T15:00... 지저분한 문자열을 'T' 기준으로 잘라 앞의 날짜만 가져옵니다.
 let dateVal = String(row.date ?? row.edu_date ?? '');

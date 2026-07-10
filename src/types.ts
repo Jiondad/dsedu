@@ -5,21 +5,21 @@
 
 export interface EducationPlan {
   id: string;
-  edu_date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (was edu_date)
   category: '사내' | '사외';
   title: string;
-  agency: string;
+  institution: string; // (was agency)
   instructor: string;
-  target_group: string;
+  target: string; // (was target_group)
   schedule: string; // MM/DD~MM/DD
   time_range: string; // HH~HH
-  total_hours: number;
-  estimated_cost: number;
-  date?: string; // Robust alias for edu_date
-  institution?: string; // Robust alias for agency
-  target?: string; // Robust alias for target_group
-  hours?: number; // Robust alias for total_hours
-  cost?: number; // Robust alias for estimated_cost
+  hours: number; // (was total_hours)
+  cost: number; // (was estimated_cost)
+  edu_date?: string; // Legacy alias for backward compatibility
+  agency?: string; // Legacy alias for backward compatibility
+  target_group?: string; // Legacy alias for backward compatibility
+  total_hours?: number; // Legacy alias for backward compatibility
+  estimated_cost?: number; // Legacy alias for backward compatibility
 }
 
 export interface EducationDraft {
