@@ -158,7 +158,7 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
   } catch (err) { console.error(err); throw err; }
 }
 
-export async function deletePlan(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
+export async function deletePlan(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string): Promise<void> {
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -166,7 +166,8 @@ export async function deletePlan(spreadsheetId: string, accessToken: string | nu
       body: JSON.stringify({ 
         action: 'delete', 
         sheetName: SHEET_TAB_NAME, 
-        rowIndex: rowIndex 
+        rowIndex: rowIndex,
+        id: id // 💡 백엔드가 정확한 행을 찾아 지울 수 있도록 고유 ID를 실어 보냅니다.
       }),
     });
 
