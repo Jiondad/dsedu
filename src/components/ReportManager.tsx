@@ -852,7 +852,7 @@ export default function ReportManager({
       {/* RIGHT COLUMN */}
       <div className="lg:col-span-7 flex flex-col items-center">
         <div id="print-area-wrapper" className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border">
-          <div id="print-area" className="w-full max-w-[210mm] h-auto min-h-0 p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
+          <div id="print-area" className="w-full max-w-[200mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box', minHeight: '270mm', maxWidth: '200mm' }}>
             <div>
               <div className="flex justify-between items-start mb-4">
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">{reportId || 'DSEREP-YYYYMMDD-XXX'}</div>
@@ -880,63 +880,63 @@ export default function ReportManager({
               <table className="w-full border-collapse border border-black text-xs mb-3">
                 <tbody>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고서번호</td>
-                    <td className="border-r border-black p-2.5 w-[32%] font-mono text-[11px]">{reportId || '(보고서 저장 시 부여)'}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고자 정보</td>
-                    <td className="p-2.5 w-[32%]">{department && drafterName ? <span className="font-bold">{department} {drafterName} {position}</span> : '(보고자 입력)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 w-[18%] text-center">보고서번호</td>
+                    <td className="border-r border-black p-4 w-[32%] font-mono text-[11px]">{reportId || '(보고서 저장 시 부여)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 w-[18%] text-center">보고자 정보</td>
+                    <td className="p-4 w-[32%]">{department && drafterName ? <span className="font-bold">{department} {drafterName} {position}</span> : '(보고자 입력)'}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">보고일자</td>
-                    <td className="border-r border-black p-2.5">{getFormattedKoreanDate(reportDate)}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">기안연동번호</td>
-                    <td className="p-2.5 font-mono text-[10px] text-gray-600">{draftId || '(기안서 번호)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">보고일자</td>
+                    <td className="border-r border-black p-4">{getFormattedKoreanDate(reportDate)}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">기안연동번호</td>
+                    <td className="p-4 font-mono text-[10px] text-gray-600">{draftId || '(기안서 번호)'}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교 육 명</td>
-                    <td colSpan={3} className="p-2.5 font-bold text-sm bg-gray-50/10">{selectedPlan ? selectedPlan.title : '(교육 계획 선택 필요)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교 육 명</td>
+                    <td colSpan={3} className="p-4 font-bold text-sm bg-gray-50/10">{selectedPlan ? selectedPlan.title : '(교육 계획 선택 필요)'}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.institution : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
-                    <td className="p-2.5">{selectedPlan ? selectedPlan.instructor : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육기관</td>
+                    <td className="border-r border-black p-4">{selectedPlan ? selectedPlan.institution : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">강 사</td>
+                    <td className="p-4">{selectedPlan ? selectedPlan.instructor : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">대 상 자</td>
+                    <td className="border-r border-black p-4">{selectedPlan ? selectedPlan.target : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육일정</td>
+                    <td className="p-4">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
-                    <td className="border-r border-black p-2.5 font-bold text-emerald-800">{selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
-                    <td className="p-2.5 font-bold text-indigo-700">{selectedPlan ? `만족도 ${satisfactionScore.toFixed(1)} / 5.0` : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">집행비용</td>
+                    <td className="border-r border-black p-4 font-bold text-emerald-800">{selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">만족도</td>
+                    <td className="p-4 font-bold text-indigo-700">{selectedPlan ? `만족도 ${satisfactionScore.toFixed(1)} / 5.0` : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px]">{purpose || '(교육 목적 기재)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육목적</td>
+                    <td colSpan={3} className="p-4 whitespace-pre-wrap leading-relaxed text-[11px]">{purpose || '(교육 목적 기재)'}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">소요예산 상세</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] text-gray-700">{budgetBreakdown || '(기안서의 예산 내역 자동 연동)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">소요예산 상세</td>
+                    <td colSpan={3} className="p-4 whitespace-pre-wrap leading-relaxed text-[11px] text-gray-700">{budgetBreakdown || '(기안서의 예산 내역 자동 연동)'}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육 결과<br />요약 및 성과</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                      <div className="min-h-[168px] w-full">{summary || '(교육 수료 내용 및 이수 평가 기재)'}</div>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육 결과<br />요약 및 성과</td>
+                    <td colSpan={3} className="p-4 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                      <div className="min-h-[280px] w-full">{summary || '(교육 수료 내용 및 이수 평가 기재)'}</div>
                     </td>
                   </tr>
                   <tr>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">향후 현업<br />적용 계획 및<br />기대효과</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                      <div className="min-h-[60px] w-full">{futurePlan || '(과제 및 정량적/정성적 기대효과 기재)'}</div>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">향후 현업<br />적용 계획 및<br />기대효과</td>
+                    <td colSpan={3} className="p-4 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                      <div className="min-h-[150px] w-full">{futurePlan || '(과제 및 정량적/정성적 기대효과 기재)'}</div>
                     </td>
                   </tr>
                   {certificateFile && (
                     <tr className="border-t border-black">
-                      <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">첨부 수료증</td>
-                      <td colSpan={3} className="p-2.5 text-center">
+                      <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">첨부 수료증</td>
+                      <td colSpan={3} className="p-4 text-center">
                         <div className="flex flex-col items-center justify-center p-2 bg-gray-50/50 rounded-xl border border-gray-100 max-w-md mx-auto">
                           <img src={certificateFile} alt="Certificate Attachment" className="max-h-[140px] max-w-full object-contain rounded-lg shadow-sm border border-gray-200" referrerPolicy="no-referrer" />
                           <p className="text-[10px] text-gray-500 mt-1.5 font-bold font-mono">{certificateFileName}</p>

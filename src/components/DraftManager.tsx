@@ -823,8 +823,8 @@ export default function DraftManager({
         >
           <div
             id="print-area"
-            className="w-full max-w-[210mm] h-auto min-h-0 p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden"
-            style={{ boxSizing: 'border-box' }}
+            className="w-full max-w-[200mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden"
+            style={{ boxSizing: 'border-box', minHeight: '270mm', maxWidth: '200mm' }}
           >
             <div>
               <div className="flex justify-between items-start mb-4">
@@ -860,54 +860,56 @@ export default function DraftManager({
               <table className="w-full border-collapse border border-black text-xs mb-3">
                 <tbody>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">기안번호</td>
-                    <td className="border-r border-black p-2.5 w-[32%]">{draftId || '(기안 완료 시 부여)'}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">기안자</td>
-                    <td className="p-2.5 w-[32%]">
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 w-[18%] text-center">기안번호</td>
+                    <td className="border-r border-black p-4 w-[32%]">{draftId || '(기안 완료 시 부여)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 w-[18%] text-center">기안자</td>
+                    <td className="p-4 w-[32%]">
                       {drafterName ? `${department} ${position} ${drafterName}`.trim() : '(기안서 입력)'}
                     </td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">기안일자</td>
-                    <td className="border-r border-black p-2.5">{getFormattedKoreanDate(draftDate)}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육구분</td>
-                    <td className="p-2.5">{selectedPlan ? <span className="font-bold">[{selectedPlan.category} 교육]</span> : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">기안일자</td>
+                    <td className="border-r border-black p-4">{getFormattedKoreanDate(draftDate)}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육구분</td>
+                    <td className="p-4">{selectedPlan ? <span className="font-bold">[{selectedPlan.category} 교육]</span> : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교 육 명</td>
-                    <td colSpan={3} className="p-2.5 font-bold text-sm bg-gray-50/10">{selectedPlan ? selectedPlan.title : '(연관교육계획 선택 필요)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교 육 명</td>
+                    <td colSpan={3} className="p-4 font-bold text-sm bg-gray-50/10">{selectedPlan ? selectedPlan.title : '(연관교육계획 선택 필요)'}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.institution : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
-                    <td className="p-2.5">{selectedPlan ? selectedPlan.instructor : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육기관</td>
+                    <td className="border-r border-black p-4">{selectedPlan ? selectedPlan.institution : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">강 사</td>
+                    <td className="p-4">{selectedPlan ? selectedPlan.instructor : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule})` : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">대 상 자</td>
+                    <td className="border-r border-black p-4">{selectedPlan ? selectedPlan.target : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육일정</td>
+                    <td className="p-4">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule})` : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육시간</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.hours}시간)` : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">예상소요비용</td>
-                    <td className="p-2.5 font-bold">{selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육시간</td>
+                    <td className="border-r border-black p-4">{selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.hours}시간)` : ''}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">예상소요비용</td>
+                    <td className="p-4 font-bold">{selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed">{purpose || '(교육 목적 기재)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육목적</td>
+                    <td colSpan={3} className="p-4 whitespace-pre-wrap leading-relaxed">{purpose || '(교육 목적 기재)'}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육요약 및<br />상세내용</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                      <div className="min-h-[240px] w-full">{contentSummary || '(교육 개요 및 커리큘럼 요약 기재)'}</div>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">교육요약 및<br />상세내용</td>
+                    <td colSpan={3} className="p-4 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                      <div className="min-h-[380px] w-full">{contentSummary || '(교육 개요 및 커리큘럼 요약 기재)'}</div>
                     </td>
                   </tr>
                   <tr>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">예산상세내역</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] min-h-[80px] align-top">{budgetBreakdown || '(지출 품목, 한도 및 산출 내역 기재)'}</td>
+                    <td className="border-r border-black font-bold p-4 bg-gray-50 text-center">예산상세내역</td>
+                    <td colSpan={3} className="p-4 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
+                      <div className="min-h-[120px] w-full">{budgetBreakdown || '(지출 품목, 한도 및 산출 내역 기재)'}</div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
