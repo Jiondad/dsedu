@@ -468,12 +468,17 @@ export default function DraftManager({
     setEditingDraftIndex(null);
   };
 
-  const getFormattedKoreanDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-    return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
-  };
+// DraftManager.tsx 및 ReportManager.tsx 맨 아래의 이 함수를 아래 코드로 교체
+const getFormattedKoreanDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  
+  // 💡 [2중 방어선] 과거 찌꺼기 데이터에 'T'나 공백 뒤에 타임스탬프가 붙어있다면 앞의 날짜만 싹둑 자릅니다.
+  let cleanDate = dateStr.split('T')[0].split(' ')[0];
+  
+  const parts = cleanDate.split('-');
+  if (parts.length !== 3) return dateStr;
+  return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
+};
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative w-full max-w-full box-border overflow-x-hidden">
