@@ -93,7 +93,12 @@ export default function App() {
   const [editPlan, setEditPlan] = useState<EducationPlan | null>(null);
 
   // Calculate metrics
-  const metrics = computeMetrics(plans);
+  // 💡 선택한 연도(selectedYear)의 교육 계획만 필터링하여 통계 산출 (날짜 가비지 방지)
+  const yearFilteredPlans = plans.filter((plan) => {
+    const cleanPlanDate = (plan.date || '').split('T')[0].trim();
+    return !selectedYear || cleanPlanDate.substring(0, 4) === selectedYear;
+  });
+  const metrics = computeMetrics(yearFilteredPlans);
 
   // Set transient notification helper
   const triggerNotification = (text: string, type: 'success' | 'error' | 'info' = 'success') => {

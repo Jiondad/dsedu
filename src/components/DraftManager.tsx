@@ -117,13 +117,13 @@ export default function DraftManager({
   // Auto-generate sequential draft ID based on selected date and year-based sequence
   const generateDraftIdForDate = (date: string) => {
     if (!date) return '';
-    const cleanDate = date.split('T')[0].split(' ')[0];
+    const cleanDate = date.split('T')[0].trim();
     const year = cleanDate.substring(0, 4); // YYYY
     const dateStr = cleanDate.replace(/-/g, ''); // YYYYMMDD
 
     // Filter existing drafts that belong to the same year
     const sameYearDrafts = drafts.filter((d) => {
-      const cleanDDate = d.draft_date ? d.draft_date.split('T')[0].split(' ')[0] : '';
+      const cleanDDate = d.draft_date ? d.draft_date.split('T')[0].trim() : '';
       const dateMatch = cleanDDate && cleanDDate.substring(0, 4) === year;
       const idMatch = d.id && (d.id.startsWith(`DSEDU-${year}`) || d.id.startsWith(`DSED-${year}`));
       return dateMatch || idMatch;
@@ -194,7 +194,7 @@ export default function DraftManager({
           setPosition(parts.pos);
           setDrafterName(parts.name);
 
-          setDraftDate((existingDraft.draft_date || '').split('T')[0].split(' ')[0]);
+          setDraftDate((existingDraft.draft_date || '').split('T')[0].trim());
           setPurpose(existingDraft.purpose);
           setContentSummary(existingDraft.content_summary);
           setBudgetBreakdown(existingDraft.budget_breakdown);
@@ -302,7 +302,7 @@ export default function DraftManager({
     setPosition(parts.pos);
     setDrafterName(parts.name);
 
-    setDraftDate((draft.draft_date || '').split('T')[0].split(' ')[0]);
+    setDraftDate((draft.draft_date || '').split('T')[0].trim());
     setPurpose(draft.purpose);
     setContentSummary(draft.content_summary);
     setBudgetBreakdown(draft.budget_breakdown);
@@ -379,8 +379,8 @@ export default function DraftManager({
 
     // 💡 기안일자 <= 교육시작일 검증 (시차 개입을 완전히 차단하는 문자열 기반 정밀 비교)
     if (draftDate && selectedPlan) {
-      const draftDateClean = draftDate.split('T')[0].split(' ')[0];
-      const eduDateClean = selectedPlan.date.split('T')[0].split(' ')[0];
+      const draftDateClean = draftDate.split('T')[0].trim();
+      const eduDateClean = selectedPlan.date.split('T')[0].trim();
       if (draftDateClean > eduDateClean) {
         newErrors.draftDate = '기안일자는 교육 시작일보다 같거나 먼저여야 합니다.';
         alert('❌ 기안일자는 교육 시작일보다 같거나 먼저여야 합니다.');

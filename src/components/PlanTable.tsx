@@ -74,7 +74,11 @@ export default function PlanTable({
 
       const matchesCategory = categoryFilter === '전체' || plan.category === categoryFilter;
 
-      return matchesSearch && matchesCategory;
+      // 💡 [핵심] plan.date나 기안서/보고서의 날짜를 비교 대조하기 전에 무조건 .split('T')[0].trim() 처리를 가함
+      const cleanPlanDate = (plan.date || '').split('T')[0].trim();
+      const matchesYear = !selectedYear || cleanPlanDate.substring(0, 4) === selectedYear;
+
+      return matchesSearch && matchesCategory && matchesYear;
     });
 
   // Sort filtered plans

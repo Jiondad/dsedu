@@ -177,7 +177,7 @@ export default function ReportManager({
     if (matchedDraft && matchedDraft.id) {
       return matchedDraft.id.replace('DSEDU-', 'DSEREP-').replace('DSED-', 'DSEREP-');
     }
-    const cleanDate = date.split('T')[0].split(' ')[0];
+    const cleanDate = date.split('T')[0].trim();
     const dateStr = cleanDate.replace(/-/g, '');
     const sameDateReports = reports.filter((r) => r.id.startsWith(`DSEREP-${dateStr}`));
     const nextSerial = String(sameDateReports.length + 1).padStart(3, '0');
@@ -243,7 +243,7 @@ export default function ReportManager({
         if (existingReport) {
           const index = reports.findIndex((r) => r.plan_id === preselectedPlanId);
           handleSelectReportForEdit(existingReport, index);
-          setReportDate((existingReport.report_date || '').split('T')[0].split(' ')[0]);
+          setReportDate((existingReport.report_date || '').split('T')[0].trim());
           triggerLocalNotification('이미 작성된 결과보고서가 존재하여 해당 보고서를 불러왔습니다.', 'info');
         } else {
           const matchedDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
@@ -332,7 +332,7 @@ export default function ReportManager({
     setPosition(report.position);
     setDrafterName(report.drafter_name);
 
-    setReportDate((report.report_date || '').split('T')[0].split(' ')[0]);
+    setReportDate((report.report_date || '').split('T')[0].trim());
     setSummary(report.summary);
     setFuturePlan(report.future_plan);
     setSatisfactionScore(report.satisfaction_score || 5.0);
@@ -412,13 +412,13 @@ export default function ReportManager({
 
     // 💡 보고일자 >= 교육 마지막 일정 검증 (시차 및 UTC 타임스탬프 오류를 원천 차단하는 정밀 문자열 비교)
     if (reportDate && selectedPlan && selectedPlan.schedule) {
-      const reportDateClean = reportDate.split('T')[0].split(' ')[0];
-      const eduYear = selectedPlan.date ? selectedPlan.date.split('T')[0].split(' ')[0].split('-')[0] : new Date().getFullYear();
+      const reportDateClean = reportDate.split('T')[0].trim();
+      const eduYear = selectedPlan.date ? selectedPlan.date.split('T')[0].trim().split('-')[0] : new Date().getFullYear();
       const scheduleParts = selectedPlan.schedule.split('~');
       
       if (scheduleParts.length === 2) {
         const endDateStr = `${eduYear}-${scheduleParts[1].trim().replace('/', '-')}`;
-        const eduEndTimeStr = endDateStr.split('T')[0].split(' ')[0];
+        const eduEndTimeStr = endDateStr.split('T')[0].trim();
 
         if (reportDateClean < eduEndTimeStr) {
           newErrors.reportDate = '보고일자는 교육 마지막 일자보다 같거나 나중이어야 합니다.';
@@ -439,7 +439,7 @@ export default function ReportManager({
     if (!validate()) return;
 
     // 💡 [2중 보고서 저장부 정밀 타격] 전송 페이로드에 UTC 타임스탬프가 절대 붙지 않도록 완벽하게 날짜 가공 격리
-    const cleanReportDate = reportDate.split('T')[0].split(' ')[0];
+    const cleanReportDate = reportDate.split('T')[0].trim();
 
     const reportData: EducationReport = {
       id: reportId.trim(),
