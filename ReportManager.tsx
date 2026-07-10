@@ -177,7 +177,8 @@ export default function ReportManager({
     if (matchedDraft && matchedDraft.id) {
       return matchedDraft.id.replace('DSEDU-', 'DSEREP-').replace('DSED-', 'DSEREP-');
     }
-    const dateStr = date.replace(/-/g, '');
+    const cleanDate = date.split('T')[0].split(' ')[0];
+    const dateStr = cleanDate.replace(/-/g, '');
     const sameDateReports = reports.filter((r) => r.id.startsWith(`DSEREP-${dateStr}`));
     const nextSerial = String(sameDateReports.length + 1).padStart(3, '0');
     return `DSEREP-${dateStr}-${nextSerial}`;
@@ -329,7 +330,9 @@ export default function ReportManager({
     setDepartment(report.department);
     setPosition(report.position);
     setDrafterName(report.drafter_name);
-    setReportDate(report.report_date);
+
+    const rawDate = report.report_date || '';
+    setReportDate(rawDate.split('T')[0].split(' ')[0]);
     setSummary(report.summary);
     setFuturePlan(report.future_plan);
     setSatisfactionScore(report.satisfaction_score || 5.0);
@@ -407,15 +410,15 @@ export default function ReportManager({
     if (!drafterName.trim()) newErrors.drafterName = '성명을 입력해주세요.';
     if (!reportDate) newErrors.reportDate = '보고일자를 선택해주세요.';
 
-    // 💡 [보고서 날짜 조건 적용] 보고일자 >= 교육 마지막 일정 검증
+    // 💡 보고일자 >= 교육 마지막 일정 검증
     if (reportDate && selectedPlan && selectedPlan.schedule) {
-      const reportTime = new Date(reportDate).getTime();
+      const reportTime = new Date(reportDate.split('T')[0]).getTime();
       const eduYear = selectedPlan.date ? selectedPlan.date.split('-')[0] : new Date().getFullYear();
       const scheduleParts = selectedPlan.schedule.split('~');
       
       if (scheduleParts.length === 2) {
         const endDateStr = `${eduYear}-${scheduleParts[1].replace('/', '-')}`;
-        const eduEndTime = new Date(endDateStr).getTime();
+        const eduEndTime = new Date(endDateStr.split('T')[0]).getTime();
 
         if (reportTime < eduEndTime) {
           newErrors.reportDate = '보고일자는 교육 마지막 일자보다 같거나 나중이어야 합니다.';
@@ -433,8 +436,10 @@ export default function ReportManager({
 
   const handleSaveReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 비동기 통신을 호출하기 "전"에 밸리데이션 컷오프를 걸어 무한 로딩 원천 봉쇄
     if (!validate()) return;
+
+    // 💡 [2중 보고서 저장부 정밀 타격] 타임스탬프 잔재 소멸 처리
+    const cleanReportDate = reportDate.split('T')[0].split(' ')[0];
 
     const reportData: EducationReport = {
       id: reportId.trim(),
@@ -443,7 +448,7 @@ export default function ReportManager({
       department: department.trim(),
       position: position.trim(),
       drafter_name: drafterName.trim(),
-      report_date: reportDate,
+      report_date: cleanReportDate,
       summary: summary.trim(),
       future_plan: futurePlan.trim(),
       satisfaction_score: Number(satisfactionScore) || 5.0,
@@ -474,17 +479,13 @@ export default function ReportManager({
     }
   };
 
-// DraftManager.tsx 및 ReportManager.tsx 맨 아래의 이 함수를 아래 코드로 교체
-const getFormattedKoreanDate = (dateStr: string) => {
-  if (!dateStr) return '';
-  
-  // 💡 [2중 방어선] 과거 찌꺼기 데이터에 'T'나 공백 뒤에 타임스탬프가 붙어있다면 앞의 날짜만 싹둑 자릅니다.
-  let cleanDate = dateStr.split('T')[0].split(' ')[0];
-  
-  const parts = cleanDate.split('-');
-  if (parts.length !== 3) return dateStr;
-  return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
-};
+  const getFormattedKoreanDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    let cleanDate = dateStr.split('T')[0].split(' ')[0];
+    const parts = cleanDate.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
+  };
   
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative w-full max-w-full box-border overflow-x-hidden">
@@ -564,7 +565,7 @@ const getFormattedKoreanDate = (dateStr: string) => {
                 <option value="">-- 기안 완료된 교육 목록 선택 --</option>
                 {plansWithDrafts.map((plan) => (
                   <option key={plan.id} value={plan.id}>
-                    [{plan.category}] {plan.title} ({plan.date})
+                    [{plan.category}] {plan.title} ({plan.date ? plan.date.split('T')[0] : ''})
                   </option>
                 ))}
               </select>
@@ -904,7 +905,7 @@ const getFormattedKoreanDate = (dateStr: string) => {
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
                     <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
+                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
