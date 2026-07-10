@@ -10,7 +10,6 @@ import {
   FileText,
   Trash2,
   Printer,
-  Sparkles,
   RefreshCw,
   FileCheck,
   AlertCircle,
@@ -441,39 +440,6 @@ export default function DraftManager({
     }
   };
 
-  const handleLoadSample = () => {
-    if (plans.length === 0) return;
-    const firstPlan = plans[0];
-    
-    const existingIndex = drafts.findIndex((d) => d.plan_id === firstPlan.id);
-    if (existingIndex !== -1) {
-      handleSelectDraftForEdit(drafts[existingIndex], existingIndex);
-      triggerLocalNotification('기존 교육계획 기안서를 로드했습니다.', 'info');
-      return;
-    }
-
-    setSelectedPlanId(firstPlan.id);
-    setDepartment('품질보증팀');
-    setPosition('대리');
-    setDrafterName('김철수');
-    setDraftDate(new Date().toISOString().split('T')[0]);
-    setPurpose('신규 트렌드 기술 파악 및 실무 적용 방안 도출');
-    setContentSummary(
-      `본 교육은 사내 핵심 기술 역량 강화를 위해 [${firstPlan.institution}]에서 실시하는 ` +
-        `[${firstPlan.title}] 교육에 참여하여, 최신 개발 패러다임과 핵심 요소 기술을 ` +
-        `이해하고 실무 프로젝트에 성공적으로 적용하는 것을 목표로 합니다.`
-    );
-    setBudgetBreakdown(
-      `1. 교육 수강료: ₩${formatCurrency(firstPlan.cost)} (부가가치세 면제)\n` +
-        `2. 집행 과목: 인재개발원 - 직원 위탁교육 훈련비`
-    );
-    
-    const today = new Date().toISOString().split('T')[0];
-    const generatedId = generateDraftIdForDate(today);
-    setDraftId(generatedId);
-    setEditingDraftIndex(null);
-  };
-
   const getFormattedKoreanDate = (dateStr: string) => {
     if (!dateStr) return '';
     let cleanDate = dateStr.split('T')[0].split(' ')[0];
@@ -534,7 +500,7 @@ export default function DraftManager({
               <PenTool className="w-4.5 h-4.5 text-indigo-500" />
               {editingDraftIndex !== null ? '기안서 내용 수정' : '새 교육 기안서 작성'}
             </h3>
-            {editingDraftIndex !== null ? (
+            {editingDraftIndex !== null && (
               <button
                 type="button"
                 onClick={handleResetForm}
@@ -542,16 +508,6 @@ export default function DraftManager({
               >
                 신규 작성 전환
               </button>
-            ) : (
-              plans.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleLoadSample}
-                  className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
-                >
-                  <Sparkles className="w-3.5 h-3.5" /> 샘플 데이터 로드
-                </button>
-              )
             )}
           </div>
 
