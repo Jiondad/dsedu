@@ -58,7 +58,7 @@ export async function findOrCreateSpreadsheet(accessToken?: string | null): Prom
 }
 
 // ============================================================================
-// 1. 연간 교육 계획 (annual_plans) - 수정 및 보완된 전송 로직
+// 1. 연간 교육 계획 (annual_plans) - 조회 / 추가 / 수정 / 삭제
 // ============================================================================
 
 export async function fetchPlans(
@@ -97,17 +97,13 @@ export async function fetchPlans(
   }
 }
 
-// ============================================================================
-// 1. 연간 교육 계획 (annual_plans) - 프론트엔드 발송 필드명 규격화 (최종 정석판)
-// ============================================================================
-
 export async function addPlan(spreadsheetId: string, accessToken: string | null, plan: any): Promise<void> {
   try {
     const payload = {
       action: 'create',
       sheetName: SHEET_TAB_NAME,
       id: plan.id || '',
-      date: plan.date || plan.edu_date || '',                                    // edu_date -> date 변환
+      date: plan.date || plan.edu_date || '',
       category: plan.category || '',
       title: plan.title || '',
       institution: plan.institution || plan.agency || '',
@@ -136,7 +132,7 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
       sheetName: SHEET_TAB_NAME,
       rowIndex: rowIndex,
       id: plan.id || '',
-      date: plan.date || plan.edu_date || '',                                    // edu_date -> date 변환
+      date: plan.date || plan.edu_date || '',
       category: plan.category || '',
       title: plan.title || '',
       institution: plan.institution || plan.agency || '',
@@ -167,21 +163,17 @@ export async function deletePlan(spreadsheetId: string, accessToken: string | nu
         action: 'delete', 
         sheetName: SHEET_TAB_NAME, 
         rowIndex: rowIndex,
-        id: id // 💡 백엔드가 정확한 행을 찾아 지울 수 있도록 고유 ID를 실어 보냅니다.
+        id: id
       }),
     });
-
     if (!response.ok) throw new Error('Network response was not ok');
     const res = await response.json();
     if (res.success === false) throw new Error(res.error || '구글 시트 삭제 실패');
-  } catch (err) { 
-    console.error('deletePlan 실패:', err); 
-    throw err; 
-  }
+  } catch (err) { console.error('deletePlan 실패:', err); throw err; }
 }
 
 // ============================================================================
-// 2. 교육 기안서 (education_drafts) - 조회 / 추가 / 수정 / 삭제 (최종 완료판)
+// 2. 교육 기안서 (education_drafts) - 조회 / 추가 / 수정 / 삭제
 // ============================================================================
 
 export async function fetchDrafts(spreadsheetId: string, accessToken?: string | null): Promise<EducationDraft[]> {
@@ -192,13 +184,26 @@ export async function fetchDrafts(spreadsheetId: string, accessToken?: string | 
     const res = await response.json();
     let rows = extractRowsFromData(res);
     if (rows.length > 0 && (Array.isArray(rows[0]) ? rows[0].some(c => typeof c === 'string' && c.toLowerCase() === 'id') : rows[0]?.id)) rows = rows.slice(1);
-    return rows.filter((row: any) => (Array.isArray(row) ? row[0] : row.id)).map(mapRowToDraft);
+    
+    // 💡 백엔드가 객체나 배열 어떤 것을 주든 유연하게 캐치하도록 이중 안전 처리
+    return rows.filter((row: any) => {
+      if (!row) return false;
+      const idVal = Array.isArray(row) ? row[0] : row.id;
+      return idVal && idVal.toString().trim() !== '';
+    }).map(row => {
+      // 만약 외부 utils에서 파싱이 깨질 경우를 대비해 수신 데이터 명세 강제 동기화
+      const parsed = mapRowToDraft(row);
+      if (row && typeof row === 'object' && !Array.isArray(row)) {
+        if (row.plan_id) parsed.plan_id = row.plan_id;
+        if (row.draft_date) parsed.draft_date = row.draft_date;
+      }
+      return parsed;
+    });
   } catch (err) { console.error(err); return []; }
 }
 
 export async function addDraft(spreadsheetId: string, accessToken: string | null, draft: any): Promise<void> {
   try {
-    // 💡 팩트 체크된 진짜 영문 필드명으로만 규격화하여 구글 백엔드로 전송
     const payload = {
       action: 'create',
       sheetName: SHEET_TAB_DRAFT_NAME,
@@ -212,18 +217,17 @@ export async function addDraft(spreadsheetId: string, accessToken: string | null
     };
 
     const response = await fetch(API_URL, { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // 구글 웹앱 전용 안전 포맷
-      body: JSON.stringify(payload) 
+       method: 'POST', 
+       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+       body: JSON.stringify(payload) 
     });
     const res = await response.json();
     if (res.success === false) throw new Error(res.error);
-  } catch (err) { console.error('addDraft 실패:', err); }
+  } catch (err) { console.error('addDraft 실패:', err); throw err; }
 }
 
 export async function updateDraft(spreadsheetId: string, accessToken: string | null, draft: any, rowIndex: number): Promise<void> {
   try {
-    // 💡 수정 요청 시에도 동일하게 7개 고유 필드명 정밀 매핑 적용
     const payload = {
       action: 'update',
       sheetName: SHEET_TAB_DRAFT_NAME,
@@ -238,27 +242,27 @@ export async function updateDraft(spreadsheetId: string, accessToken: string | n
     };
 
     const response = await fetch(API_URL, { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-      body: JSON.stringify(payload) 
+       method: 'POST', 
+       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+       body: JSON.stringify(payload) 
     });
     const res = await response.json();
     if (res.success === false) throw new Error(res.error);
-  } catch (err) { console.error('updateDraft 실패:', err); }
+  } catch (err) { console.error('updateDraft 실패:', err); throw err; }
 }
 
-export async function deleteDraft(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
+export async function deleteDraft(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string): Promise<void> {
   try { 
     await fetch(API_URL, { 
       method: 'POST', 
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-      body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex }) 
+      body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_DRAFT_NAME, rowIndex, id }) 
     }); 
-  } catch (err) { console.error('deleteDraft 실패:', err); }
+  } catch (err) { console.error('deleteDraft 실패:', err); throw err; }
 }
 
 // ============================================================================
-// 3. 결과 보고서 (education_reports) - 조회 / 추가 / 수정 / 삭제
+// 3. 결과 보고서 (education_reports) - 조회 / 추가 / 수정 / 삭제 (구조 통일 최적화)
 // ============================================================================
 
 export async function fetchReports(spreadsheetId: string, accessToken?: string | null): Promise<EducationReport[]> {
@@ -273,14 +277,52 @@ export async function fetchReports(spreadsheetId: string, accessToken?: string |
   } catch (err) { console.error(err); return []; }
 }
 
-export async function addReport(spreadsheetId: string, accessToken: string | null, report: EducationReport): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sheetName: SHEET_TAB_REPORT_NAME, ...report }) }); } catch (err) { console.error(err); }
+export async function addReport(spreadsheetId: string, accessToken: string | null, report: any): Promise<void> {
+  try { 
+    const response = await fetch(API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+      body: JSON.stringify({ 
+        action: 'create',
+        sheetName: SHEET_TAB_REPORT_NAME, 
+        ...report 
+      }) 
+    }); 
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) { console.error('addReport 실패:', err); throw err; }
 }
 
-export async function updateReport(spreadsheetId: string, accessToken: string | null, report: EducationReport, rowIndex: number): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', sheetName: SHEET_TAB_REPORT_NAME, rowIndex, ...report }) }); } catch (err) { console.error(err); }
+export async function updateReport(spreadsheetId: string, accessToken: string | null, report: any, rowIndex: number): Promise<void> {
+  try { 
+    const response = await fetch(API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+      body: JSON.stringify({ 
+        action: 'update', 
+        sheetName: SHEET_TAB_REPORT_NAME, 
+        rowIndex, 
+        ...report 
+      }) 
+    }); 
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) { console.error('updateReport 실패:', err); throw err; }
 }
 
-export async function deleteReport(spreadsheetId: string, accessToken: string | null, rowIndex: number): Promise<void> {
-  try { await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', sheetName: SHEET_TAB_REPORT_NAME, rowIndex }) }); } catch (err) { console.error(err); }
+export async function deleteReport(spreadsheetId: string, accessToken: string | null, rowIndex: number, id?: string): Promise<void> {
+  try { 
+    const response = await fetch(API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+      body: JSON.stringify({ 
+        action: 'delete', 
+        sheetName: SHEET_TAB_REPORT_NAME, 
+        rowIndex,
+        id
+      }) 
+    }); 
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) { console.error('deleteReport 실패:', err); throw err; }
 }
