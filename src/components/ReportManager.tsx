@@ -243,6 +243,7 @@ export default function ReportManager({
         if (existingReport) {
           const index = reports.findIndex((r) => r.plan_id === preselectedPlanId);
           handleSelectReportForEdit(existingReport, index);
+          setReportDate((existingReport.report_date || '').split('T')[0].split(' ')[0]);
           triggerLocalNotification('이미 작성된 결과보고서가 존재하여 해당 보고서를 불러왔습니다.', 'info');
         } else {
           const matchedDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
@@ -331,8 +332,7 @@ export default function ReportManager({
     setPosition(report.position);
     setDrafterName(report.drafter_name);
 
-    const rawDate = report.report_date || '';
-    setReportDate(rawDate.split('T')[0].split(' ')[0]);
+    setReportDate((report.report_date || '').split('T')[0].split(' ')[0]);
     setSummary(report.summary);
     setFuturePlan(report.future_plan);
     setSatisfactionScore(report.satisfaction_score || 5.0);

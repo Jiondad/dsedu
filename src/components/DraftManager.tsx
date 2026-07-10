@@ -195,8 +195,7 @@ export default function DraftManager({
           setPosition(parts.pos);
           setDrafterName(parts.name);
 
-          const rawDate = existingDraft.draft_date || '';
-          setDraftDate(rawDate.split('T')[0].split(' ')[0]);
+          setDraftDate((existingDraft.draft_date || '').split('T')[0].split(' ')[0]);
           setPurpose(existingDraft.purpose);
           setContentSummary(existingDraft.content_summary);
           setBudgetBreakdown(existingDraft.budget_breakdown);
@@ -304,8 +303,7 @@ export default function DraftManager({
     setPosition(parts.pos);
     setDrafterName(parts.name);
 
-    const rawDate = draft.draft_date || '';
-    setDraftDate(rawDate.split('T')[0].split(' ')[0]);
+    setDraftDate((draft.draft_date || '').split('T')[0].split(' ')[0]);
     setPurpose(draft.purpose);
     setContentSummary(draft.content_summary);
     setBudgetBreakdown(draft.budget_breakdown);
