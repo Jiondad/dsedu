@@ -19,7 +19,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { Award, DollarSign, Clock, Layers, BookOpen } from 'lucide-react';
+import { Award, DollarSign, Clock, Layers, BookOpen, Users } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DashboardProps {
@@ -80,42 +80,21 @@ export default function Dashboard({ metrics }: DashboardProps) {
       className="space-y-6"
     >
       {/* Upper Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        {/* Total Plans */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        {/* Card 1: Total Hours */}
         <motion.div
           variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
         >
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <BookOpen className="w-6 h-6" />
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl flex-shrink-0">
+            <Clock className="w-5.5 h-5.5" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">총 교육 건수</p>
-            <p className="text-2xl font-bold text-gray-800 tracking-tight">
-              {total.count} <span className="text-sm font-normal text-gray-500">건</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">총 교육 시간</p>
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
+              {total.totalHours} <span className="text-xs font-normal text-gray-500">시간</span>
             </p>
-            <div className="flex gap-2 mt-1 text-xs text-gray-400">
-              <span>사내: {inHouse.count}건</span>
-              <span>•</span>
-              <span>사외: {external.count}건</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Total Hours */}
-        <motion.div
-          variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
-        >
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">총 교육 시간</p>
-            <p className="text-2xl font-bold text-gray-800 tracking-tight">
-              {total.totalHours} <span className="text-sm font-normal text-gray-500">시간</span>
-            </p>
-            <div className="flex gap-2 mt-1 text-xs text-gray-400">
+            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
               <span>사내: {inHouse.totalHours}H</span>
               <span>•</span>
               <span>사외: {external.totalHours}H</span>
@@ -123,20 +102,62 @@ export default function Dashboard({ metrics }: DashboardProps) {
           </div>
         </motion.div>
 
-        {/* Total Cost */}
+        {/* Card 2: Total Plans */}
         <motion.div
           variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
         >
-          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
-            <DollarSign className="w-6 h-6" />
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl flex-shrink-0">
+            <BookOpen className="w-5.5 h-5.5" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">총 예산 (예상비용)</p>
-            <p className="text-2xl font-bold text-gray-800 font-sans tracking-tight">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">총 교육 건수</p>
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
+              {total.count} <span className="text-xs font-normal text-gray-500">건</span>
+            </p>
+            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
+              <span>사내: {inHouse.count}건</span>
+              <span>•</span>
+              <span>사외: {external.count}건</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Card 3: Total Headcount */}
+        <motion.div
+          variants={cardVariants}
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
+        >
+          <div className="p-3 bg-sky-50 text-sky-600 rounded-xl flex-shrink-0">
+            <Users className="w-5.5 h-5.5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">총 교육 인원</p>
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
+              {total.totalHeadcount} <span className="text-xs font-normal text-gray-500">명</span>
+            </p>
+            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
+              <span>사내: {inHouse.totalHeadcount}명</span>
+              <span>•</span>
+              <span>사외: {external.totalHeadcount}명</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Card 4: Total Cost */}
+        <motion.div
+          variants={cardVariants}
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
+        >
+          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl flex-shrink-0">
+            <DollarSign className="w-5.5 h-5.5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">총 예산 (예상비용)</p>
+            <p className="text-lg xl:text-xl font-bold text-gray-800 font-sans tracking-tight mt-1">
               ₩{formatCurrency(total.totalCost)}
             </p>
-            <div className="flex gap-2 mt-1 text-xs text-gray-400">
+            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
               <span>사내: ₩{formatCurrency(inHouse.totalCost)}</span>
               <span>•</span>
               <span>사외: ₩{formatCurrency(external.totalCost)}</span>
@@ -144,20 +165,20 @@ export default function Dashboard({ metrics }: DashboardProps) {
           </div>
         </motion.div>
 
-        {/* Average Cost per Course */}
+        {/* Card 5: Average Cost per Course */}
         <motion.div
           variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
         >
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-            <Award className="w-6 h-6" />
+          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl flex-shrink-0">
+            <Award className="w-5.5 h-5.5" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">건당 평균 소요 비용</p>
-            <p className="text-2xl font-bold text-gray-800 tracking-tight">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">건당 평균 소요 비용</p>
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
               ₩{formatCurrency(total.count > 0 ? Math.round(total.totalCost / total.count) : 0)}
             </p>
-            <div className="flex gap-2 mt-1 text-xs text-gray-400">
+            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
               <span>사내: ₩{formatCurrency(inHouse.count > 0 ? Math.round(inHouse.totalCost / inHouse.count) : 0)}</span>
               <span>•</span>
               <span>사외: ₩{formatCurrency(external.count > 0 ? Math.round(external.totalCost / external.count) : 0)}</span>

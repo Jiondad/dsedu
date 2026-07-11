@@ -65,6 +65,7 @@ export interface MetricSummary {
   totalHours: number;
   totalCost: number;
   count: number;
+  totalHeadcount: number;
 }
 
 export interface CategoryMetrics {

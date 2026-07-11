@@ -5,21 +5,42 @@
 
 import { EducationPlan, CategoryMetrics, EducationDraft, EducationReport } from './types';
 
+function parseTraineeCount(targetGroup: string): number {
+  if (!targetGroup) return 1;
+  const regex = /(\d+)\s*(명|인|명\s*참석|명\s*대상)/;
+  const match = targetGroup.match(regex);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (!isNaN(num)) return num;
+  }
+  const numMatch = targetGroup.match(/\d+/);
+  if (numMatch) {
+    const num = parseInt(numMatch[0], 10);
+    if (!isNaN(num) && num > 0 && num < 1000) return num;
+  }
+  if (targetGroup.includes('전사') || targetGroup.includes('전임직원') || targetGroup.includes('전 임직원')) {
+    return 120;
+  }
+  return 3; // sensible default
+}
+
 /**
  * 구글 시트에서 가져온 영문 규격 필드(hours, cost)를 기반으로 
  * 대시보드 통계를 정확하게 산출하도록 교정했습니다.
  */
 export function computeMetrics(plans: EducationPlan[]): CategoryMetrics {
-  const inHouse: { totalHours: number; totalCost: number; count: number } = {
+  const inHouse: { totalHours: number; totalCost: number; count: number; totalHeadcount: number } = {
     totalHours: 0,
     totalCost: 0,
     count: 0,
+    totalHeadcount: 0,
   };
 
-  const external: { totalHours: number; totalCost: number; count: number } = {
+  const external: { totalHours: number; totalCost: number; count: number; totalHeadcount: number } = {
     totalHours: 0,
     totalCost: 0,
     count: 0,
+    totalHeadcount: 0,
   };
 
   plans.forEach((plan) => {
@@ -27,15 +48,18 @@ export function computeMetrics(plans: EducationPlan[]): CategoryMetrics {
 
     const hours = Number(plan.hours) || 0;
     const cost = Number(plan.cost) || Number(plan.estimated_cost) || 0;
+    const headcount = plan.headcount !== undefined ? Number(plan.headcount) : parseTraineeCount(plan.target || '');
 
     if (plan.category === '사내') {
       inHouse.totalHours += hours;
       inHouse.totalCost += cost;
       inHouse.count += 1;
+      inHouse.totalHeadcount += headcount;
     } else if (plan.category === '사외') {
       external.totalHours += hours;
       external.totalCost += cost;
       external.count += 1;
+      external.totalHeadcount += headcount;
     }
   });
 
@@ -43,6 +67,7 @@ export function computeMetrics(plans: EducationPlan[]): CategoryMetrics {
     totalHours: inHouse.totalHours + external.totalHours,
     totalCost: inHouse.totalCost + external.totalCost,
     count: inHouse.count + external.count,
+    totalHeadcount: inHouse.totalHeadcount + external.totalHeadcount,
   };
 
   return {
