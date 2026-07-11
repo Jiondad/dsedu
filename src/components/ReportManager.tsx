@@ -478,39 +478,35 @@ export default function ReportManager({
   const fetchReports = async (year: string) => {
     try {
       setIsLoading(true);
-      // SPREADSHEET_ID와 연도 파라미터를 정확히 결합하여 요청
       const response = await axios.get(`${API_URL}?action=read&sheetName=education_reports&year=${year}`);
       
       if (response.data && Array.isArray(response.data)) {
-        // 백엔드가 어떤 케이스로 주든 프론트엔드 내부 변수(camelCase)로 강제 변환 메커니즘 
         const mappedData: EducationReport[] = response.data.map((item: any) => ({
           id: item.id || '',
-          plan_id: item.planId || item.plan_id || '',
-          draft_id: item.draftId || item.draft_id || '',
-          drafter_name: item.drafterName || item.drafter_name || '',
-          position: item.position || '',
+          // 💡 카멜 케이스로 변환되어 넘어오든 원본이 오든 무조건 컴포넌트 표준인 스네이크 케이스로 강제 통합 수용
+          plan_id: (item.plan_id || item.planId || '').toString().trim(),
+          planId: (item.plan_id || item.planId || '').toString().trim(),
+          draft_id: (item.draft_id || item.draftId || '').toString().trim(),
+          draftId: (item.draft_id || item.draftId || '').toString().trim(),
           department: item.department || '',
-          report_date: item.reportDate || item.report_date || '',
+          position: item.position || '',
+          drafter_name: item.drafter_name || item.drafterName || '',
+          drafterName: item.drafter_name || item.drafterName || '',
+          report_date: item.report_date || item.reportDate || '',
+          reportDate: item.report_date || item.reportDate || '',
           summary: item.summary || '',
-          future_plan: item.futurePlan || item.future_plan || '',
-          satisfaction_score: item.satisfactionScore || item.satisfaction_score || 0,
-          certificate_file: item.certificateFile || item.certificate_file || '',
-          certificate_file_name: item.certificateFileName || item.certificate_file_name || '',
-          // camelCase aliases for complete robustness and double compatibility
-          planId: item.planId || item.plan_id || '',
-          draftId: item.draftId || item.draft_id || '',
-          drafterName: item.drafterName || item.drafter_name || '',
-          draftDate: item.draftDate || item.draft_date || '',
-          reportDate: item.reportDate || item.report_date || '',
-          satisfactionScore: item.satisfactionScore || item.satisfaction_score || 0,
-          futurePlan: item.futurePlan || item.future_plan || '',
-          certificateFile: item.certificateFile || item.certificate_file || '',
-          certificateFileName: item.certificateFileName || item.certificate_file_name || '',
-          year: item.year || year
+          future_plan: item.future_plan || item.futurePlan || '',
+          futurePlan: item.future_plan || item.futurePlan || '',
+          satisfaction_score: Number(item.satisfaction_score || item.satisfactionScore || 5.0),
+          satisfactionScore: Number(item.satisfaction_score || item.satisfactionScore || 5.0),
+          certificate_file: item.certificate_file || item.certificateFile || '',
+          certificateFile: item.certificate_file || item.certificateFile || '',
+          certificate_file_name: item.certificate_file_name || item.certificateFileName || '',
+          certificateFileName: item.certificate_file_name || item.certificateFileName || '',
+          year: (item.year || year).toString().trim()
         }));
         
-        // 현재 선택된 연도와 일치하는 데이터만 화면 목록 상태(State)에 바인딩
-        const filtered = mappedData.filter((r: any) => r.year.toString() === year.toString());
+        const filtered = mappedData.filter((r: EducationReport) => r.year === year.toString().trim());
         setReports(filtered);
       } else {
         setReports([]);
