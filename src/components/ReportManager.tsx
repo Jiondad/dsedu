@@ -999,11 +999,11 @@ export default function ReportManager({
             <style>{`
               @media print {
                 /* 불필요한 요소 숨김 처리 */
-                header, nav, aside, form, input, textarea, select, button, .no-print, [class*="no-print"] {
+                header, nav, aside, form, input, textarea, select, button, .no-print, [class*="no-print"], [role="tablist"], .tabs-list {
                   display: none !important;
                 }
                 /* 좌측 칼럼 및 작성된 결과보고서 목록 영역 전체 숨김 */
-                .lg\\:col-span-5, .lg\\:col-span-12 {
+                div[class*="lg:col-span-5"], div[class*="lg:col-span-12"], .no-print {
                   display: none !important;
                 }
                 /* 그리드 및 플렉스 전면 해제하여 100% 가득 차도록 함 */
@@ -1014,7 +1014,7 @@ export default function ReportManager({
                   padding: 0 !important;
                 }
                 /* 인쇄 문서 외 상위 레이아웃의 마진/패딩 제거 및 배경화면 초기화 */
-                body, html, #root, main, .print-container, .lg\\:col-span-7 {
+                body, html, #root, main, .print-container, div[class*="lg:col-span-7"] {
                   background: white !important;
                   margin: 0 !important;
                   padding: 0 !important;
@@ -1040,7 +1040,7 @@ export default function ReportManager({
                   display: block !important;
                   position: relative !important;
                   width: 100% !important;
-                  max-width: none !important;
+                  max-width: 100% !important;
                   margin: 0 !important;
                   padding: 0 !important;
                   box-shadow: none !important;
@@ -1049,13 +1049,23 @@ export default function ReportManager({
                   box-sizing: border-box !important;
                   page-break-inside: avoid !important;
                   break-inside: avoid !important;
+                  overflow: visible !important;
                 }
                 #print-area * {
                   box-shadow: none !important;
                   text-shadow: none !important;
                   box-sizing: border-box !important;
                 }
-                /* 표 및 내부 셀 여유 공간 */
+                /* 표 및 내부 셀 여유 공간 및 고정 테이블 레이아웃 */
+                #print-area table {
+                  table-layout: fixed !important;
+                  width: 100% !important;
+                }
+                #print-area table.approval-table {
+                  width: 180px !important;
+                  margin-left: auto !important;
+                  margin-right: 0 !important;
+                }
                 #print-area table td {
                   padding: 8px 6px !important;
                 }
@@ -1068,7 +1078,7 @@ export default function ReportManager({
             <div>
               <div className="flex justify-between items-start mb-4">
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">{reportId || 'DSEREP-YYYYMMDD-XXX'}</div>
-                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px]" style={{ borderCollapse: 'collapse', border: '1px solid #000000' }}>
+                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px] ml-auto" style={{ borderCollapse: 'collapse', border: '1px solid #000000', marginLeft: 'auto' }}>
                   <tbody>
                     <tr className="border-b border-black">
                       <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]" style={{ border: '1px solid #000000' }}>결<br />재</td>
