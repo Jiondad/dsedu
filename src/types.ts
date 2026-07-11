@@ -55,6 +55,8 @@ export interface EducationReport {
   satisfactionScore?: number;
   certificateFile?: string;
   certificateFileName?: string;
+  draftDate?: string;
+  year?: string;
 }
 
 export interface MetricSummary {

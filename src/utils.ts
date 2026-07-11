@@ -231,6 +231,7 @@ export function mapRowToReport(row: any): EducationReport {
     const satisfaction_score = Number(row.satisfaction_score ?? row.satisfactionScore ?? 5.0);
     const certificate_file = row.certificate_file ?? row.certificateFile ?? '';
     const certificate_file_name = row.certificate_file_name ?? row.certificateFileName ?? '';
+    const year = String(row.year ?? '');
 
     return {
       id,
@@ -254,6 +255,7 @@ export function mapRowToReport(row: any): EducationReport {
       satisfactionScore: satisfaction_score,
       certificateFile: certificate_file,
       certificateFileName: certificate_file_name,
+      year,
     };
   }
 
@@ -268,6 +270,7 @@ export function mapRowToReport(row: any): EducationReport {
   const summary = String(r[7] || '');
   const future_plan = String(r[8] || '');
   const satisfaction_score = Number(r[9]) || 5.0;
+  const year = String(r[10] || '');
 
   return {
     id,
@@ -287,6 +290,7 @@ export function mapRowToReport(row: any): EducationReport {
     reportDate: report_date,
     futurePlan: future_plan,
     satisfactionScore: satisfaction_score,
+    year,
   };
 }
 

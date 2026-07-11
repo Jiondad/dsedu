@@ -446,9 +446,26 @@ export default function App() {
         counter++;
       }
 
-      const finalizedReport = {
+      const finalizedReport: EducationReport = {
         ...newReport,
         id: finalUniqueId,
+        plan_id: newReport.plan_id || newReport.planId || '',
+        planId: newReport.planId || newReport.plan_id || '',
+        draft_id: newReport.draft_id || newReport.draftId || '',
+        draftId: newReport.draftId || newReport.draft_id || '',
+        drafter_name: newReport.drafter_name || newReport.drafterName || '',
+        drafterName: newReport.drafterName || newReport.drafter_name || '',
+        report_date: newReport.report_date || newReport.reportDate || '',
+        reportDate: newReport.reportDate || newReport.report_date || '',
+        future_plan: newReport.future_plan || newReport.futurePlan || '',
+        futurePlan: newReport.futurePlan || newReport.future_plan || '',
+        satisfaction_score: newReport.satisfaction_score !== undefined ? newReport.satisfaction_score : (newReport.satisfactionScore || 5.0),
+        satisfactionScore: newReport.satisfactionScore !== undefined ? newReport.satisfactionScore : (newReport.satisfaction_score || 5.0),
+        certificate_file: newReport.certificate_file || newReport.certificateFile || '',
+        certificateFile: newReport.certificateFile || newReport.certificate_file || '',
+        certificate_file_name: newReport.certificate_file_name || newReport.certificateFileName || '',
+        certificateFileName: newReport.certificateFileName || newReport.certificate_file_name || '',
+        year: newReport.year || selectedYear,
       };
 
       // 3. Update local state
@@ -475,14 +492,35 @@ export default function App() {
     const config = getSpreadsheetConfig();
     const activeSheetId = spreadsheetId || config.spreadsheetId;
 
+    const normalizedReport: EducationReport = {
+      ...updatedReport,
+      plan_id: updatedReport.plan_id || updatedReport.planId || '',
+      planId: updatedReport.planId || updatedReport.plan_id || '',
+      draft_id: updatedReport.draft_id || updatedReport.draftId || '',
+      draftId: updatedReport.draftId || updatedReport.draft_id || '',
+      drafter_name: updatedReport.drafter_name || updatedReport.drafterName || '',
+      drafterName: updatedReport.drafterName || updatedReport.drafter_name || '',
+      report_date: updatedReport.report_date || updatedReport.reportDate || '',
+      reportDate: updatedReport.reportDate || updatedReport.report_date || '',
+      future_plan: updatedReport.future_plan || updatedReport.futurePlan || '',
+      futurePlan: updatedReport.futurePlan || updatedReport.future_plan || '',
+      satisfaction_score: updatedReport.satisfaction_score !== undefined ? updatedReport.satisfaction_score : (updatedReport.satisfactionScore || 5.0),
+      satisfactionScore: updatedReport.satisfactionScore !== undefined ? updatedReport.satisfactionScore : (updatedReport.satisfaction_score || 5.0),
+      certificate_file: updatedReport.certificate_file || updatedReport.certificateFile || '',
+      certificateFile: updatedReport.certificateFile || updatedReport.certificate_file || '',
+      certificate_file_name: updatedReport.certificate_file_name || updatedReport.certificateFileName || '',
+      certificateFileName: updatedReport.certificateFileName || updatedReport.certificate_file_name || '',
+      year: updatedReport.year || selectedYear,
+    };
+
     const originalReports = [...reports];
     const updatedList = [...reports];
-    updatedList[index] = updatedReport;
+    updatedList[index] = normalizedReport;
     setReports(updatedList);
     triggerNotification('결과보고서가 수정되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
     try {
-      await updateReport(activeSheetId, null, updatedReport, index, selectedYear);
+      await updateReport(activeSheetId, null, normalizedReport, index, selectedYear);
     } catch (err) {
       console.error('결과보고서 수정 동기화 실패:', err);
       setReports(originalReports); // Revert
