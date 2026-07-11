@@ -81,28 +81,7 @@ export default function Dashboard({ metrics }: DashboardProps) {
     >
       {/* Upper Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        {/* Card 1: Total Hours */}
-        <motion.div
-          variants={cardVariants}
-          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
-        >
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl flex-shrink-0">
-            <Clock className="w-5.5 h-5.5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">총 교육 시간</p>
-            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
-              {total.totalHours} <span className="text-xs font-normal text-gray-500">시간</span>
-            </p>
-            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
-              <span>사내: {inHouse.totalHours}H</span>
-              <span>•</span>
-              <span>사외: {external.totalHours}H</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Card 2: Total Plans */}
+        {/* Card 1: Total Plans */}
         <motion.div
           variants={cardVariants}
           className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
@@ -123,7 +102,7 @@ export default function Dashboard({ metrics }: DashboardProps) {
           </div>
         </motion.div>
 
-        {/* Card 3: Total Headcount */}
+        {/* Card 2: Total Headcount */}
         <motion.div
           variants={cardVariants}
           className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
@@ -140,6 +119,27 @@ export default function Dashboard({ metrics }: DashboardProps) {
               <span>사내: {inHouse.totalHeadcount}명</span>
               <span>•</span>
               <span>사외: {external.totalHeadcount}명</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Card 3: Total Hours */}
+        <motion.div
+          variants={cardVariants}
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
+        >
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl flex-shrink-0">
+            <Clock className="w-5.5 h-5.5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">총 교육 시간</p>
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
+              {total.totalHours} <span className="text-xs font-normal text-gray-500">시간</span>
+            </p>
+            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
+              <span>사내: {inHouse.totalHours}H</span>
+              <span>•</span>
+              <span>사외: {external.totalHours}H</span>
             </div>
           </div>
         </motion.div>
