@@ -34,6 +34,7 @@ import {
   X,
   Check,
   AlertCircle,
+  Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -81,6 +82,10 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
   const totalCount = completedReportsWithDetails.length;
   const inHouseCount = completedReportsWithDetails.filter((item) => item.plan.category === '사내').length;
   const externalCount = completedReportsWithDetails.filter((item) => item.plan.category === '사외').length;
+
+  const totalHeadcount = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
+  const inHouseHeadcount = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
+  const externalHeadcount = completedReportsWithDetails.filter((item) => item.plan.category === '사외').reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
 
   const totalCost = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.cost || 0), 0);
   const inHouseCost = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.cost || 0), 0);
@@ -336,18 +341,18 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         {/* Card 1: Completed Performance Count */}
         <motion.div
           variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
         >
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <BookOpen className="w-6 h-6" />
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl flex-shrink-0">
+            <BookOpen className="w-5.5 h-5.5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">완료 실적 건수</p>
-            <p className="text-xl font-bold text-gray-800 tracking-tight mt-1">
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
               {totalCount}건
             </p>
             <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
@@ -358,17 +363,38 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
         </motion.div>
 
-        {/* Card 2: Cumulative Education Hours */}
+        {/* Card 2: Total Trainees (교육 명수) */}
         <motion.div
           variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
         >
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-            <Clock className="w-6 h-6" />
+          <div className="p-3 bg-sky-50 text-sky-600 rounded-xl flex-shrink-0">
+            <Users className="w-5.5 h-5.5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">총 교육 인원</p>
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
+              {totalHeadcount}명
+            </p>
+            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
+              <span>사내: {inHouseHeadcount}명</span>
+              <span>•</span>
+              <span>사외: {externalHeadcount}명</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Card 3: Cumulative Education Hours */}
+        <motion.div
+          variants={cardVariants}
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
+        >
+          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl flex-shrink-0">
+            <Clock className="w-5.5 h-5.5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">누적 교육 시간</p>
-            <p className="text-xl font-bold text-gray-800 tracking-tight mt-1">
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
               {totalHours}시간
             </p>
             <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
@@ -379,17 +405,17 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
         </motion.div>
 
-        {/* Card 3: Actual Execution Cost */}
+        {/* Card 4: Actual Execution Cost */}
         <motion.div
           variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
         >
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-            <TrendingUp className="w-6 h-6" />
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0">
+            <TrendingUp className="w-5.5 h-5.5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">실제 집행 비용</p>
-            <p className="text-xl text-gray-700 tracking-tight mt-1 font-normal">
+            <p className="text-lg xl:text-xl text-gray-700 tracking-tight mt-1 font-normal">
               {formatCurrency(totalCost)}원
             </p>
             <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate font-normal">
@@ -400,17 +426,17 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
         </motion.div>
 
-        {/* Card 4: Average Education Satisfaction */}
+        {/* Card 5: Average Education Satisfaction */}
         <motion.div
           variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
         >
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Star className="w-6 h-6 fill-indigo-100" />
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl flex-shrink-0">
+            <Star className="w-5.5 h-5.5 fill-indigo-100" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">평균 교육 만족도</p>
-            <p className="text-xl font-bold text-gray-800 tracking-tight mt-1 flex items-baseline gap-1">
+            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1 flex items-baseline gap-1">
               {avgSatisfaction > 0 ? avgSatisfaction.toFixed(1) : '0.0'}
               <span className="text-xs font-normal text-gray-400">/ 5.0</span>
             </p>
