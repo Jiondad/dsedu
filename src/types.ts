@@ -45,6 +45,16 @@ export interface EducationReport {
   satisfaction_score: number; // 만족도 점수 (1.0 ~ 5.0)
   certificate_file?: string; // Base64 encoded file data
   certificate_file_name?: string; // File name
+
+  // camelCase aliases for complete robustness
+  draftId?: string;
+  planId?: string;
+  drafterName?: string;
+  reportDate?: string;
+  futurePlan?: string;
+  satisfactionScore?: number;
+  certificateFile?: string;
+  certificateFileName?: string;
 }
 
 export interface MetricSummary {

@@ -243,11 +243,11 @@ export default function ReportManager({
       if (plan) {
         setSelectedPlanId(preselectedPlanId);
 
-        const existingReport = reports.find((r) => r.plan_id === preselectedPlanId);
+        const existingReport = reports.find((r) => (r.plan_id || r.planId || '').toString().trim() === preselectedPlanId.toString().trim());
         if (existingReport) {
-          const index = reports.findIndex((r) => r.plan_id === preselectedPlanId);
+          const index = reports.findIndex((r) => (r.plan_id || r.planId || '').toString().trim() === preselectedPlanId.toString().trim());
           handleSelectReportForEdit(existingReport, index);
-          setReportDate((existingReport.report_date || '').split('T')[0].trim());
+          setReportDate((existingReport.report_date || existingReport.reportDate || '').split('T')[0].trim());
           triggerLocalNotification('이미 작성된 결과보고서가 존재하여 해당 보고서를 불러왔습니다.', 'info');
         } else {
           const matchedDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
@@ -312,16 +312,16 @@ export default function ReportManager({
       return;
     }
 
-    const existingReport = reports.find((r) => r.plan_id === planId);
+    const existingReport = reports.find((r) => (r.plan_id || r.planId || '').toString().trim() === planId.toString().trim());
     if (existingReport) {
-      if (editingReportIndex === null || reports[editingReportIndex].plan_id !== planId) {
+      if (editingReportIndex === null || (reports[editingReportIndex].plan_id || reports[editingReportIndex].planId || '') !== planId) {
         setErrors((prev) => ({
           ...prev,
           selectedPlanId: '이미 결과보고서가 작성된 교육계획입니다.',
         }));
         triggerLocalNotification('이미 결과보고서가 작성된 교육계획입니다. 해당 보고서가 로드됩니다.', 'info');
         
-        const index = reports.findIndex((r) => r.plan_id === planId);
+        const index = reports.findIndex((r) => (r.plan_id || r.planId || '').toString().trim() === planId.toString().trim());
         handleSelectReportForEdit(existingReport, index);
       }
     }
@@ -329,21 +329,21 @@ export default function ReportManager({
 
   const handleSelectReportForEdit = (report: EducationReport, index: number) => {
     setEditingReportIndex(index);
-    setSelectedPlanId(report.plan_id);
+    setSelectedPlanId(report.plan_id || report.planId || '');
     setReportId(report.id);
-    setDraftId(report.draft_id);
+    setDraftId(report.draft_id || report.draftId || '');
     setDepartment(report.department);
     setPosition(report.position);
-    setDrafterName(report.drafter_name);
+    setDrafterName(report.drafter_name || report.drafterName || '');
 
-    setReportDate((report.report_date || '').split('T')[0].trim());
+    setReportDate((report.report_date || report.reportDate || '').split('T')[0].trim());
     setSummary(report.summary);
-    setFuturePlan(report.future_plan);
-    setSatisfactionScore(report.satisfaction_score || 5.0);
-    setCertificateFile(report.certificate_file || '');
-    setCertificateFileName(report.certificate_file_name || '');
+    setFuturePlan(report.future_plan || report.futurePlan || '');
+    setSatisfactionScore(report.satisfaction_score !== undefined ? report.satisfaction_score : (report.satisfactionScore || 5.0));
+    setCertificateFile(report.certificate_file || report.certificateFile || '');
+    setCertificateFileName(report.certificate_file_name || report.certificateFileName || '');
     
-    const matchedDraft = drafts.find((d) => d.plan_id === report.plan_id);
+    const matchedDraft = drafts.find((d) => d.plan_id === (report.plan_id || report.planId));
     if (matchedDraft) {
       setPurpose(matchedDraft.purpose || '');
       setBudgetBreakdown(matchedDraft.budget_breakdown || '');
@@ -469,6 +469,15 @@ export default function ReportManager({
       satisfaction_score: Number(satisfactionScore) || 5.0,
       certificate_file: certificateFile || undefined,
       certificate_file_name: certificateFileName || undefined,
+      // camelCase aliases for complete robustness and double compatibility
+      draftId: draftId,
+      planId: selectedPlanId,
+      drafterName: drafterName.trim(),
+      reportDate: cleanReportDate,
+      futurePlan: futurePlan.trim(),
+      satisfactionScore: Number(satisfactionScore) || 5.0,
+      certificateFile: certificateFile || undefined,
+      certificateFileName: certificateFileName || undefined,
     };
 
     try {
@@ -845,7 +854,7 @@ export default function ReportManager({
               <p className="text-center text-xs text-gray-400 py-6">저장된 교육 결과보고서가 없습니다.</p>
             ) : (
               reports.map((r, index) => {
-                const associatedPlan = plans.find((p) => p.id === r.plan_id);
+                const associatedPlan = plans.find((p) => p.id === (r.plan_id || r.planId));
                 return (
                   <div
                     key={r.id}
@@ -859,7 +868,7 @@ export default function ReportManager({
                       <div className="flex gap-2 text-gray-400 text-[10px]">
                         <span>번호: {r.id}</span>
                         <span>•</span>
-                        <span>보고자: {r.drafter_name} {r.position} ({r.department})</span>
+                        <span>보고자: {r.drafter_name || r.drafterName} {r.position} ({r.department})</span>
                       </div>
                     </div>
                     <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTargetId(r.id); }} className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer">

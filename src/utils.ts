@@ -219,32 +219,74 @@ export function mapDraftToRow(draft: EducationDraft): any[] {
  */
 export function mapRowToReport(row: any): EducationReport {
   if (row && typeof row === 'object' && !Array.isArray(row)) {
+    const id = String(row.id ?? row.ID ?? '');
+    const draft_id = String(row.draft_id ?? row.draftId ?? '');
+    const plan_id = String(row.plan_id ?? row.planId ?? '');
+    const department = String(row.department ?? '');
+    const position = String(row.position ?? '');
+    const drafter_name = String(row.drafter_name ?? row.drafterName ?? '');
+    const report_date = String(row.report_date ?? row.reportDate ?? '');
+    const summary = String(row.summary ?? '');
+    const future_plan = String(row.future_plan ?? row.futurePlan ?? '');
+    const satisfaction_score = Number(row.satisfaction_score ?? row.satisfactionScore ?? 5.0);
+    const certificate_file = row.certificate_file ?? row.certificateFile ?? '';
+    const certificate_file_name = row.certificate_file_name ?? row.certificateFileName ?? '';
+
     return {
-      id: String(row.id ?? row.ID ?? ''),
-      draft_id: String(row.draft_id ?? row.draftId ?? ''),
-      plan_id: String(row.plan_id ?? row.planId ?? ''),
-      department: String(row.department ?? ''),
-      position: String(row.position ?? ''),
-      drafter_name: String(row.drafter_name ?? row.drafterName ?? ''),
-      report_date: String(row.report_date ?? row.reportDate ?? ''),
-      summary: String(row.summary ?? ''),
-      future_plan: String(row.future_plan ?? row.futurePlan ?? ''),
-      satisfaction_score: Number(row.satisfaction_score ?? row.satisfactionScore ?? 5.0),
+      id,
+      draft_id,
+      plan_id,
+      department,
+      position,
+      drafter_name,
+      report_date,
+      summary,
+      future_plan,
+      satisfaction_score,
+      certificate_file,
+      certificate_file_name,
+      // camelCase aliases for perfect compatibility
+      draftId: draft_id,
+      planId: plan_id,
+      drafterName: drafter_name,
+      reportDate: report_date,
+      futurePlan: future_plan,
+      satisfactionScore: satisfaction_score,
+      certificateFile: certificate_file,
+      certificateFileName: certificate_file_name,
     };
   }
 
   const r = Array.isArray(row) ? row : [];
+  const id = String(r[0] || '');
+  const draft_id = String(r[1] || '');
+  const plan_id = String(r[2] || '');
+  const department = String(r[3] || '');
+  const position = String(r[4] || '');
+  const drafter_name = String(r[5] || '');
+  const report_date = String(r[6] || '');
+  const summary = String(r[7] || '');
+  const future_plan = String(r[8] || '');
+  const satisfaction_score = Number(r[9]) || 5.0;
+
   return {
-    id: String(r[0] || ''),
-    draft_id: String(r[1] || ''),
-    plan_id: String(r[2] || ''),
-    department: String(r[3] || ''),
-    position: String(r[4] || ''),
-    drafter_name: String(r[5] || ''),
-    report_date: String(r[6] || ''),
-    summary: String(r[7] || ''),
-    future_plan: String(r[8] || ''),
-    satisfaction_score: Number(r[9]) || 5.0,
+    id,
+    draft_id,
+    plan_id,
+    department,
+    position,
+    drafter_name,
+    report_date,
+    summary,
+    future_plan,
+    satisfaction_score,
+    // camelCase aliases
+    draftId: draft_id,
+    planId: plan_id,
+    drafterName: drafter_name,
+    reportDate: report_date,
+    futurePlan: future_plan,
+    satisfactionScore: satisfaction_score,
   };
 }
 
