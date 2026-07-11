@@ -1002,12 +1002,11 @@ export default function ReportManager({
                 header, nav, aside, form, input, textarea, select, button, .no-print, [class*="no-print"] {
                   display: none !important;
                 }
-                /* 좌측 칼럼 및 불필요한 그리드 레이아웃 초기화 */
-                .lg\\:col-span-5, .lg\\:col-span-12, .grid {
-                  display: block !important;
-                  width: 100% !important;
+                /* 좌측 칼럼 및 작성된 결과보고서 목록 영역 전체 숨김 */
+                .lg\\:col-span-5, .lg\\:col-span-12 {
+                  display: none !important;
                 }
-                /* 인쇄 문서 양식 외 모든 레이아웃의 마진/패딩 제거 및 배경화면 초기화 */
+                /* 인쇄 문서 외 상위 레이아웃을 absolute 배치하여 화면 최상단으로 분리 */
                 body, html, #root, main, .print-container, .lg\\:col-span-7 {
                   background: white !important;
                   margin: 0 !important;
@@ -1016,32 +1015,38 @@ export default function ReportManager({
                   height: auto !important;
                   display: block !important;
                   box-shadow: none !important;
+                  position: relative !important;
                 }
                 #print-area-wrapper {
-                  background: transparent !important;
-                  border: none !important;
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
                   margin: 0 !important;
                   padding: 0 !important;
-                  display: block !important;
-                  width: 100% !important;
-                  max-width: none !important;
+                  border: none !important;
+                  background: white !important;
                   box-shadow: none !important;
+                  display: block !important;
                 }
                 #print-area {
                   display: block !important;
+                  position: relative !important;
                   width: 100% !important;
                   max-width: none !important;
                   margin: 0 !important;
                   padding: 0 !important;
                   box-shadow: none !important;
                   border: none !important;
-                  background: transparent !important;
-                  page-break-after: avoid !important;
+                  background: white !important;
+                  box-sizing: border-box !important;
+                  page-break-inside: avoid !important;
                   break-inside: avoid !important;
                 }
                 #print-area * {
                   box-shadow: none !important;
                   text-shadow: none !important;
+                  box-sizing: border-box !important;
                 }
                 /* 표 및 내부 셀 여유 공간 */
                 #print-area table td {
