@@ -125,94 +125,43 @@ export default function PlanTable({
         styleEl.id = styleId;
         styleEl.innerHTML = `
           @media print {
-            @page { size: A4 landscape; margin: 10mm; } /* 많은 컬럼을 위해 가로 방향 권장, 여백 최소화 */
-            body { background: white !important; }
+            @page { size: A4 landscape; margin: 10mm; }
             
-            /* 불필요한 요소 숨김 */
-            .no-print, header, nav, aside, footer, button, form, .modal, [role="dialog"] { display: none !important; }
-            body > *:not(#root) { display: none !important; }
+            /* 불필요한 공통 UI만 숨김 (과도한 선택자 금지) */
+            .no-print { display: none !important; }
             
-            /* 상위 컨테이너 제한 해제 (우측 여백 제거의 핵심) */
-            .grid { display: block !important; }
-            div, main, #root, .max-w-7xl, .container, .mx-auto, .px-4, .py-8, .p-4, .p-6, .p-8, .mt-4, .space-y-6, .space-y-4 {
-              max-width: 100% !important;
-              width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              display: block !important;
-              border: none !important;
-              box-shadow: none !important;
-              background: transparent !important;
-              min-height: 0 !important;
-            }
-
+            /* 인쇄 컨테이너 폭 100% 최적화 (Tailwind 충돌 방지) */
             .print-plan-table-container {
-              display: block !important;
-              visibility: visible !important;
               width: 100% !important;
               max-width: none !important;
               margin: 0 !important;
               padding: 0 !important;
               border: none !important;
               box-shadow: none !important;
-              background: transparent !important;
-              overflow: visible !important;
+              display: block !important;
             }
             
-            /* 테이블 전체 넓이 100% 꽉 채우기 */
+            /* 상위 부모 요소 폭 제한 풀기 (id/class 특정) */
+            #root, body, main {
+              width: 100% !important;
+              max-width: none !important;
+              display: block !important;
+            }
+
+            /* 테이블 꽉 채우기 및 텍스트 자동 줄바꿈 */
             .print-plan-table-container table {
               width: 100% !important;
               max-width: 100% !important;
-              table-layout: fixed !important;
-              word-wrap: break-word !important;
               border-collapse: collapse !important;
-              font-size: 10px !important;
+              table-layout: auto !important; /* fixed 대신 내용에 맞게 자동 분배 */
+              font-size: 11px !important; /* 글자 크기 살짝 키움 */
             }
 
-            /* 각 필드(컬럼)별 넓이 황금비율 강제 분배 (총합 100%) */
-            .print-plan-table-container table th:nth-child(1), .print-plan-table-container table td:nth-child(1) { width: 4% !important; } /* NO */
-            .print-plan-table-container table th:nth-child(2), .print-plan-table-container table td:nth-child(2) { width: 8% !important; } /* 교육일자 */
-            .print-plan-table-container table th:nth-child(3), .print-plan-table-container table td:nth-child(3) { width: 5% !important; } /* 구분 */
-            .print-plan-table-container table th:nth-child(4), .print-plan-table-container table td:nth-child(4) { width: 22% !important; } /* 교육명 (가장 넓게) */
-            .print-plan-table-container table th:nth-child(5), .print-plan-table-container table td:nth-child(5) { width: 14% !important; } /* 교육기관/강사 */
-            .print-plan-table-container table th:nth-child(6), .print-plan-table-container table td:nth-child(6) { width: 7% !important; } /* 대상자 */
-            .print-plan-table-container table th:nth-child(7), .print-plan-table-container table td:nth-child(7) { width: 15% !important; } /* 교육일정 */
-            .print-plan-table-container table th:nth-child(8), .print-plan-table-container table td:nth-child(8) { width: 11% !important; } /* 교육시간 */
-            .print-plan-table-container table th:nth-child(9), .print-plan-table-container table td:nth-child(9) { width: 6% !important; } /* 예상비용 */
-            .print-plan-table-container table th:nth-child(10), .print-plan-table-container table td:nth-child(10) { width: 4% !important; } /* 기안 */
-            .print-plan-table-container table th:nth-child(11), .print-plan-table-container table td:nth-child(11) { width: 4% !important; } /* 보고서 */
-
-            .print-plan-table-container th {
-              background-color: #f1f5f9 !important;
-              color: #1e293b !important;
-              font-weight: 700 !important;
-              border: 1px solid #94a3b8 !important;
-              padding: 6px 4px !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            .print-plan-table-container td {
-              border: 1px solid #cbd5e1 !important;
-              padding: 6px 4px !important;
-              font-size: 10px !important;
-              word-break: break-all !important;
-              line-height: 1.3 !important;
-              color: #000000 !important;
-            }
+            /* 결재방 고정 사이즈 (깨짐 방지) */
             .print-plan-table-container table.approval-table {
-              width: 180px !important;
-              max-width: 180px !important;
+              width: 160px !important;
               margin-left: auto !important;
               margin-right: 0 !important;
-              table-layout: fixed !important;
-              border-collapse: collapse !important;
-            }
-            .print-plan-table-container table.approval-table td {
-              border: 1px solid #000000 !important;
-              padding: 4px !important;
-              font-size: 10px !important;
-              text-align: center !important;
-              height: auto !important;
             }
           }
         `;
