@@ -27,6 +27,7 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
     time_range: '',
     total_hours: '',
     estimated_cost: '',
+    headcount: '1',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -44,6 +45,7 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
         time_range: editPlan.time_range || '',
         total_hours: String(editPlan.hours !== undefined ? editPlan.hours : (editPlan.total_hours || '')),
         estimated_cost: String(editPlan.cost !== undefined ? editPlan.cost : (editPlan.estimated_cost || '')),
+        headcount: String(editPlan.headcount !== undefined ? editPlan.headcount : '1'),
       });
       setErrors({});
     } else {
@@ -58,6 +60,7 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
         time_range: '',
         total_hours: '',
         estimated_cost: '',
+        headcount: '1',
       });
       setErrors({});
     }
@@ -118,6 +121,14 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
       newErrors.estimated_cost = '올바른 금액을 입력해주세요.';
     }
 
+    // Headcount validation
+    const headcountNum = Number(formData.headcount);
+    if (!formData.headcount) {
+      newErrors.headcount = '참여 인원을 입력해주세요.';
+    } else if (isNaN(headcountNum) || headcountNum <= 0 || !Number.isInteger(headcountNum)) {
+      newErrors.headcount = '올바른 숫자를 입력해주세요 (1명 이상).';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -143,6 +154,7 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
       total_hours: Number(formData.total_hours),
       cost: Number(formData.estimated_cost),
       estimated_cost: Number(formData.estimated_cost),
+      headcount: Number(formData.headcount) || 1,
     });
     onClose();
   };
@@ -271,6 +283,22 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
                 className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
               />
               {errors.target_group && <p className="text-xs text-rose-500 mt-1">{errors.target_group}</p>}
+            </div>
+
+            {/* Headcount */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5 flex items-center gap-1">
+                <User className="w-3.5 h-3.5" /> 참여 인원 (명)
+              </label>
+              <input
+                type="number"
+                name="headcount"
+                value={formData.headcount}
+                onChange={handleChange}
+                placeholder="예) 10"
+                className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+              />
+              {errors.headcount && <p className="text-xs text-rose-500 mt-1">{errors.headcount}</p>}
             </div>
 
             {/* Schedule */}

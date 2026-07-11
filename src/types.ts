@@ -15,6 +15,7 @@ export interface EducationPlan {
   time_range: string; // HH~HH
   hours: number; // (was total_hours)
   cost: number; // (was estimated_cost)
+  headcount: number; // 참여 인원 수
   edu_date?: string; // Legacy alias for backward compatibility
   agency?: string; // Legacy alias for backward compatibility
   target_group?: string; // Legacy alias for backward compatibility

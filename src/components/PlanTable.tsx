@@ -333,7 +333,7 @@ export default function PlanTable({
 
                     {/* Target Group */}
                     <td className="py-3.5 px-1.5 md:px-2 text-gray-600 leading-snug break-all">
-                      {plan.target}
+                      {plan.target || '-'} {plan.headcount ? `(${plan.headcount}명)` : ''}
                     </td>
 
                     {/* Schedule */}

@@ -122,7 +122,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
       }
       return false;
     });
-    const plannedTrainees = monthlyPlans.reduce((sum, p) => sum + parseTraineeCount(p.target), 0);
+    const plannedTrainees = monthlyPlans.reduce((sum, p) => sum + (p.headcount !== undefined ? Number(p.headcount) : parseTraineeCount(p.target)), 0);
 
     // 해당 월에 실제 완료된 교육 건(completedReportsWithDetails) 필터링 및 참여 완료 인원(명) 계산
     const monthItems = completedReportsWithDetails.filter((item) => {
@@ -134,7 +134,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
       }
       return false;
     });
-    const completedTrainees = monthItems.reduce((sum, item) => sum + parseTraineeCount(item.plan.target), 0);
+    const completedTrainees = monthItems.reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
 
     return {
       name: monthName,

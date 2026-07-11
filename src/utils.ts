@@ -97,6 +97,7 @@ export function mapRowToPlan(row: any): EducationPlan {
     const timeRangeVal = String(row.time_range ?? row.timeRange ?? '');
     const hoursVal = Number(row.hours) || 0;
     const costVal = Number(row.cost) || 0;
+    const headcountVal = Number(row.headcount ?? 1) || 1;
 
     return {
       id: idVal,
@@ -115,6 +116,7 @@ export function mapRowToPlan(row: any): EducationPlan {
       hours: hoursVal,
       estimated_cost: costVal,
       cost: costVal,
+      headcount: headcountVal,
     };
   }
 
@@ -130,6 +132,7 @@ export function mapRowToPlan(row: any): EducationPlan {
   const timeRangeVal = String(r[8] || '');
   const hoursVal = Number(r[9]) || 0;
   const costVal = Number(r[10]) || 0;
+  const headcountVal = Number(r[11]) || 1;
 
   return {
     id: idVal,
@@ -148,6 +151,7 @@ export function mapRowToPlan(row: any): EducationPlan {
     hours: hoursVal,
     estimated_cost: costVal,
     cost: costVal,
+    headcount: headcountVal,
   };
 }
 
@@ -167,6 +171,7 @@ export function mapPlanToRow(plan: EducationPlan): any[] {
     plan.time_range,
     plan.hours !== undefined ? plan.hours : plan.total_hours,
     plan.cost !== undefined ? plan.cost : plan.estimated_cost,
+    plan.headcount !== undefined ? plan.headcount : 1,
   ];
 }
 

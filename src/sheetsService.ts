@@ -144,7 +144,8 @@ export async function addPlan(spreadsheetId: string, accessToken: string | null,
       schedule: plan.schedule || '',
       time_range: plan.time_range || '',
       hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),
-      cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
+      cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0),
+      headcount: Number(plan.headcount) || 1
     };
 
     const url = `${API_URL}${year ? `?year=${year}` : ''}`;
@@ -175,7 +176,8 @@ export async function updatePlan(spreadsheetId: string, accessToken: string | nu
       schedule: plan.schedule || '',
       time_range: plan.time_range || '',
       hours: plan.hours !== undefined ? plan.hours : (plan.total_hours || 0),
-      cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0)
+      cost: plan.cost !== undefined ? plan.cost : (plan.estimated_cost || 0),
+      headcount: Number(plan.headcount) || 1
     };
 
     const url = `${API_URL}${year ? `?year=${year}` : ''}`;
