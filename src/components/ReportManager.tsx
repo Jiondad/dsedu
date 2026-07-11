@@ -479,7 +479,7 @@ export default function ReportManager({
     try {
       setIsLoading(true);
       // SPREADSHEET_ID와 연도 파라미터를 정확히 결합하여 요청
-      const response = await axios.get(`${API_URL}?sheetName=education_reports&year=${year}`);
+      const response = await axios.get(`${API_URL}?action=read&sheetName=education_reports&year=${year}`);
       
       if (response.data && Array.isArray(response.data)) {
         // 백엔드가 어떤 케이스로 주든 프론트엔드 내부 변수(camelCase)로 강제 변환 메커니즘 

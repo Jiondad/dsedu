@@ -290,12 +290,7 @@ export default function PlanTable({
                 });
 
                 // 💡 보고서 데이터도 동일하게 2중 구조 예외 방어 후 매칭
-                const isReportCompleted = reports.some(r => {
-                  if (!r) return false;
-                  const rPlanId = (r.planId || r.plan_id || '').toString().trim();
-                  const pId = (plan.id || '').toString().trim();
-                  return rPlanId === pId && rPlanId !== '';
-                });
+                const isReportCompleted = reports.some(r => r && (r.planId || r.plan_id || '').toString().trim() === plan.id.toString().trim());
                 const hasReport = isReportCompleted;
 
                 return (
