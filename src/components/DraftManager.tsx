@@ -619,7 +619,7 @@ export default function DraftManager({
                 </div>
                 <div className="bg-white px-3 py-2 rounded-lg border border-gray-150 shrink-0 text-right shadow-2xs">
                   <p className="text-[9px] text-gray-400 font-bold tracking-wider mb-0.5">교육 대상자</p>
-                  <p className="font-bold text-indigo-600 text-[11px]">{selectedPlan.target || '미지정'}</p>
+                  <p className="font-bold text-indigo-600 text-[11px]">{selectedPlan.target || '미지정'} {selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}</p>
                 </div>
               </div>
             )}
@@ -971,7 +971,7 @@ export default function DraftManager({
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? `${selectedPlan.target} ${selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}` : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
                     <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule})` : ''}</td>
                   </tr>

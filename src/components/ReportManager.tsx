@@ -692,7 +692,7 @@ export default function ReportManager({
                     <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
                   </p>
                   <p>
-                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target || '미지정'}
+                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target || '미지정'} {selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}
                   </p>
                   <p>
                     <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
@@ -1088,7 +1088,7 @@ export default function ReportManager({
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? `${selectedPlan.target} ${selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}` : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
                     <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
                   </tr>
