@@ -107,10 +107,24 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
     { name: '사외 교육 시간', value: externalHours, color: '#F59E0B' }, // Amber
   ].filter((d) => d.value > 0);
 
-  // Chart Data: Monthly completion count and trainee count
+  // Chart Data: Monthly plan and completed trainee count
   const monthlyData = Array.from({ length: 12 }, (_, i) => {
     const monthNum = i + 1;
     const monthName = `${monthNum}월`;
+
+    // 해당 월에 수립된 연간 교육 계획(plans) 필터링 및 참여 예정 인원(명) 계산
+    const monthlyPlans = plans.filter((p) => {
+      const dateStr = p.date;
+      if (!dateStr) return false;
+      const parts = dateStr.split('-');
+      if (parts.length >= 2) {
+        return parseInt(parts[1], 10) === monthNum;
+      }
+      return false;
+    });
+    const plannedTrainees = monthlyPlans.reduce((sum, p) => sum + parseTraineeCount(p.target), 0);
+
+    // 해당 월에 실제 완료된 교육 건(completedReportsWithDetails) 필터링 및 참여 완료 인원(명) 계산
     const monthItems = completedReportsWithDetails.filter((item) => {
       const dateStr = item.plan.date || item.report.report_date;
       if (!dateStr) return false;
@@ -120,14 +134,12 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
       }
       return false;
     });
-
-    const count = monthItems.length;
-    const trainees = monthItems.reduce((sum, item) => sum + parseTraineeCount(item.plan.target), 0);
+    const completedTrainees = monthItems.reduce((sum, item) => sum + parseTraineeCount(item.plan.target), 0);
 
     return {
       name: monthName,
-      '교육 완료 (건)': count,
-      '수료 인원 (명)': trainees,
+      '교육 계획 (명)': plannedTrainees,
+      '교육 완료 (명)': completedTrainees,
     };
   });
 
@@ -552,9 +564,9 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           <div className="mb-4">
             <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
               <Layers className="w-4.5 h-4.5 text-indigo-500" />
-              <span>월별 마감 실적 및 수료자 추이</span>
+              <span>월별 교육 계획 및 완료 인원 추이</span>
             </h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">매월 실제 완료된 실적 건수 및 이수 인원 수</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">해당 월의 수립된 교육 계획 인원(명) 대비 실제 교육 완료 인원(명)</p>
           </div>
 
           <div className="flex-1 min-h-[260px] w-full">
@@ -562,12 +574,12 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               <ComposedChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                 <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" orientation="left" stroke="#6366F1" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" stroke="#F59E0B" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: '11px' }} />
+                <YAxis yAxisId="left" orientation="left" stroke="#6366F1" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} unit="명" />
+                <YAxis yAxisId="right" orientation="right" stroke="#F59E0B" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} unit="명" />
+                <Tooltip formatter={(value) => `${value}명`} contentStyle={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: '11px' }} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#4B5563', paddingTop: '10px' }} />
-                <Bar yAxisId="left" dataKey="교육 완료 (건)" fill="#6366F1" radius={[3, 3, 0, 0]} barSize={24} />
-                <Line yAxisId="right" type="monotone" dataKey="수료 인원 (명)" stroke="#F59E0B" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Bar yAxisId="left" dataKey="교육 계획 (명)" fill="#6366F1" radius={[3, 3, 0, 0]} barSize={24} />
+                <Line yAxisId="right" type="monotone" dataKey="교육 완료 (명)" stroke="#F59E0B" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
