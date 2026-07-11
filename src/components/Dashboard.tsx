@@ -81,23 +81,23 @@ export default function Dashboard({ metrics }: DashboardProps) {
     >
       {/* Upper Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        {/* Total Cost */}
+        {/* Total Plans */}
         <motion.div
           variants={cardVariants}
           className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
         >
-          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
-            <DollarSign className="w-6 h-6" />
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+            <BookOpen className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">총 예산 (예상비용)</p>
-            <p className="text-2xl font-bold text-gray-800 font-sans tracking-tight">
-              ₩{formatCurrency(total.totalCost)}
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">총 교육 건수</p>
+            <p className="text-2xl font-bold text-gray-800 tracking-tight">
+              {total.count} <span className="text-sm font-normal text-gray-500">건</span>
             </p>
             <div className="flex gap-2 mt-1 text-xs text-gray-400">
-              <span>사내: ₩{formatCurrency(inHouse.totalCost)}</span>
+              <span>사내: {inHouse.count}건</span>
               <span>•</span>
-              <span>사외: ₩{formatCurrency(external.totalCost)}</span>
+              <span>사외: {external.count}건</span>
             </div>
           </div>
         </motion.div>
@@ -123,23 +123,23 @@ export default function Dashboard({ metrics }: DashboardProps) {
           </div>
         </motion.div>
 
-        {/* Total Plans */}
+        {/* Total Cost */}
         <motion.div
           variants={cardVariants}
           className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
         >
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <BookOpen className="w-6 h-6" />
+          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
+            <DollarSign className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">총 교육 건수</p>
-            <p className="text-2xl font-bold text-gray-800 tracking-tight">
-              {total.count} <span className="text-sm font-normal text-gray-500">건</span>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">총 예산 (예상비용)</p>
+            <p className="text-2xl font-bold text-gray-800 font-sans tracking-tight">
+              ₩{formatCurrency(total.totalCost)}
             </p>
             <div className="flex gap-2 mt-1 text-xs text-gray-400">
-              <span>사내: {inHouse.count}건</span>
+              <span>사내: ₩{formatCurrency(inHouse.totalCost)}</span>
               <span>•</span>
-              <span>사외: {external.count}건</span>
+              <span>사외: ₩{formatCurrency(external.totalCost)}</span>
             </div>
           </div>
         </motion.div>

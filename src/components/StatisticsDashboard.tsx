@@ -346,28 +346,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
         </motion.div>
 
-        {/* Card 2: Actual Execution Cost */}
-        <motion.div
-          variants={cardVariants}
-          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
-        >
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">실제 집행 비용</p>
-            <p className="text-xl text-gray-700 tracking-tight mt-1 font-normal">
-              {formatCurrency(totalCost)}원
-            </p>
-            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate font-normal">
-              <span>사내: {formatCurrency(inHouseCost)}원</span>
-              <span>•</span>
-              <span>사외: {formatCurrency(externalCost)}원</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Card 3: Cumulative Education Hours */}
+        {/* Card 2: Cumulative Education Hours */}
         <motion.div
           variants={cardVariants}
           className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
@@ -384,6 +363,27 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               <span>사내: {inHouseHours}H</span>
               <span>•</span>
               <span>사외: {externalHours}H</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Card 3: Actual Execution Cost */}
+        <motion.div
+          variants={cardVariants}
+          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-4"
+        >
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">실제 집행 비용</p>
+            <p className="text-xl text-gray-700 tracking-tight mt-1 font-normal">
+              {formatCurrency(totalCost)}원
+            </p>
+            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate font-normal">
+              <span>사내: {formatCurrency(inHouseCost)}원</span>
+              <span>•</span>
+              <span>사외: {formatCurrency(externalCost)}원</span>
             </div>
           </div>
         </motion.div>
