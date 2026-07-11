@@ -859,12 +859,21 @@ export default function ReportManager({
                   box-shadow: none !important;
                   text-shadow: none !important;
                 }
-                #print-area-wrapper {
-                  border: none !important;
-                  box-shadow: none !important;
-                  background: transparent !important;
+                /* 인쇄되는 모든 부모 레이아웃을 중앙 정렬로 통일 */
+                div[id="print-area"] {
+                  margin: 0 auto !important;
+                }
+                /* print-area 위에 있는 상위 div들이 왼쪽으로 쏠리는 것을 방지 */
+                #print-area-wrapper, 
+                .print-container,
+                main,
+                body {
+                  display: flex !important;
+                  justify-content: center !important;
+                  align-items: center !important;
+                  width: 100% !important;
+                  margin: 0 auto !important;
                   padding: 0 !important;
-                  margin: 0 !important;
                 }
                 #print-area {
                   border: none !important;
@@ -872,8 +881,7 @@ export default function ReportManager({
                   background: transparent !important;
                   width: 170mm !important;
                   max-width: 170mm !important;
-                  margin-left: -5mm !important;
-                  margin-right: auto !important;
+                  margin: 0 auto !important; /* 브라우저 자체적으로 중앙에 놓이도록 처리 */
                   position: relative !important;
                   left: 0 !important;
                   right: 0 !important;
