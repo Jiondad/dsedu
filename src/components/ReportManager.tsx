@@ -872,7 +872,8 @@ export default function ReportManager({
                   background: transparent !important;
                   width: 170mm !important;
                   max-width: 170mm !important;
-                  margin: 0 auto !important;
+                  margin-left: -5mm !important;
+                  margin-right: auto !important;
                   position: relative !important;
                   left: 0 !important;
                   right: 0 !important;
