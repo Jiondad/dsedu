@@ -609,21 +609,21 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
         </div>
 
-        <div className="w-full overflow-hidden border border-gray-150 rounded-2xl bg-white">
-          <table className="w-full table-fixed text-left border-collapse text-xs md:text-sm">
+        <div className="w-full overflow-x-auto border border-gray-150 rounded-2xl bg-white">
+          <table className="w-full min-w-[850px] table-fixed text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-gray-150 text-[11px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
-                <th style={{ width: '15%' }} className="py-3 px-3.5">보고서번호</th>
-                <th style={{ width: '29%' }} className="py-3 px-2">교육명</th>
-                <th style={{ width: '18%' }} className="py-3 px-2">작성자 정보</th>
-                <th style={{ width: '14%' }} className="py-3 px-2">교육일정</th>
-                <th style={{ width: '11%' }} className="py-3 px-2 text-right">실집행비용</th>
-                <th style={{ width: '5%' }} className="py-3 px-2 text-center">만족도</th>
-                <th style={{ width: '5%' }} className="py-3 px-2 text-center">수료증</th>
-                <th style={{ width: '3%' }} className="py-3 px-3.5 text-center no-print">기능</th>
+              <tr className="border-b border-gray-150 text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50">
+                <th style={{ width: '13%' }} className="py-2.5 px-2">보고서번호</th>
+                <th style={{ width: '25%' }} className="py-2.5 px-1.5">교육명</th>
+                <th style={{ width: '15%' }} className="py-2.5 px-1.5">작성자 정보</th>
+                <th style={{ width: '15%' }} className="py-2.5 px-1.5">교육일정</th>
+                <th style={{ width: '12%' }} className="py-2.5 px-1.5 text-right">실집행비용</th>
+                <th style={{ width: '6%' }} className="py-2.5 px-1 text-center">만족도</th>
+                <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">수료증</th>
+                <th style={{ width: '7%' }} className="py-2.5 px-2 text-center no-print">기능</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-150">
+            <tbody className="divide-y divide-gray-150 text-[11px] md:text-xs">
               {completedReportsWithDetails.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-gray-400 font-medium">
@@ -634,38 +634,38 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                 completedReportsWithDetails.map(({ report, plan, draft }) => {
                   return (
                     <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="py-3.5 px-3.5 font-mono font-bold text-gray-700 truncate">{report.id}</td>
-                      <td className="py-3.5 px-2 font-semibold text-gray-800 break-words">{plan.title}</td>
-                      <td className="py-3.5 px-2 text-gray-600">
-                        <span className="block text-[11px] font-bold text-gray-700">{report.department}</span>
-                        <span className="text-[10px] text-gray-400 font-medium">{report.drafter_name} {report.position}</span>
+                      <td className="py-2.5 px-2 font-mono font-bold text-gray-700 truncate">{report.id}</td>
+                      <td className="py-2.5 px-1.5 font-semibold text-gray-800 break-all truncate" title={plan.title}>{plan.title}</td>
+                      <td className="py-2.5 px-1.5 text-gray-600">
+                        <span className="block text-[10px] font-bold text-gray-700 truncate">{report.department}</span>
+                        <span className="text-[10px] text-gray-400 font-medium truncate">{report.drafter_name} {report.position}</span>
                       </td>
-                      <td className="py-3.5 px-2 text-gray-600 font-mono text-[11px]">
-                        <div className="font-medium text-gray-700">{plan.date}</div>
-                        <div className="text-gray-400 text-[10px]">{plan.hours}시간 ({plan.schedule})</div>
+                      <td className="py-2.5 px-1.5 text-gray-600 font-mono text-[10px]">
+                        <div className="font-medium text-gray-700 truncate">{plan.date}</div>
+                        <div className="text-gray-400 text-[9px] truncate">{plan.hours}시간 ({plan.schedule})</div>
                       </td>
-                      <td className="py-3.5 px-2 text-right font-mono font-bold text-emerald-700 text-[12px]">
+                      <td className="py-2.5 px-1.5 text-right font-mono font-bold text-emerald-700">
                         {formatCurrency(plan.cost)}
                       </td>
-                      <td className="py-3.5 px-2 text-center font-bold text-indigo-700 text-[12px]">
+                      <td className="py-2.5 px-1 text-center font-bold text-indigo-700">
                         {report.satisfaction_score?.toFixed(1)}
                       </td>
-                      <td className="py-3.5 px-2 text-center">
+                      <td className="py-2.5 px-1 text-center">
                         {report.certificate_file ? (
-                          <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap">
-                            <Check className="w-3 h-3 stroke-[3]" />
+                          <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
                             첨부 완료
                           </span>
                         ) : (
                           <span className="text-gray-300 font-bold">-</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-3.5 text-center no-print">
+                      <td className="py-2.5 px-2 text-center no-print">
                         <button
                           onClick={() => setSelectedReportDetail({ report, plan, draft })}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all border border-indigo-100 cursor-pointer whitespace-nowrap"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg transition-all border border-indigo-100 cursor-pointer whitespace-nowrap"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3 h-3" />
                           상세보기
                         </button>
                       </td>
