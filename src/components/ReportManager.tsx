@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../sheetsService';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, getSatisfactionLabel } from '../utils';
 import {
   FileText,
   Trash2,
@@ -787,13 +787,13 @@ export default function ReportManager({
                   onChange={(e) => setSatisfactionScore(Number(e.target.value))}
                   className="w-full sm:w-48 bg-white border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
                 >
-                  <option value="5.0">5.0점 (매우 만족)</option>
-                  <option value="4.5">4.5점 (매우 우수)</option>
-                  <option value="4.0">4.0점 (만족)</option>
-                  <option value="3.5">3.5점 (보통)</option>
-                  <option value="3.0">3.0점 (보통)</option>
-                  <option value="2.0">2.0점 (불만족)</option>
-                  <option value="1.0">1.0점 (매우 불만족)</option>
+                  <option value="5.0">5.0 (매우 만족)</option>
+                  <option value="4.5">4.5 (만족)</option>
+                  <option value="4.0">4.0 (약간 만족)</option>
+                  <option value="3.5">3.5 (보통)</option>
+                  <option value="3.0">3.0 (약간 불만족)</option>
+                  <option value="2.0">2.0 (불만족)</option>
+                  <option value="1.0">1.0 (매우 불만족)</option>
                 </select>
                 <span className="text-[11px] text-gray-400">결과보고서 제출 및 마감 처리를 위해 수강생 설문 조사 기준 평점을 입력해 주세요.</span>
               </div>
@@ -1100,7 +1100,7 @@ export default function ReportManager({
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
                     <td className="border-r border-black p-2.5 font-bold text-emerald-800">{selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
-                    <td className="p-2.5 font-bold text-indigo-700">{selectedPlan ? `만족도 ${satisfactionScore.toFixed(1)} / 5.0` : ''}</td>
+                    <td className="p-2.5 font-bold text-indigo-700">{selectedPlan ? `만족도 ${satisfactionScore.toFixed(1)} (${getSatisfactionLabel(satisfactionScore)}) / 5.0` : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>

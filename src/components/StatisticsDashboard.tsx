@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, getSatisfactionLabel } from '../utils';
 import {
   BarChart,
   Bar,
@@ -450,7 +450,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                   />
                 );
               })}
-              <span className="text-[10px] text-gray-400 ml-1">만족도 우수</span>
+              <span className="text-[10px] text-gray-400 ml-1">{avgSatisfaction > 0 ? getSatisfactionLabel(avgSatisfaction) : '기록 없음'}</span>
             </div>
           </div>
         </motion.div>
@@ -856,7 +856,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                             </td>
                             <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
                             <td className="p-2.5 font-bold text-indigo-700">
-                              만족도 {selectedReportDetail.report.satisfaction_score.toFixed(1)} / 5.0
+                              만족도 {selectedReportDetail.report.satisfaction_score.toFixed(1)} ({getSatisfactionLabel(selectedReportDetail.report.satisfaction_score)}) / 5.0
                             </td>
                           </tr>
 

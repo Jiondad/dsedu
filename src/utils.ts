@@ -341,3 +341,17 @@ export function mapReportToRow(report: EducationReport): any[] {
     report.satisfaction_score || 5.0,
   ];
 }
+
+/**
+ * 만족도 평점에 대응하는 단계명을 반환합니다.
+ */
+export function getSatisfactionLabel(score: number): string {
+  const val = Number(score);
+  if (val >= 4.8) return '매우 만족';
+  if (val >= 4.3) return '만족';
+  if (val >= 3.8) return '약간 만족';
+  if (val >= 3.3) return '보통';
+  if (val >= 2.8) return '약간 불만족';
+  if (val >= 1.8) return '불만족';
+  return '매우 불만족';
+}
