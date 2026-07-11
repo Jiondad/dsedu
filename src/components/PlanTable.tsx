@@ -286,14 +286,14 @@ export default function PlanTable({
                 const hasDraft = drafts.some((d) => {
                   if (!d) return false;
                   const dPlanId = Array.isArray(d) ? String(d[1]) : String(d.plan_id || (d as any).planId || '');
-                  return dPlanId.trim() === String(plan.id).trim();
+                  return dPlanId.toString().trim() === plan.id.toString().trim();
                 });
 
                 // 💡 보고서 데이터도 동일하게 2중 구조 예외 방어 후 매칭
                 const hasReport = reports.some((r) => {
                   if (!r) return false;
                   const rPlanId = Array.isArray(r) ? String(r[2]) : String(r.plan_id || (r as any).planId || '');
-                  return rPlanId.trim() === String(plan.id).trim();
+                  return rPlanId.toString().trim() === plan.id.toString().trim();
                 });
 
                 return (
@@ -382,7 +382,7 @@ export default function PlanTable({
                     {/* Report Column */}
                     <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
                       {hasReport ? (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-slate-900 text-white shadow-xs whitespace-nowrap print:bg-transparent print:text-slate-950 print:p-0 print:border-none print:shadow-none">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-rose-600 text-white shadow-xs whitespace-nowrap print:bg-transparent print:text-rose-600 print:p-0 print:border-none print:shadow-none">
                           완료
                         </span>
                       ) : hasDraft ? (

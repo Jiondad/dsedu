@@ -379,6 +379,17 @@ export default function App() {
     }
   };
 
+  const handleFetchReports = async (year: string) => {
+    try {
+      const config = getSpreadsheetConfig();
+      const activeSheetId = spreadsheetId || config.spreadsheetId;
+      const fetchedReports = await fetchReports(activeSheetId, null, year);
+      setReports(fetchedReports || []);
+    } catch (err) {
+      console.error('Failed to fetch reports:', err);
+    }
+  };
+
   // ---------------- REPORT OPERATION HANDLERS ----------------
 
   const handleAddReport = async (newReport: EducationReport): Promise<string> => {
@@ -734,6 +745,8 @@ export default function App() {
                   isLoading={isLoading}
                   preselectedPlanId={preselectedPlanId}
                   onClearPreselectedPlan={() => setPreselectedPlanId(null)}
+                  selectedYear={selectedYear}
+                  onFetchReports={handleFetchReports}
                 />
               )}
 

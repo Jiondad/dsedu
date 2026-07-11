@@ -32,6 +32,8 @@ interface ReportManagerProps {
   isLoading: boolean;
   preselectedPlanId?: string | null;
   onClearPreselectedPlan?: () => void;
+  selectedYear: string;
+  onFetchReports: (year: string) => Promise<void>;
 }
 
 export default function ReportManager({
@@ -44,6 +46,8 @@ export default function ReportManager({
   isLoading,
   preselectedPlanId,
   onClearPreselectedPlan,
+  selectedYear,
+  onFetchReports,
 }: ReportManagerProps) {
   // Currently editing report state (form)
   const [selectedPlanId, setSelectedPlanId] = useState('');
@@ -467,26 +471,35 @@ export default function ReportManager({
       certificate_file_name: certificateFileName || undefined,
     };
 
-    if (editingReportIndex !== null) {
-      await onUpdateReport(reportData, editingReportIndex);
-      triggerLocalNotification('결과보고서가 수정되었습니다.', 'success');
-    } else {
-      if (reports.some((r) => r.id === reportData.id)) {
-        setErrors((prev) => ({
-          ...prev,
-          reportId: '이미 존재하는 보고서 번호입니다. 다른 번호를 사용해 주세요.',
-        }));
-        return;
-      }
-      try {
+    try {
+      if (editingReportIndex !== null) {
+        await onUpdateReport(reportData, editingReportIndex);
+        triggerLocalNotification('결과보고서가 수정되었습니다.', 'success');
+      } else {
+        if (reports.some((r) => r.id === reportData.id)) {
+          setErrors((prev) => ({
+            ...prev,
+            reportId: '이미 존재하는 보고서 번호입니다. 다른 번호를 사용해 주세요.',
+          }));
+          return;
+        }
         const finalId = await onAddReport(reportData);
         if (finalId) {
           setReportId(finalId);
         }
         triggerLocalNotification('새 교육 결과보고서가 작성되었습니다.', 'success');
-      } catch (err) {
-        console.error('Failed to add report:', err);
       }
+
+      // 구글 시트 등록이 성공한 즉시(또는 수정 완료 후) 강제로 최신 데이터 다시 리로드
+      if (onFetchReports) {
+        await onFetchReports(selectedYear);
+      }
+
+      // 데이터 저장이 완전히 끝난 후에는 입력 폼 내부의 모든 작성란 State 값들을 깨끗하게 비워줌 (Clear)
+      handleResetForm();
+    } catch (err) {
+      console.error('Failed to save report:', err);
+      triggerLocalNotification('결과보고서 저장 중 오류가 발생했습니다.', 'error');
     }
   };
 
