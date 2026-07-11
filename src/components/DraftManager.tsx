@@ -114,6 +114,9 @@ export default function DraftManager({
   // Filter for plan categories ('전체', '사내', '사외')
   const [planCategoryFilter, setPlanCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
 
+  // 연도 선택 필터 State (디폴트는 현재 연도)
+  const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
+
   // Auto-generate sequential draft ID based on selected date and year-based sequence
   const generateDraftIdForDate = (date: string) => {
     if (!date) return '';
@@ -772,57 +775,87 @@ export default function DraftManager({
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5">
-          <h3 className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2.5 mb-3 flex items-center gap-2">
-            <FileText className="w-4.5 h-4.5 text-emerald-500" />
-            작성된 기안서 목록 ({drafts.length})
-          </h3>
+          {(() => {
+            // 작성된 기안서 목록에서 고유 연도를 추출하고 현재 연도를 항상 포함
+            const availableYears = Array.from(new Set([
+              new Date().getFullYear().toString(),
+              ...drafts.map((d) => d.draft_date ? d.draft_date.split('T')[0].substring(0, 4) : '').filter(Boolean)
+            ])).sort((a, b) => b.localeCompare(a));
 
-          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            {drafts.length === 0 ? (
-              <p className="text-center text-xs text-gray-400 py-6">
-                저장된 교육 기안서가 없습니다.
-              </p>
-            ) : (
-              drafts.map((d, index) => {
-                const associatedPlan = plans.find((p) => p.id === d.plan_id);
-                return (
-                  <div
-                    key={d.id}
-                    className={`p-3 rounded-xl border text-xs transition-all flex items-start justify-between gap-3 cursor-pointer ${
-                      editingDraftIndex === index
-                        ? 'border-indigo-500 bg-indigo-50/20 shadow-xs'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => handleSelectDraftForEdit(d, index)}
+            const filteredDraftsWithIndex = drafts
+              .map((d, originalIndex) => ({ d, originalIndex }))
+              .filter(({ d }) => {
+                const year = d.draft_date ? d.draft_date.split('T')[0].substring(0, 4) : '';
+                return year === filterYear;
+              });
+
+            return (
+              <>
+                <div className="border-b border-gray-100 pb-2.5 mb-3 flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                    <FileText className="w-4.5 h-4.5 text-emerald-500" />
+                    작성된 기안서 목록 ({filteredDraftsWithIndex.length})
+                  </h3>
+                  <select
+                    value={filterYear}
+                    onChange={(e) => setFilterYear(e.target.value)}
+                    className="text-xs font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 outline-none focus:border-indigo-500 cursor-pointer"
                   >
-                    <div className="space-y-1 overflow-hidden">
-                      <p className="font-bold text-gray-800 truncate">
-                        {associatedPlan ? associatedPlan.title : '연관계획 정보 없음'}
-                      </p>
-                      <div className="flex gap-2 text-gray-400 text-[10px]">
-                        <span>번호: {d.id}</span>
-                        <span>•</span>
-                        <span>기안자: {d.drafter}</span>
-                      </div>
-                      <p className="text-[10px] text-gray-400">기안일: {d.draft_date ? d.draft_date.split('T')[0] : ''}</p>
-                    </div>
+                    {availableYears.map((y) => (
+                      <option key={y} value={y}>{y}년</option>
+                    ))}
+                  </select>
+                </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTargetId(d.id);
-                      }}
-                      className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
-                      title="삭제"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                  {filteredDraftsWithIndex.length === 0 ? (
+                    <p className="text-center text-xs text-gray-400 py-6">
+                      {filterYear}년에 저장된 교육 기안서가 없습니다.
+                    </p>
+                  ) : (
+                    filteredDraftsWithIndex.map(({ d, originalIndex }) => {
+                      const associatedPlan = plans.find((p) => p.id === d.plan_id);
+                      return (
+                        <div
+                          key={d.id}
+                          className={`p-3 rounded-xl border text-xs transition-all flex items-start justify-between gap-3 cursor-pointer ${
+                            editingDraftIndex === originalIndex
+                              ? 'border-indigo-500 bg-indigo-50/20 shadow-xs'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => handleSelectDraftForEdit(d, originalIndex)}
+                        >
+                          <div className="space-y-1 overflow-hidden">
+                            <p className="font-bold text-gray-800 truncate">
+                              {associatedPlan ? associatedPlan.title : '연관계획 정보 없음'}
+                            </p>
+                            <div className="flex gap-2 text-gray-400 text-[10px]">
+                              <span>번호: {d.id}</span>
+                              <span>•</span>
+                              <span>기안자: {d.drafter}</span>
+                            </div>
+                            <p className="text-[10px] text-gray-400">기안일: {d.draft_date ? d.draft_date.split('T')[0] : ''}</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTargetId(d.id);
+                            }}
+                            className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 

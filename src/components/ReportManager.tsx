@@ -199,6 +199,9 @@ export default function ReportManager({
   // Filter for plan categories ('전체', '사내', '사외')
   const [planCategoryFilter, setPlanCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
 
+  // 연도 선택 필터 State (디폴트는 현재 연도)
+  const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
+
   // Filter education plans that already have drafts (COMPLETED DRAFTS ONLY!)
   const plansWithDrafts = plans.filter((p) => drafts.some((d) => d.plan_id === p.id));
 
@@ -916,40 +919,77 @@ export default function ReportManager({
 
         {/* History List */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5">
-          <h3 className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2.5 mb-3 flex items-center gap-2">
-            <CheckCircle className="w-4.5 h-4.5 text-emerald-500" />
-            작성된 교육 결과보고서 목록 ({reports.length})
-          </h3>
-          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            {reports.length === 0 ? (
-              <p className="text-center text-xs text-gray-400 py-6">저장된 교육 결과보고서가 없습니다.</p>
-            ) : (
-              reports.map((r, index) => {
-                const associatedPlan = plans.find((p) => p.id === (r.plan_id || r.planId));
-                return (
-                  <div
-                    key={r.id}
-                    className={`p-3 rounded-xl border text-xs transition-all flex items-start justify-between gap-3 cursor-pointer ${
-                      editingReportIndex === index ? 'border-indigo-500 bg-indigo-50/20 shadow-xs' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => handleSelectReportForEdit(r, index)}
+          {(() => {
+            // 작성된 결과보고서 목록에서 고유 연도를 추출하고 현재 연도를 항상 포함
+            const availableYears = Array.from(new Set([
+              new Date().getFullYear().toString(),
+              ...reports.map((r) => {
+                const rDate = r.report_date || r.reportDate || '';
+                return rDate ? rDate.split('T')[0].substring(0, 4) : '';
+              }).filter(Boolean)
+            ])).sort((a, b) => b.localeCompare(a));
+
+            const filteredReportsWithIndex = reports
+              .map((r, originalIndex) => ({ r, originalIndex }))
+              .filter(({ r }) => {
+                const rDate = r.report_date || r.reportDate || '';
+                const year = rDate ? rDate.split('T')[0].substring(0, 4) : '';
+                return year === filterYear;
+              });
+
+            return (
+              <>
+                <div className="border-b border-gray-100 pb-2.5 mb-3 flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                    <CheckCircle className="w-4.5 h-4.5 text-emerald-500" />
+                    작성된 교육 결과보고서 목록 ({filteredReportsWithIndex.length})
+                  </h3>
+                  <select
+                    value={filterYear}
+                    onChange={(e) => setFilterYear(e.target.value)}
+                    className="text-xs font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 outline-none focus:border-indigo-500 cursor-pointer"
                   >
-                    <div className="space-y-1 overflow-hidden">
-                      <p className="font-bold text-gray-800 truncate">{associatedPlan ? associatedPlan.title : '연관 계획 정보 없음'}</p>
-                      <div className="flex gap-2 text-gray-400 text-[10px]">
-                        <span>번호: {r.id}</span>
-                        <span>•</span>
-                        <span>보고자: {r.drafter_name || r.drafterName} {r.position} ({r.department})</span>
-                      </div>
-                    </div>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTargetId(r.id); }} className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                    {availableYears.map((y) => (
+                      <option key={y} value={y}>{y}년</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                  {filteredReportsWithIndex.length === 0 ? (
+                    <p className="text-center text-xs text-gray-400 py-6">
+                      {filterYear}년에 저장된 교육 결과보고서가 없습니다.
+                    </p>
+                  ) : (
+                    filteredReportsWithIndex.map(({ r, originalIndex }) => {
+                      const associatedPlan = plans.find((p) => p.id === (r.plan_id || r.planId));
+                      return (
+                        <div
+                          key={r.id}
+                          className={`p-3 rounded-xl border text-xs transition-all flex items-start justify-between gap-3 cursor-pointer ${
+                            editingReportIndex === originalIndex ? 'border-indigo-500 bg-indigo-50/20 shadow-xs' : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => handleSelectReportForEdit(r, originalIndex)}
+                        >
+                          <div className="space-y-1 overflow-hidden">
+                            <p className="font-bold text-gray-800 truncate">{associatedPlan ? associatedPlan.title : '연관 계획 정보 없음'}</p>
+                            <div className="flex gap-2 text-gray-400 text-[10px]">
+                              <span>번호: {r.id}</span>
+                              <span>•</span>
+                              <span>보고자: {r.drafter_name || r.drafterName} {r.position} ({r.department})</span>
+                            </div>
+                          </div>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTargetId(r.id); }} className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
