@@ -478,7 +478,7 @@ export default function ReportManager({
   const fetchReports = async (year: string) => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${API_URL}?action=read&sheetName=education_reports&year=${year}`);
+      const response = await axios.get(`${API_URL}?action=read&sheetName=education_reports&year=${year}&t=${new Date().getTime()}`);
       
       if (response.data && Array.isArray(response.data)) {
         const mappedData: EducationReport[] = response.data.map((item: any) => ({

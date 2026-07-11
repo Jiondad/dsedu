@@ -96,7 +96,7 @@ export async function fetchPlans(
   accessToken?: string | null,
   year?: string
 ): Promise<EducationPlan[]> {
-  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_NAME}${year ? `&year=${year}` : ''}`;
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_NAME}${year ? `&year=${year}` : ''}&t=${new Date().getTime()}`;
 
   try {
     const response = await fetch(url);
@@ -214,7 +214,7 @@ export async function deletePlan(spreadsheetId: string, accessToken: string | nu
 // ============================================================================
 
 export async function fetchDrafts(spreadsheetId: string, accessToken?: string | null, year?: string): Promise<EducationDraft[]> {
-  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_DRAFT_NAME}${year ? `&year=${year}` : ''}`;
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_DRAFT_NAME}${year ? `&year=${year}` : ''}&t=${new Date().getTime()}`;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Drafts fetch failed');
@@ -321,7 +321,7 @@ export async function deleteDraft(spreadsheetId: string, accessToken: string | n
 // ============================================================================
 
 export async function fetchReports(spreadsheetId: string, accessToken?: string | null, year?: string): Promise<EducationReport[]> {
-  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_REPORT_NAME}${year ? `&year=${year}` : ''}`;
+  const url = `${API_URL}?action=read&sheetName=${SHEET_TAB_REPORT_NAME}${year ? `&year=${year}` : ''}&t=${new Date().getTime()}`;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Reports fetch failed');
