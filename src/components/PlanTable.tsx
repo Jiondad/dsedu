@@ -126,42 +126,64 @@ export default function PlanTable({
         styleEl.innerHTML = `
           @media print {
             @page { size: A4 landscape; margin: 10mm; }
+
+            /* 1. 불필요 요소 제거 및 공간 차지 원천 차단 */
+            .no-print, header, nav, aside, footer, button { display: none !important; }
             
-            /* 불필요한 공통 UI만 숨김 (과도한 선택자 금지) */
-            .no-print { display: none !important; }
-            
-            /* 인쇄 컨테이너 폭 100% 최적화 (Tailwind 충돌 방지) */
+            /* 2. 페이지 넘김(Pagination)을 박살내는 position: fixed / visibility: hidden 절대 금지!
+                 대신 존재하는 모든 상위 부모들의 화면 제한(max-width, Flex, Grid)을 무식하게 다 뚫어버림 */
+            html, body, #root, main, div {
+                overflow: visible !important;
+                display: block !important;
+                max-width: none !important;
+            }
+
+            /* 3. 문서 양식을 A4 가로폭(277mm)에 강제 안착 (정상적인 문서 흐름 유지) */
             .print-plan-table-container {
-              width: 100% !important;
-              max-width: none !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              border: none !important;
-              box-shadow: none !important;
-              display: block !important;
-            }
-            
-            /* 상위 부모 요소 폭 제한 풀기 (id/class 특정) */
-            #root, body, main {
-              width: 100% !important;
-              max-width: none !important;
-              display: block !important;
+                position: static !important; /* fixed 금지 (다중 페이지 인쇄 보장) */
+                width: 277mm !important;
+                max-width: 277mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                display: block !important;
             }
 
-            /* 테이블 꽉 채우기 및 텍스트 자동 줄바꿈 */
-            .print-plan-table-container table {
-              width: 100% !important;
-              max-width: 100% !important;
-              border-collapse: collapse !important;
-              table-layout: auto !important; /* fixed 대신 내용에 맞게 자동 분배 */
-              font-size: 11px !important; /* 글자 크기 살짝 키움 */
+            /* 4. 클로드의 완벽한 테이블 컬럼 % 배분 로직 흡수 */
+            .print-plan-table-container table:not(.approval-table) {
+                width: 100% !important;
+                max-width: 100% !important;
+                border-collapse: collapse !important;
+                table-layout: fixed !important;
+                font-size: 11px !important;
             }
 
-            /* 결재방 고정 사이즈 (깨짐 방지) */
+            /* 칼럼 황금비율 (합계 100%) */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(1), .print-plan-table-container table:not(.approval-table) td:nth-child(1) { width: 3%  !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(2), .print-plan-table-container table:not(.approval-table) td:nth-child(2) { width: 8%  !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(3), .print-plan-table-container table:not(.approval-table) td:nth-child(3) { width: 5%  !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(4), .print-plan-table-container table:not(.approval-table) td:nth-child(4) { width: 20% !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(5), .print-plan-table-container table:not(.approval-table) td:nth-child(5) { width: 13% !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(6), .print-plan-table-container table:not(.approval-table) td:nth-child(6) { width: 10% !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(7), .print-plan-table-container table:not(.approval-table) td:nth-child(7) { width: 10% !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(8), .print-plan-table-container table:not(.approval-table) td:nth-child(8) { width: 9%  !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(9), .print-plan-table-container table:not(.approval-table) td:nth-child(9) { width: 8%  !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(10), .print-plan-table-container table:not(.approval-table) td:nth-child(10) { width: 7% !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(11), .print-plan-table-container table:not(.approval-table) td:nth-child(11) { width: 7% !important; }
+
+            /* 긴 텍스트 줄바꿈 보장 */
+            .print-plan-table-container table:not(.approval-table) td,
+            .print-plan-table-container table:not(.approval-table) th {
+                word-break: break-all !important;
+                overflow-wrap: break-word !important;
+            }
+
+            /* 결재란 고정 사이즈 */
             .print-plan-table-container table.approval-table {
-              width: 160px !important;
-              margin-left: auto !important;
-              margin-right: 0 !important;
+                width: 45mm !important;
+                margin-left: auto !important;
+                margin-right: 0 !important;
             }
           }
         `;
