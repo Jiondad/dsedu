@@ -360,7 +360,7 @@ export default function PlanTable({
                     {/* Draft Column */}
                     <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
                       {hasDraft ? (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-rose-600 text-white shadow-xs whitespace-nowrap print:bg-transparent print:text-rose-600 print:p-0 print:border-none print:shadow-none">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-gray-500 text-white shadow-xs whitespace-nowrap print:bg-transparent print:text-gray-500 print:p-0 print:border-none print:shadow-none">
                           완료
                         </span>
                       ) : (
@@ -379,7 +379,7 @@ export default function PlanTable({
                     {/* Report Column */}
                     <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
                       {hasReport ? (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-rose-600 text-white shadow-xs whitespace-nowrap print:bg-transparent print:text-rose-600 print:p-0 print:border-none print:shadow-none">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-gray-500 text-white shadow-xs whitespace-nowrap print:bg-transparent print:text-gray-500 print:p-0 print:border-none print:shadow-none">
                           완료
                         </span>
                       ) : hasDraft ? (
