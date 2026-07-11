@@ -96,6 +96,10 @@ export default function PlanTable({
     return 0;
   });
 
+  const totalHours = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.hours) || 0), 0);
+  const totalHeadcount = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.headcount) || 0), 0);
+  const totalCost = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.cost) || 0), 0);
+
   const confirmDelete = (index: number) => {
     setDeleteConfirmIndex(index);
   };
@@ -176,6 +180,21 @@ export default function PlanTable({
               line-height: 1.3 !important;
               color: #000000 !important;
             }
+            .print-plan-table-container table.approval-table {
+              width: 180px !important;
+              max-width: 180px !important;
+              margin-left: auto !important;
+              margin-right: 0 !important;
+              table-layout: fixed !important;
+              border-collapse: collapse !important;
+            }
+            .print-plan-table-container table.approval-table td {
+              border: 1px solid #000000 !important;
+              padding: 4px !important;
+              font-size: 10px !important;
+              text-align: center !important;
+              height: auto !important;
+            }
           }
         `;
         document.head.appendChild(styleEl);
@@ -194,11 +213,25 @@ export default function PlanTable({
     <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden print-plan-table-container">
       {/* 인쇄 전용 헤더 */}
       <div className="hidden print:block mb-6 w-full">
-        <div className="flex justify-between items-baseline border-b-2 border-slate-800 pb-2.5">
-          <h1 className="text-lg font-black text-slate-900">{selectedYear ? `${selectedYear}년도 ` : ''}대성스틸 연간 교육 계획 목록</h1>
-          <span className="text-xs text-slate-500 font-mono font-bold">
-            출력일자: {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </span>
+        <div className="flex justify-between items-end border-b-2 border-slate-800 pb-2.5">
+          <h1 className="text-lg font-black text-slate-900 self-end mb-2">{selectedYear ? `${selectedYear}년도 ` : ''}대성스틸 연간 교육 계획 목록</h1>
+          <div className="ml-auto">
+            <table className="approval-table w-[180px] border-collapse border border-black text-center" style={{ width: '180px', borderCollapse: 'collapse', border: '1px solid black' }}>
+              <tbody>
+                <tr className="border-b border-black">
+                  <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-100 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '30px', padding: '4px', backgroundColor: '#f3f4f6', fontWeight: 'bold' }}>결<br/>재</td>
+                  <td className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>작성</td>
+                  <td className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>검토</td>
+                  <td className="font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>승인</td>
+                </tr>
+                <tr style={{ height: '40px' }}>
+                  <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '40px' }}></td>
+                  <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '40px' }}></td>
+                  <td style={{ height: '40px' }}></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -249,28 +282,28 @@ export default function PlanTable({
         <table className="w-full table-fixed text-left border-collapse text-xs md:text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-[11px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
-              <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">No</th>
-              <th style={{ width: '9%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('date')}>
+              <th style={{ width: '2%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">No</th>
+              <th style={{ width: '5.5%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('date')}>
                 교육일자 {sortField === 'date' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '5.5%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => handleSort('category')}>
+              <th style={{ width: '3%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => handleSort('category')}>
                 구분 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '22%' }} className="py-3 px-1.5 md:px-2 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
+              <th style={{ width: '33%' }} className="py-3 px-1.5 md:px-2 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
                 교육명 {sortField === 'title' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '16%' }} className="py-3 px-1.5 md:px-2">교육기관 / 강사</th>
-              <th style={{ width: '9%' }} className="py-3 px-1.5 md:px-2">대상자</th>
-              <th style={{ width: '9%' }} className="py-3 px-1 md:px-1.5 whitespace-nowrap">교육일정</th>
-              <th style={{ width: '10.5%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('hours')}>
+              <th style={{ width: '8%' }} className="py-3 px-1.5 md:px-2">교육기관 / 강사</th>
+              <th style={{ width: '5%' }} className="py-3 px-1.5 md:px-2">대상자</th>
+              <th style={{ width: '13.5%' }} className="py-3 px-1 md:px-1.5 whitespace-nowrap">교육일정</th>
+              <th style={{ width: '12.6%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('hours')}>
                 교육시간 {sortField === 'hours' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '8.5%' }} className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('cost')}>
+              <th style={{ width: '5.4%' }} className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('cost')}>
                 예상비용 {sortField === 'cost' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">기안</th>
-              <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">보고서</th>
-              <th style={{ width: '4%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap no-print">관리</th>
+              <th style={{ width: '6%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">기안</th>
+              <th style={{ width: '6%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">보고서</th>
+              <th style={{ width: '3%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap no-print">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -281,7 +314,8 @@ export default function PlanTable({
                 </td>
               </tr>
             ) : (
-              sortedPlans.map(({ plan, originalIndex }, idx) => {
+              <>
+                {sortedPlans.map(({ plan, originalIndex }, idx) => {
                 // 💡 [버그 종결] 기안서 데이터가 배열이든 객체든 'plan_id'를 정확하게 파싱하여 비교합니다.
                 const hasDraft = drafts.some((d) => {
                   if (!d) return false;
@@ -426,11 +460,37 @@ export default function PlanTable({
                     </td>
                   </tr>
                 );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+              })}
+              <tr className="bg-slate-50/80 font-bold border-t border-b border-slate-300">
+                <td colSpan={5} className="py-3 px-1.5 text-center text-slate-700 font-extrabold">
+                  합계
+                </td>
+                <td className="py-3 px-1.5 text-slate-800 font-bold text-center md:text-left">
+                  {totalHeadcount ? `${totalHeadcount}명` : '-'}
+                </td>
+                <td className="py-3 px-1"></td>
+                <td className="py-3 px-1 text-center text-slate-800 font-bold">
+                  {totalHours}시간
+                </td>
+                <td className="py-3 px-1 text-right text-slate-900 font-mono font-bold">
+                  {formatCurrency(totalCost)}
+                </td>
+                <td className="py-3 px-1"></td>
+                <td className="py-3 px-1"></td>
+                <td className="py-3 px-1 no-print"></td>
+              </tr>
+            </>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+    {/* 인쇄 전용 푸터 - 출력일자 */}
+    <div className="hidden print:block text-right mt-6">
+      <span className="text-xs text-slate-500 font-mono font-bold">
+        출력일자: {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </span>
+    </div>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
