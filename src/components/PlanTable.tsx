@@ -386,7 +386,7 @@ export default function PlanTable({
                         <>
                           <button
                             onClick={() => onStartReport(plan)}
-                            className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-[#1e293b] text-white hover:bg-slate-700 shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap no-print"
+                            className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-sky-500 text-white hover:bg-sky-600 shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap no-print"
                           >
                             작성
                           </button>
