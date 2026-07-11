@@ -872,43 +872,54 @@ export default function DraftManager({
           >
             <style>{`
               @media print {
-                body, html, #print-area, #print-area * {
+                /* 불필요한 요소 숨김 처리 */
+                header, nav, aside, form, input, textarea, select, button, .no-print, [class*="no-print"] {
+                  display: none !important;
+                }
+                /* 좌측 칼럼 및 불필요한 그리드 레이아웃 초기화 */
+                .lg\\:col-span-5, .lg\\:col-span-12, .grid {
+                  display: block !important;
+                  width: 100% !important;
+                }
+                /* 인쇄 문서 양식 외 모든 레이아웃의 마진/패딩 제거 및 배경화면 초기화 */
+                body, html, #root, main, .print-container, .lg\\:col-span-7 {
+                  background: white !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  width: 100% !important;
+                  height: auto !important;
+                  display: block !important;
+                  box-shadow: none !important;
+                }
+                #print-area-wrapper {
+                  background: transparent !important;
+                  border: none !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  display: block !important;
+                  width: 100% !important;
+                  max-width: none !important;
+                  box-shadow: none !important;
+                }
+                #print-area {
+                  display: block !important;
+                  width: 100% !important;
+                  max-width: none !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  background: transparent !important;
+                  page-break-after: avoid !important;
+                  break-inside: avoid !important;
+                }
+                #print-area * {
                   box-shadow: none !important;
                   text-shadow: none !important;
                 }
-                /* 인쇄되는 모든 부모 레이아웃을 중앙 정렬로 통일 */
-                div[id="print-area"] {
-                  margin: 0 auto !important;
-                }
-                /* print-area 위에 있는 상위 div들이 왼쪽으로 쏠리는 것을 방지 */
-                #print-area-wrapper, 
-                .print-container,
-                main,
-                body {
-                  display: flex !important;
-                  justify-content: center !important;
-                  align-items: center !important;
-                  width: 100% !important;
-                  margin: 0 auto !important;
-                  padding: 0 !important;
-                }
-                #print-area {
-                  border: none !important;
-                  box-shadow: none !important;
-                  background: transparent !important;
-                  width: 170mm !important;
-                  max-width: 170mm !important;
-                  margin: 0 auto !important; /* 브라우저 자체적으로 중앙에 놓이도록 처리 */
-                  position: relative !important;
-                  left: 0 !important;
-                  right: 0 !important;
-                  padding-left: 0 !important;
-                  padding-right: 0 !important;
-                  padding-bottom: 40px !important; /* 최하단 자름 방지 */
-                  margin-bottom: 30px !important;
-                }
+                /* 표 및 내부 셀 여유 공간 */
                 #print-area table td {
-                  padding: 10px 8px !important; /* 표 내부 행 높이를 여유 있게 조정 */
+                  padding: 8px 6px !important;
                 }
                 
                 /* 기안서 전용 인쇄 박스 높이 확보 */
