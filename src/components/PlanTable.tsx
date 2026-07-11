@@ -130,17 +130,16 @@ export default function PlanTable({
             /* 1. 불필요 요소 제거 및 공간 차지 원천 차단 */
             .no-print, header, nav, aside, footer, button { display: none !important; }
             
-            /* 2. 페이지 넘김(Pagination)을 박살내는 position: fixed / visibility: hidden 절대 금지!
-                 대신 존재하는 모든 상위 부모들의 화면 제한(max-width, Flex, Grid)을 무식하게 다 뚫어버림 */
+            /* 2. 다중 페이지 넘김(Pagination) 보장 (fixed 절대 금지) */
             html, body, #root, main, div {
                 overflow: visible !important;
                 display: block !important;
                 max-width: none !important;
             }
 
-            /* 3. 문서 양식을 A4 가로폭(277mm)에 강제 안착 (정상적인 문서 흐름 유지) */
+            /* 3. 문서 양식을 A4 가로폭(277mm)에 강제 안착 */
             .print-plan-table-container {
-                position: static !important; /* fixed 금지 (다중 페이지 인쇄 보장) */
+                position: static !important;
                 width: 277mm !important;
                 max-width: 277mm !important;
                 margin: 0 !important;
@@ -150,7 +149,7 @@ export default function PlanTable({
                 display: block !important;
             }
 
-            /* 4. 클로드의 완벽한 테이블 컬럼 % 배분 로직 흡수 */
+            /* 4. 테이블 기본 구조 100% 매칭 */
             .print-plan-table-container table:not(.approval-table) {
                 width: 100% !important;
                 max-width: 100% !important;
@@ -159,27 +158,34 @@ export default function PlanTable({
                 font-size: 11px !important;
             }
 
-            /* 칼럼 황금비율 (합계 100%) */
+            /* 5. 칼럼 황금비율 재조정 (합계 100%) - 기안/보고서 축소, 강사/일정/시간 공간 확보 */
             .print-plan-table-container table:not(.approval-table) th:nth-child(1), .print-plan-table-container table:not(.approval-table) td:nth-child(1) { width: 3%  !important; }
             .print-plan-table-container table:not(.approval-table) th:nth-child(2), .print-plan-table-container table:not(.approval-table) td:nth-child(2) { width: 8%  !important; }
             .print-plan-table-container table:not(.approval-table) th:nth-child(3), .print-plan-table-container table:not(.approval-table) td:nth-child(3) { width: 5%  !important; }
             .print-plan-table-container table:not(.approval-table) th:nth-child(4), .print-plan-table-container table:not(.approval-table) td:nth-child(4) { width: 20% !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(5), .print-plan-table-container table:not(.approval-table) td:nth-child(5) { width: 13% !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(5), .print-plan-table-container table:not(.approval-table) td:nth-child(5) { width: 14% !important; } /* 강사 확보 */
             .print-plan-table-container table:not(.approval-table) th:nth-child(6), .print-plan-table-container table:not(.approval-table) td:nth-child(6) { width: 10% !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(7), .print-plan-table-container table:not(.approval-table) td:nth-child(7) { width: 10% !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(8), .print-plan-table-container table:not(.approval-table) td:nth-child(8) { width: 9%  !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(7), .print-plan-table-container table:not(.approval-table) td:nth-child(7) { width: 11% !important; } /* 일정 확보 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(8), .print-plan-table-container table:not(.approval-table) td:nth-child(8) { width: 11% !important; } /* 시간 확보 */
             .print-plan-table-container table:not(.approval-table) th:nth-child(9), .print-plan-table-container table:not(.approval-table) td:nth-child(9) { width: 8%  !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(10), .print-plan-table-container table:not(.approval-table) td:nth-child(10) { width: 7% !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(11), .print-plan-table-container table:not(.approval-table) td:nth-child(11) { width: 7% !important; }
+            .print-plan-table-container table:not(.approval-table) th:nth-child(10), .print-plan-table-container table:not(.approval-table) td:nth-child(10) { width: 5% !important; } /* 기안 축소 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(11), .print-plan-table-container table:not(.approval-table) td:nth-child(11) { width: 5% !important; } /* 보고서 축소 */
 
-            /* 긴 텍스트 줄바꿈 보장 */
+            /* 6. 텍스트 줄바꿈 및 아이콘 분리 방지 (핵심 디테일) */
             .print-plan-table-container table:not(.approval-table) td,
             .print-plan-table-container table:not(.approval-table) th {
                 word-break: break-all !important;
                 overflow-wrap: break-word !important;
             }
+            
+            /* 아이콘과 텍스트가 묶인 컨테이너는 절대 줄바꿈되지 않도록 강제 */
+            .print-plan-table-container table:not(.approval-table) td .flex.items-center {
+                white-space: nowrap !important;
+                word-break: keep-all !important;
+                flex-wrap: nowrap !important;
+            }
 
-            /* 결재란 고정 사이즈 */
+            /* 7. 결재란 고정 사이즈 */
             .print-plan-table-container table.approval-table {
                 width: 45mm !important;
                 margin-left: auto !important;
