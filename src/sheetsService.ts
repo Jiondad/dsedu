@@ -327,9 +327,32 @@ export async function fetchReports(spreadsheetId: string, accessToken?: string |
     if (!response.ok) throw new Error('Reports fetch failed');
     const res = await response.json();
     let rows = extractRowsFromData(res);
-    if (rows.length > 0 && (Array.isArray(rows[0]) ? rows[0].some(c => typeof c === 'string' && c.toLowerCase() === 'id') : rows[0]?.id)) rows = rows.slice(1);
-    return rows.filter((row: any) => (Array.isArray(row) ? row[0] : row.id)).map(mapRowToReport);
-  } catch (err) { console.error(err); return []; }
+
+    // 💡 [치명적 버그 수정] 첫 번째 데이터가 헤더인지 검사할 때, 
+    // 단순히 id 속성이 있는지가 아니라 '값' 자체가 "id" 문자열인지 정확하게 확인하도록 수정!
+    if (rows.length > 0) {
+      const firstRow = rows[0];
+      if (Array.isArray(firstRow)) {
+        if (String(firstRow[0]).trim().toLowerCase() === 'id') {
+          rows = rows.slice(1);
+        }
+      } else if (firstRow && typeof firstRow === 'object') {
+        // 객체일 경우 id 값이 'id'라는 문자열일 때만 잘라냄
+        if (String(firstRow.id || '').trim().toLowerCase() === 'id') {
+          rows = rows.slice(1);
+        }
+      }
+    }
+
+    return rows.filter((row: any) => {
+       // 빈 데이터 방어
+       const idVal = Array.isArray(row) ? row[0] : row.id;
+       return idVal && String(idVal).trim() !== '';
+    }).map(mapRowToReport);
+  } catch (err) { 
+    console.error('fetchReports 최종 로드 실패:', err); 
+    return []; 
+  }
 }
 
 export async function addReport(spreadsheetId: string, accessToken: string | null, report: any, year?: string): Promise<void> {
