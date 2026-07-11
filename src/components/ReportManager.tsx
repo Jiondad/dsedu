@@ -386,20 +386,31 @@ export default function ReportManager({
     triggerLocalNotification('교육 결과보고서가 즉시 삭제되었습니다.', 'success');
   };
 
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+
   const handlePrint = () => {
     const isIframe = window.self !== window.top;
     if (isIframe) {
       setShowPrintIframeWarning(true);
     } else {
+      const originalTitle = document.title;
       try {
+        const planTitle = selectedPlan ? selectedPlan.title : '교육결과보고서';
+        const planTarget = selectedPlan ? selectedPlan.target : '대상자';
+        const titleParts = [reportDate, planTitle, planTarget]
+          .filter(Boolean)
+          .map((p) => p.replace(/[\/\\?%*:|"<>\x00-\x1F\s]+/g, '_').trim());
+        const dynamicTitle = titleParts.join('_');
+        
+        document.title = dynamicTitle;
         window.print();
       } catch (err) {
         setShowPrintIframeWarning(true);
+      } finally {
+        document.title = originalTitle;
       }
     }
   };
-
-  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};

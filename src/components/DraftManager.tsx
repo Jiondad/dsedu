@@ -349,10 +349,21 @@ export default function DraftManager({
     if (isIframe) {
       setShowPrintIframeWarning(true);
     } else {
+      const originalTitle = document.title;
       try {
+        const planTitle = selectedPlan ? selectedPlan.title : '교육기안서';
+        const planTarget = selectedPlan ? selectedPlan.target : '대상자';
+        const titleParts = [draftDate, planTitle, planTarget]
+          .filter(Boolean)
+          .map((p) => p.replace(/[\/\\?%*:|"<>\x00-\x1F\s]+/g, '_').trim());
+        const dynamicTitle = titleParts.join('_');
+        
+        document.title = dynamicTitle;
         window.print();
       } catch (err) {
         setShowPrintIframeWarning(true);
+      } finally {
+        document.title = originalTitle;
       }
     }
   };
