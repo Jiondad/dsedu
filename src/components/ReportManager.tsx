@@ -998,34 +998,41 @@ export default function ReportManager({
           <div id="printable-area" className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
             <style>{`
               @media print {
-                /* 1. 화이트리스트 방식: 전체를 숨기고 대상만 노출 */
-                body * { visibility: hidden !important; }
-                #printable-area, #printable-area * { visibility: visible !important; }
+                @page { size: A4 portrait; margin: 10mm; }
+                body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 
-                /* 2. Grid 붕괴 방지 및 190mm 고정폭 강제 지정 */
+                /* 1. 불필요한 요소 확실히 제거 (visibility 절대 금지) */
+                .no-print, header, nav, aside, footer, button { 
+                  display: none !important; 
+                }
+                
+                /* 2. Grid 등 상위 컨테이너 레이아웃 붕괴 방지 */
+                .grid { display: block !important; }
+                .lg\\:col-span-7, .lg\\:col-span-12 { width: 100% !important; display: block !important; }
+                
+                /* 3. 부모 컨테이너의 제한(overflow) 해제 */
+                #print-area-wrapper {
+                  padding: 0 !important;
+                  margin: 0 !important;
+                  border: none !important;
+                  background: white !important;
+                  overflow: visible !important; /* overflow-x-hidden 무력화 및 클리핑 방지 핵심 */
+                }
+                
+                /* 4. 문서 양식 A4 최적화 (190mm 고정폭) */
                 #printable-area {
-                  position: absolute !important;
-                  left: 0 !important;
-                  top: 0 !important;
-                  width: 190mm !important; /* A4 규격(210mm) - 양측 여백(20mm) */
+                  width: 190mm !important;
                   max-width: 190mm !important;
                   margin: 0 !important;
                   padding: 0 !important;
-                  overflow: visible !important; /* overflow-x-hidden 무력화 */
-                  box-shadow: none !important;
                   border: none !important;
-                  background: white !important;
+                  box-shadow: none !important;
+                  overflow: visible !important;
                 }
                 
-                /* 3. 결재방 고정 px 해제 및 mm 단위 적용 */
-                table.approval-table {
-                  width: 45mm !important;
-                  margin-left: auto !important;
-                  margin-right: 0 !important;
-                }
-                
-                /* 4. 내부 테이블 100% 매칭 */
-                table { width: 100% !important; table-layout: fixed !important; word-break: break-all !important; }
+                /* 5. 내부 테이블 및 결재방 규격 고정 */
+                table { width: 100% !important; table-layout: fixed !important; word-break: break-all !important; page-break-inside: avoid; }
+                table.approval-table { width: 45mm !important; margin-left: auto !important; margin-right: 0 !important; }
                 table td { padding: 8px 6px !important; }
                 .report-summary-box { min-height: 140px !important; }
                 .report-future-box { min-height: 75px !important; }
