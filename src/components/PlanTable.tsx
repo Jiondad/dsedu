@@ -135,7 +135,7 @@ export default function PlanTable({
             body > *:not(#root) {
               display: none !important;
             }
-            body, #root, main, .mt-4, .space-y-6, .space-y-4 {
+            body, #root, main, .max-w-7xl, .container, .mx-auto, .px-4, .py-8, .p-4, .p-6, .p-8, .mt-4, .space-y-6, .space-y-4 {
               width: 100% !important;
               max-width: none !important;
               margin: 0 !important;
@@ -150,6 +150,7 @@ export default function PlanTable({
               display: block !important;
               visibility: visible !important;
               width: 100% !important;
+              max-width: none !important;
               margin: 0 !important;
               padding: 0 !important;
               border: none !important;
@@ -159,10 +160,22 @@ export default function PlanTable({
             }
             .print-plan-table-container table {
               width: 100% !important;
+              max-width: none !important;
               table-layout: fixed !important;
               border-collapse: collapse !important;
               font-size: 10px !important;
             }
+            .print-plan-table-container th:nth-child(1) { width: 4% !important; }
+            .print-plan-table-container th:nth-child(2) { width: 8% !important; }
+            .print-plan-table-container th:nth-child(3) { width: 4% !important; }
+            .print-plan-table-container th:nth-child(4) { width: 26% !important; }
+            .print-plan-table-container th:nth-child(5) { width: 13% !important; }
+            .print-plan-table-container th:nth-child(6) { width: 7% !important; }
+            .print-plan-table-container th:nth-child(7) { width: 12% !important; }
+            .print-plan-table-container th:nth-child(8) { width: 9% !important; }
+            .print-plan-table-container th:nth-child(9) { width: 9% !important; }
+            .print-plan-table-container th:nth-child(10) { width: 4% !important; }
+            .print-plan-table-container th:nth-child(11) { width: 4% !important; }
             .print-plan-table-container th {
               background-color: #f1f5f9 !important;
               color: #1e293b !important;
@@ -279,31 +292,31 @@ export default function PlanTable({
 
       {/* Table Section */}
       <div className="w-full overflow-hidden">
-        <table className="w-full table-fixed text-left border-collapse text-xs md:text-sm">
+        <table className="w-full text-left border-collapse text-xs md:text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-[11px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
-              <th style={{ width: '2%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">No</th>
-              <th style={{ width: '5.5%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('date')}>
+              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">No</th>
+              <th className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('date')}>
                 교육일자 {sortField === 'date' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '3%' }} className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => handleSort('category')}>
+              <th className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => handleSort('category')}>
                 구분 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '33%' }} className="py-3 px-1.5 md:px-2 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
+              <th className="py-3 px-1.5 md:px-2 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
                 교육명 {sortField === 'title' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '8%' }} className="py-3 px-1.5 md:px-2">교육기관 / 강사</th>
-              <th style={{ width: '5%' }} className="py-3 px-1.5 md:px-2">대상자</th>
-              <th style={{ width: '13.5%' }} className="py-3 px-1 md:px-1.5 whitespace-nowrap">교육일정</th>
-              <th style={{ width: '12.6%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('hours')}>
+              <th className="py-3 px-1.5 md:px-2">교육기관 / 강사</th>
+              <th className="py-3 px-1.5 md:px-2">대상자</th>
+              <th className="py-3 px-1 md:px-1.5 whitespace-nowrap">교육일정</th>
+              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('hours')}>
                 교육시간 {sortField === 'hours' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '5.4%' }} className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('cost')}>
+              <th className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('cost')}>
                 예상비용 {sortField === 'cost' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
-              <th style={{ width: '6%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">기안</th>
-              <th style={{ width: '6%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">보고서</th>
-              <th style={{ width: '3%' }} className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap no-print">관리</th>
+              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">기안</th>
+              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">보고서</th>
+              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap no-print">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
