@@ -994,7 +994,7 @@ export default function ReportManager({
 
       {/* RIGHT COLUMN */}
       <div className="lg:col-span-7 flex flex-col items-center">
-        <div id="print-area-wrapper" className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border">
+        <div id="print-area-wrapper" className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border print-section">
           <div id="print-area" className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
             <style>{`
               @media print {
@@ -1006,7 +1006,14 @@ export default function ReportManager({
                 .lg\\:col-span-5, .lg\\:col-span-12 {
                   display: none !important;
                 }
-                /* 인쇄 문서 외 상위 레이아웃을 absolute 배치하여 화면 최상단으로 분리 */
+                /* 그리드 및 플렉스 전면 해제하여 100% 가득 차도록 함 */
+                .grid, .flex, .print-container {
+                  display: block !important;
+                  width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
+                /* 인쇄 문서 외 상위 레이아웃의 마진/패딩 제거 및 배경화면 초기화 */
                 body, html, #root, main, .print-container, .lg\\:col-span-7 {
                   background: white !important;
                   margin: 0 !important;
@@ -1015,19 +1022,19 @@ export default function ReportManager({
                   height: auto !important;
                   display: block !important;
                   box-shadow: none !important;
-                  position: relative !important;
+                  border: none !important;
+                  position: static !important;
                 }
-                #print-area-wrapper {
-                  position: absolute !important;
-                  left: 0 !important;
-                  top: 0 !important;
-                  width: 100% !important;
+                #print-area-wrapper, .print-section {
+                  background: transparent !important;
+                  border: none !important;
                   margin: 0 !important;
                   padding: 0 !important;
-                  border: none !important;
-                  background: white !important;
-                  box-shadow: none !important;
                   display: block !important;
+                  width: 100% !important;
+                  max-width: none !important;
+                  box-shadow: none !important;
+                  position: static !important;
                 }
                 #print-area {
                   display: block !important;
