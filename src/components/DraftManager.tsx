@@ -866,81 +866,48 @@ export default function DraftManager({
           className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border print-section"
         >
           <div
-            id="print-area"
+            id="printable-area"
             className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden"
             style={{ boxSizing: 'border-box' }}
           >
             <style>{`
               @media print {
-                /* 불필요한 요소 숨김 처리 */
-                header, nav, aside, form, input, textarea, select, button, .no-print, [class*="no-print"], [role="tablist"], .tabs-list {
-                  display: none !important;
+                /* 1. 화면 전체의 모든 요소를 일단 숨김 */
+                body * {
+                  visibility: hidden !important;
                 }
-                /* 좌측 칼럼 및 작성된 기안서 목록 영역 전체 숨김 */
-                div[class*="lg:col-span-5"], div[class*="lg:col-span-12"], .no-print {
-                  display: none !important;
+                /* 2. 인쇄할 영역과 그 하위 요소들만 다시 표시 */
+                #printable-area, #printable-area * {
+                  visibility: visible !important;
                 }
-                /* 그리드 및 플렉스 전면 해제하여 100% 가득 차도록 함 */
-                .grid, .flex, .print-container {
-                  display: block !important;
-                  width: 100% !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                }
-                /* 인쇄 문서 외 상위 레이아웃의 마진/패딩 제거 및 배경화면 초기화 */
-                body, html, #root, main, .print-container, div[class*="lg:col-span-7"] {
-                  background: white !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  width: 100% !important;
-                  height: auto !important;
-                  display: block !important;
-                  box-shadow: none !important;
-                  border: none !important;
-                  position: static !important;
-                }
-                #print-area-wrapper, .print-section {
-                  background: transparent !important;
-                  border: none !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  display: block !important;
-                  width: 100% !important;
-                  max-width: none !important;
-                  box-shadow: none !important;
-                  position: static !important;
-                }
-                #print-area {
-                  display: block !important;
-                  position: relative !important;
+                /* 3. 인쇄 영역을 좌측 상단으로 강제 이동시켜 여백과 잘림 원천 차단 */
+                #printable-area {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
                   width: 100% !important;
                   max-width: 100% !important;
                   margin: 0 !important;
                   padding: 0 !important;
-                  box-shadow: none !important;
-                  border: none !important;
-                  background: white !important;
                   box-sizing: border-box !important;
-                  page-break-inside: avoid !important;
-                  break-inside: avoid !important;
+                  display: block !important;
+                  background: white !important;
+                  border: none !important;
+                  box-shadow: none !important;
                   overflow: visible !important;
                 }
-                #print-area * {
-                  box-shadow: none !important;
-                  text-shadow: none !important;
-                  box-sizing: border-box !important;
-                }
-                /* 표 및 내부 셀 여유 공간 및 고정 테이블 레이아웃 */
-                #print-area table {
-                  table-layout: fixed !important;
+                /* 4. 테이블 우측 잘림 방지 및 결재방 위치 고정 */
+                #printable-area table {
                   width: 100% !important;
+                  table-layout: fixed !important;
+                  word-break: break-all !important;
                 }
-                #print-area table.approval-table {
+                #printable-area table.approval-table {
                   width: 180px !important;
                   margin-left: auto !important;
                   margin-right: 0 !important;
                 }
-                #print-area table td {
+                #printable-area table td {
                   padding: 8px 6px !important;
                 }
                 
