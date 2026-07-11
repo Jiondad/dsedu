@@ -158,7 +158,9 @@ export default function Dashboard({ metrics }: DashboardProps) {
               ₩{formatCurrency(total.count > 0 ? Math.round(total.totalCost / total.count) : 0)}
             </p>
             <div className="flex gap-2 mt-1 text-xs text-gray-400">
-              <span>사내평균: ₩{formatCurrency(inHouse.count > 0 ? Math.round(inHouse.totalCost / inHouse.count) : 0)}</span>
+              <span>사내: ₩{formatCurrency(inHouse.count > 0 ? Math.round(inHouse.totalCost / inHouse.count) : 0)}</span>
+              <span>•</span>
+              <span>사외: ₩{formatCurrency(external.count > 0 ? Math.round(external.totalCost / external.count) : 0)}</span>
             </div>
           </div>
         </motion.div>
