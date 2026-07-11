@@ -615,7 +615,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               <tr className="border-b border-gray-150 text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50">
                 <th style={{ width: '13%' }} className="py-2.5 px-2">보고서번호</th>
                 <th style={{ width: '25%' }} className="py-2.5 px-1.5">교육명</th>
-                <th style={{ width: '15%' }} className="py-2.5 px-1.5">작성자 정보</th>
+                <th style={{ width: '15%' }} className="py-2.5 px-1.5">교육대상자</th>
                 <th style={{ width: '15%' }} className="py-2.5 px-1.5">교육일정</th>
                 <th style={{ width: '12%' }} className="py-2.5 px-1.5 text-right">실집행비용</th>
                 <th style={{ width: '6%' }} className="py-2.5 px-1 text-center">만족도</th>
@@ -632,13 +632,14 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                 </tr>
               ) : (
                 completedReportsWithDetails.map(({ report, plan, draft }) => {
+                  const associatedPlan = plans.find((p) => p.id === (report.plan_id || report.planId));
+                  const targetText = associatedPlan ? associatedPlan.target : (report.target || '-');
                   return (
                     <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-2.5 px-2 font-mono font-bold text-gray-700 truncate">{report.id}</td>
                       <td className="py-2.5 px-1.5 font-semibold text-gray-800 break-all truncate" title={plan.title}>{plan.title}</td>
-                      <td className="py-2.5 px-1.5 text-gray-600">
-                        <span className="block text-[10px] font-bold text-gray-700 truncate">{report.department}</span>
-                        <span className="text-[10px] text-gray-400 font-medium truncate">{report.drafter_name} {report.position}</span>
+                      <td className="py-2.5 px-1.5 text-gray-600 font-medium truncate" title={targetText}>
+                        {targetText}
                       </td>
                       <td className="py-2.5 px-1.5 text-gray-600 font-mono text-[10px]">
                         <div className="font-medium text-gray-700 truncate">{plan.date}</div>

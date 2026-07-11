@@ -57,6 +57,7 @@ export interface EducationReport {
   certificateFileName?: string;
   draftDate?: string;
   year?: string;
+  target?: string;
 }
 
 export interface MetricSummary {
