@@ -739,6 +739,7 @@ export default function App() {
                   plans={plans}
                   drafts={drafts}
                   reports={reports}
+                  setReports={setReports}
                   onAddReport={handleAddReport}
                   onUpdateReport={handleUpdateReport}
                   onDeleteReport={handleDeleteReport}

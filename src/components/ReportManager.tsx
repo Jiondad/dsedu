@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_URL } from '../sheetsService';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
 import { formatCurrency } from '../utils';
 import {
@@ -26,6 +28,7 @@ interface ReportManagerProps {
   plans: EducationPlan[];
   drafts: EducationDraft[];
   reports: EducationReport[];
+  setReports?: React.Dispatch<React.SetStateAction<EducationReport[]>>;
   onAddReport: (report: EducationReport) => Promise<string | void>;
   onUpdateReport: (report: EducationReport, index: number) => Promise<void>;
   onDeleteReport: (index: number) => Promise<void>;
@@ -39,16 +42,39 @@ interface ReportManagerProps {
 export default function ReportManager({
   plans,
   drafts,
-  reports,
+  reports: initialReports,
+  setReports: parentSetReports,
   onAddReport,
   onUpdateReport,
   onDeleteReport,
-  isLoading,
+  isLoading: parentIsLoading,
   preselectedPlanId,
   onClearPreselectedPlan,
   selectedYear,
   onFetchReports,
 }: ReportManagerProps) {
+  const [reports, setLocalReports] = useState<EducationReport[]>(initialReports);
+  const [isLoading, setIsLoading] = useState(parentIsLoading);
+
+  useEffect(() => {
+    setLocalReports(initialReports);
+  }, [initialReports]);
+
+  useEffect(() => {
+    setIsLoading(parentIsLoading);
+  }, [parentIsLoading]);
+
+  const setReports = (newReports: EducationReport[] | ((prev: EducationReport[]) => EducationReport[])) => {
+    if (typeof newReports === 'function') {
+      const resolved = newReports(reports);
+      setLocalReports(resolved);
+      if (parentSetReports) parentSetReports(resolved);
+    } else {
+      setLocalReports(newReports);
+      if (parentSetReports) parentSetReports(newReports);
+    }
+  };
+
   // Currently editing report state (form)
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [reportId, setReportId] = useState('');
@@ -449,6 +475,54 @@ export default function ReportManager({
     return Object.keys(newErrors).length === 0;
   };
 
+  const fetchReports = async (year: string) => {
+    try {
+      setIsLoading(true);
+      // SPREADSHEET_ID와 연도 파라미터를 정확히 결합하여 요청
+      const response = await axios.get(`${API_URL}?sheetName=education_reports&year=${year}`);
+      
+      if (response.data && Array.isArray(response.data)) {
+        // 백엔드가 어떤 케이스로 주든 프론트엔드 내부 변수(camelCase)로 강제 변환 메커니즘 
+        const mappedData: EducationReport[] = response.data.map((item: any) => ({
+          id: item.id || '',
+          plan_id: item.planId || item.plan_id || '',
+          draft_id: item.draftId || item.draft_id || '',
+          drafter_name: item.drafterName || item.drafter_name || '',
+          position: item.position || '',
+          department: item.department || '',
+          report_date: item.reportDate || item.report_date || '',
+          summary: item.summary || '',
+          future_plan: item.futurePlan || item.future_plan || '',
+          satisfaction_score: item.satisfactionScore || item.satisfaction_score || 0,
+          certificate_file: item.certificateFile || item.certificate_file || '',
+          certificate_file_name: item.certificateFileName || item.certificate_file_name || '',
+          // camelCase aliases for complete robustness and double compatibility
+          planId: item.planId || item.plan_id || '',
+          draftId: item.draftId || item.draft_id || '',
+          drafterName: item.drafterName || item.drafter_name || '',
+          draftDate: item.draftDate || item.draft_date || '',
+          reportDate: item.reportDate || item.report_date || '',
+          satisfactionScore: item.satisfactionScore || item.satisfaction_score || 0,
+          futurePlan: item.futurePlan || item.future_plan || '',
+          certificateFile: item.certificateFile || item.certificate_file || '',
+          certificateFileName: item.certificateFileName || item.certificate_file_name || '',
+          year: item.year || year
+        }));
+        
+        // 현재 선택된 연도와 일치하는 데이터만 화면 목록 상태(State)에 바인딩
+        const filtered = mappedData.filter((r: any) => r.year.toString() === year.toString());
+        setReports(filtered);
+      } else {
+        setReports([]);
+      }
+    } catch (error) {
+      console.error("결과보고서 로드 실패:", error);
+      setReports([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSaveReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -500,6 +574,7 @@ export default function ReportManager({
       }
 
       // 구글 시트 등록이 성공한 즉시(또는 수정 완료 후) 강제로 최신 데이터 다시 리로드
+      await fetchReports(selectedYear);
       if (onFetchReports) {
         await onFetchReports(selectedYear);
       }

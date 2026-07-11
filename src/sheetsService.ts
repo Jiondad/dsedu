@@ -52,7 +52,7 @@ const SHEET_TAB_REPORT_NAME = 'education_reports';
 const SPREADSHEET_ID = (import.meta as any).env?.VITE_SPREADSHEET_ID || (import.meta as any).env?.APP_URL || '1u3MYYrV9QBq-yOPimkntzg2niDuQUsPLycDW-0aM6IY';
 
 // 💡 대문자 I(아이)가 완벽하게 검증된 진짜 구글 앱스 스크립트 배포 주소
-const API_URL = (import.meta as any).env?.VITE_APP_URL || 
+export const API_URL = (import.meta as any).env?.VITE_APP_URL || 
                 (import.meta as any).env?.APP_URL || 
                 'https://script.google.com/macros/s/1PNdiWIScbCkAbtUS9cBxzLksJ3V7IjK3xJyB6aKc8MU/exec';
 
