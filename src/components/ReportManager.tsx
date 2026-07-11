@@ -788,7 +788,6 @@ export default function ReportManager({
                   className="w-full sm:w-48 bg-white border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
                 >
                   <option value="5.0">5.0점 (매우 만족)</option>
-                  <option value="4.8">4.8점 (우수)</option>
                   <option value="4.5">4.5점 (매우 우수)</option>
                   <option value="4.0">4.0점 (만족)</option>
                   <option value="3.5">3.5점 (보통)</option>
