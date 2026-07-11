@@ -292,8 +292,7 @@ export default function PlanTable({
                 // 💡 보고서 데이터도 동일하게 2중 구조 예외 방어 후 매칭
                 const hasReport = reports.some((r) => {
                   if (!r) return false;
-                  const rPlanId = Array.isArray(r) ? String(r[2]) : String(r.planId || r.plan_id || (r as any).planId || (r as any).plan_id || '');
-                  return rPlanId.toString().trim() === plan.id.toString().trim();
+                  return (r.planId || r.plan_id || '').toString().trim() === plan.id.toString().trim();
                 });
 
                 return (
