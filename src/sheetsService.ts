@@ -335,15 +335,36 @@ export async function fetchReports(spreadsheetId: string, accessToken?: string |
 export async function addReport(spreadsheetId: string, accessToken: string | null, report: any, year?: string): Promise<void> {
   try { 
     const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const payload = {
+      action: 'create',
+      sheetName: SHEET_TAB_REPORT_NAME, 
+      year: year || '',
+      id: report.id || '',
+      draft_id: report.draft_id || report.draftId || '',
+      plan_id: report.plan_id || report.planId || '',
+      department: report.department || '',
+      position: report.position || '',
+      drafter_name: report.drafter_name || report.drafterName || '',
+      report_date: report.report_date || report.reportDate || '',
+      summary: report.summary || '',
+      future_plan: report.future_plan || report.futurePlan || '',
+      satisfaction_score: report.satisfaction_score !== undefined ? report.satisfaction_score : (report.satisfactionScore || 5.0),
+      // camelCase aliases for complete robustness
+      draftId: report.draft_id || report.draftId || '',
+      planId: report.plan_id || report.planId || '',
+      drafterName: report.drafter_name || report.drafterName || '',
+      reportDate: report.report_date || report.reportDate || '',
+      futurePlan: report.future_plan || report.futurePlan || '',
+      satisfactionScore: report.satisfaction_score !== undefined ? report.satisfaction_score : (report.satisfactionScore || 5.0),
+      certificate_file: report.certificate_file || report.certificateFile || '',
+      certificate_file_name: report.certificate_file_name || report.certificateFileName || '',
+      certificateFile: report.certificate_file || report.certificateFile || '',
+      certificateFileName: report.certificate_file_name || report.certificateFileName || '',
+    };
     const response = await fetch(url, { 
       method: 'POST', 
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-      body: JSON.stringify({ 
-        action: 'create',
-        sheetName: SHEET_TAB_REPORT_NAME, 
-        year: year || '',
-        ...report 
-      }) 
+      body: JSON.stringify(payload) 
     }); 
     const res = await response.json();
     if (res.success === false) throw new Error(res.error);
@@ -353,16 +374,37 @@ export async function addReport(spreadsheetId: string, accessToken: string | nul
 export async function updateReport(spreadsheetId: string, accessToken: string | null, report: any, rowIndex: number, year?: string): Promise<void> {
   try { 
     const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const payload = {
+      action: 'update', 
+      sheetName: SHEET_TAB_REPORT_NAME, 
+      rowIndex, 
+      year: year || '',
+      id: report.id || '',
+      draft_id: report.draft_id || report.draftId || '',
+      plan_id: report.plan_id || report.planId || '',
+      department: report.department || '',
+      position: report.position || '',
+      drafter_name: report.drafter_name || report.drafterName || '',
+      report_date: report.report_date || report.reportDate || '',
+      summary: report.summary || '',
+      future_plan: report.future_plan || report.futurePlan || '',
+      satisfaction_score: report.satisfaction_score !== undefined ? report.satisfaction_score : (report.satisfactionScore || 5.0),
+      // camelCase aliases for complete robustness
+      draftId: report.draft_id || report.draftId || '',
+      planId: report.plan_id || report.planId || '',
+      drafterName: report.drafter_name || report.drafterName || '',
+      reportDate: report.report_date || report.reportDate || '',
+      futurePlan: report.future_plan || report.futurePlan || '',
+      satisfactionScore: report.satisfaction_score !== undefined ? report.satisfaction_score : (report.satisfactionScore || 5.0),
+      certificate_file: report.certificate_file || report.certificateFile || '',
+      certificate_file_name: report.certificate_file_name || report.certificateFileName || '',
+      certificateFile: report.certificate_file || report.certificateFile || '',
+      certificateFileName: report.certificate_file_name || report.certificateFileName || '',
+    };
     const response = await fetch(url, { 
       method: 'POST', 
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-      body: JSON.stringify({ 
-        action: 'update', 
-        sheetName: SHEET_TAB_REPORT_NAME, 
-        rowIndex, 
-        year: year || '',
-        ...report 
-      }) 
+      body: JSON.stringify(payload) 
     }); 
     const res = await response.json();
     if (res.success === false) throw new Error(res.error);
