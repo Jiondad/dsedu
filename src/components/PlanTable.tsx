@@ -177,11 +177,12 @@ export default function PlanTable({
                 overflow-wrap: break-word !important;
             }
             
-            /* 아이콘과 텍스트가 묶인 컨테이너는 절대 줄바꿈되지 않도록 강제 */
-            .print-plan-table-container table:not(.approval-table) td .flex.items-center {
+            /* 아이콘과 텍스트가 묶인 컨테이너는 break-all 무력화 및 한 줄 강제 고정 */
+            .print-plan-table-container table:not(.approval-table) td .no-break-wrap {
                 white-space: nowrap !important;
                 word-break: keep-all !important;
-                flex-wrap: nowrap !important;
+                overflow-wrap: normal !important;
+                display: inline-block !important;
             }
 
             /* 7. 결재란 고정 사이즈 */
@@ -347,7 +348,7 @@ export default function PlanTable({
                     {/* Agency / Instructor */}
                     <td className="py-3.5 px-1.5 md:px-2 text-gray-500 break-all">
                       <div className="font-medium text-gray-700 leading-snug">{plan.institution}</div>
-                      <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex">
+                      <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex no-break-wrap">
                         <User className="w-3.5 h-3.5 shrink-0" /> <span className="whitespace-nowrap">{plan.instructor}</span>
                       </div>
                     </td>
@@ -359,7 +360,7 @@ export default function PlanTable({
 
                     {/* Schedule */}
                     <td className="py-3.5 px-1 md:px-1.5 text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex">
+                      <div className="flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex no-break-wrap">
                         <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         <span className="whitespace-nowrap">{plan.schedule}</span>
                       </div>
@@ -367,7 +368,7 @@ export default function PlanTable({
 
                     {/* Integrated Education Time */}
                     <td className="py-3.5 px-1 md:px-1.5 text-center text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1 whitespace-nowrap flex-nowrap inline-flex">
+                      <div className="flex items-center justify-center gap-1 whitespace-nowrap flex-nowrap inline-flex no-break-wrap">
                         <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         <span className="whitespace-nowrap">{plan.time_range} ({plan.hours}시간)</span>
                       </div>
