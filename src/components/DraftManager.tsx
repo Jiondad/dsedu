@@ -863,68 +863,52 @@ export default function DraftManager({
       <div className="lg:col-span-7 flex flex-col items-center">
         <div
           id="print-area-wrapper"
-          className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border"
+          className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border print-section"
         >
           <div
-            id="print-area"
+            id="printable-area"
             className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden"
             style={{ boxSizing: 'border-box' }}
           >
             <style>{`
               @media print {
-                /* 불필요한 요소 숨김 처리 */
-                header, nav, aside, form, input, textarea, select, button, .no-print, [class*="no-print"] {
-                  display: none !important;
-                }
-                /* 좌측 칼럼 및 불필요한 그리드 레이아웃 초기화 */
-                .lg\\:col-span-5, .lg\\:col-span-12, .grid {
-                  display: block !important;
-                  width: 100% !important;
-                }
-                /* 인쇄 문서 양식 외 모든 레이아웃의 마진/패딩 제거 및 배경화면 초기화 */
-                body, html, #root, main, .print-container, .lg\\:col-span-7 {
-                  background: white !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  width: 100% !important;
-                  height: auto !important;
-                  display: block !important;
-                  box-shadow: none !important;
-                }
+                /* 1. 페이지 규격 및 기본 설정 */
+                @page { size: A4 portrait; margin: 10mm; }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; }
+                
+                /* 2. 불필요한 영역 확실히 제거 (좌측 폼은 이미 no-print 클래스가 있음) */
+                .no-print, header, nav, aside, button { display: none !important; }
+                
+                /* 3. Grid 레이아웃 강제 해제 (핵심: 이거 안 풀면 백지 됨) */
+                .grid { display: block !important; gap: 0 !important; }
+                .lg\\:col-span-7, .lg\\:col-span-12 { width: 100% !important; max-width: 100% !important; display: block !important; }
+                
+                /* 4. 인쇄 컨테이너 배경 및 테두리 초기화 */
                 #print-area-wrapper {
                   background: transparent !important;
                   border: none !important;
-                  margin: 0 !important;
                   padding: 0 !important;
-                  display: block !important;
-                  width: 100% !important;
-                  max-width: none !important;
-                  box-shadow: none !important;
-                }
-                #print-area {
-                  display: block !important;
-                  width: 100% !important;
-                  max-width: none !important;
                   margin: 0 !important;
+                  display: block !important;
+                }
+                
+                /* 5. 문서 양식 본연의 흐름 복구 (absolute 절대 금지) */
+                #printable-area {
+                  position: relative !important;
+                  width: 100% !important;
+                  max-width: none !important;
+                  margin: 0 auto !important;
                   padding: 0 !important;
                   box-shadow: none !important;
                   border: none !important;
-                  background: transparent !important;
-                  page-break-after: avoid !important;
-                  break-inside: avoid !important;
-                }
-                #print-area * {
-                  box-shadow: none !important;
-                  text-shadow: none !important;
-                }
-                /* 표 및 내부 셀 여유 공간 */
-                #print-area table td {
-                  padding: 8px 6px !important;
                 }
                 
-                /* 기안서 전용 인쇄 박스 높이 확보 */
-                .draft-summary-box { min-height: 180px !important; }
-                .draft-budget-box { min-height: 60px !important; }
+                /* 6. 테이블 및 결재방 최적화 */
+                table { width: 100% !important; table-layout: fixed !important; word-break: break-all !important; page-break-inside: avoid; }
+                table.approval-table { width: 180px !important; margin-left: auto !important; margin-right: 0 !important; }
+                table td { padding: 8px 6px !important; }
+                .draft-summary-box { min-height: 240px !important; }
+                .draft-budget-box { min-height: 80px !important; }
               }
             `}</style>
             <div>
@@ -933,7 +917,7 @@ export default function DraftManager({
                   {draftId || 'DSEDU-YYYYMMDD-XXX'}
                 </div>
 
-                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px]" style={{ borderCollapse: 'collapse', border: '1px solid #000000' }}>
+                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px] ml-auto" style={{ borderCollapse: 'collapse', border: '1px solid #000000', marginLeft: 'auto' }}>
                   <tbody>
                     <tr className="border-b border-black">
                       <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]" style={{ border: '1px solid #000000' }}>
