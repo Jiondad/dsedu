@@ -365,7 +365,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           .print-stats-table-container th:nth-child(5), .print-stats-table-container td:nth-child(5) { width: 10% !important; } /* 교육시간 */
           .print-stats-table-container th:nth-child(6), .print-stats-table-container td:nth-child(6) { width: 12% !important; } /* 실집행비용 */
           .print-stats-table-container th:nth-child(7), .print-stats-table-container td:nth-child(7) { width: 8%  !important; } /* 만족도 */
-          .print-stats-table-container th:nth-child(8), .print-stats-table-container td:nth-child(8) { width: 6%  !important; } /* 수료증 */
+          .print-stats-table-container th:nth-child(8), .print-stats-table-container td:nth-child(8) { width: 6%  !important; } /* 교육증빙 */
 
           /* 결재방 규격 고정 및 우측 정렬 */
           .print-stats-table-container table.approval-table {
@@ -736,7 +736,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                 <th style={{ width: '10%' }} className="py-2.5 px-1.5 text-center">교육시간</th>
                 <th style={{ width: '12%' }} className="py-2.5 px-1.5 text-right">실집행비용</th>
                 <th style={{ width: '8%' }} className="py-2.5 px-1 text-center">만족도</th>
-                <th style={{ width: '6%' }} className="py-2.5 px-1 text-center">수료증</th>
+                <th style={{ width: '6%' }} className="py-2.5 px-1 text-center">교육증빙</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-150 text-[11px] md:text-xs">
