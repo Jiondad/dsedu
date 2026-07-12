@@ -922,6 +922,16 @@ export default function DraftManager({
                     box-shadow: none !important;
                     background: white !important;
                     box-sizing: border-box !important;
+                    gap: 0 !important; /* display:block이어도 최신 브라우저는 gap-y-4(row-gap)를 여전히 적용할 수 있어 명시적으로 0 처리 */
+                }
+
+                /* 세로 한 페이지 초과 방지: 표 행/결재란/마무리 문구가 페이지 경계에서
+                   문장 중간에 잘리지 않고 통째로 다음 페이지로 넘어가도록 고정 */
+                #printable-area tr,
+                #printable-area table.approval-table,
+                #printable-area .print-signoff-block {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
                 }
 
                 /* 5. 테이블 레이아웃 고정 */
@@ -971,7 +981,7 @@ export default function DraftManager({
               }
             `}</style>
             <div>
-              <div className="flex justify-between items-start mb-4">
+              <div className="flex justify-between items-start mb-4 print:mb-2">
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">
                   {draftId || 'DSEDU-YYYYMMDD-XXX'}
                 </div>
@@ -995,13 +1005,13 @@ export default function DraftManager({
                 </table>
               </div>
 
-              <div className="text-center mb-10">
+              <div className="text-center mb-10 print:mb-5">
                 <h1 className="text-2xl font-black tracking-[0.8em] border-b-2 border-double border-black pb-2 inline-block pl-[0.8em]">
                   교 육 기 안 서
                 </h1>
               </div>
 
-              <table className="w-full border-collapse border border-black text-xs mb-3">
+              <table className="w-full border-collapse border border-black text-xs mb-3 print:mb-2">
                 <tbody>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">기안번호</td>
@@ -1059,7 +1069,7 @@ export default function DraftManager({
               </table>
             </div>
 
-            <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1.5 pb-0">
+            <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1 pb-0 print-signoff-block">
               <p className="text-[11px] sm:text-xs text-gray-500 tracking-tight leading-relaxed mb-2 print:mb-1.5 font-medium max-w-[95%] mx-auto">
                 위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 교육 과정을 수행코자 하오니,<br />
                 검토 후 재가하여 주시기 바랍니다.
