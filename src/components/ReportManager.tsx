@@ -999,43 +999,57 @@ export default function ReportManager({
             <style>{`
               @media print {
                 @page { size: A4 portrait; margin: 10mm; }
-                body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 
-                /* 1. 불필요한 요소 확실히 제거 (visibility 절대 금지) */
-                .no-print, header, nav, aside, footer, button { 
-                  display: none !important; 
+                /* 1. 불필요 요소 제거 (visibility 꼼수 버림) */
+                .no-print, header, nav, aside, footer, button { display: none !important; }
+                
+                /* 2. 상위 부모들의 화면 제한(스크롤 이동 현상) 완벽 해제 */
+                html, body, #root, main, div {
+                    overflow: visible !important;
+                    display: block !important;
+                    max-width: none !important;
                 }
-                
-                /* 2. Grid 등 상위 컨테이너 레이아웃 붕괴 방지 */
-                .grid { display: block !important; }
-                .lg\\:col-span-7, .lg\\:col-span-12 { width: 100% !important; display: block !important; }
-                
-                /* 3. 부모 컨테이너의 제한(overflow) 해제 */
+
+                /* 3. 문서 양식을 A4 세로폭(190mm)에 강제 안착 및 중앙 정렬 (absolute 버림) */
                 #print-area-wrapper {
-                  padding: 0 !important;
-                  margin: 0 !important;
-                  border: none !important;
-                  background: white !important;
-                  overflow: visible !important; /* overflow-x-hidden 무력화 및 클리핑 방지 핵심 */
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    display: block !important;
+                    background: transparent !important;
                 }
                 
-                /* 4. 문서 양식 A4 최적화 (190mm 고정폭) */
                 #printable-area {
-                  width: 190mm !important;
-                  max-width: 190mm !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  border: none !important;
-                  box-shadow: none !important;
-                  overflow: visible !important;
+                    position: static !important; /* 스크롤 위치에 따라 화면이 날아가는 버그 차단 */
+                    width: 190mm !important;
+                    max-width: 190mm !important;
+                    margin: 0 auto !important; /* A4 중앙 정렬 */
+                    padding: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    background: white !important;
+                    display: block !important;
                 }
+
+                /* 4. 결재방 쏠림 방지 및 테이블 규격 고정 */
+                #printable-area table.approval-table {
+                    width: 45mm !important;
+                    margin-left: auto !important;
+                    margin-right: 0 !important;
+                }
+                #printable-area table {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    table-layout: fixed !important;
+                    word-break: break-all !important;
+                }
+                #printable-area table td { padding: 8px 6px !important; }
                 
-                /* 5. 내부 테이블 및 결재방 규격 고정 */
-                table { width: 100% !important; table-layout: fixed !important; word-break: break-all !important; page-break-inside: avoid; }
-                table.approval-table { width: 45mm !important; margin-left: auto !important; margin-right: 0 !important; }
-                table td { padding: 8px 6px !important; }
+                /* 5. 보고서 및 기안서 전용 높이 보장 */
                 .report-summary-box { min-height: 140px !important; }
                 .report-future-box { min-height: 75px !important; }
+                .draft-summary-box { min-height: 240px !important; }
+                .draft-budget-box { min-height: 80px !important; }
               }
             `}</style>
             <div>
