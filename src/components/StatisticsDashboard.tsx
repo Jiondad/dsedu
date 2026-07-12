@@ -357,6 +357,16 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               padding: 6px 4px !important;
           }
 
+          /* 인쇄용 CSS 칼럼 폭 황금비율 재조정 (총 8개 인쇄 대상 컬럼) */
+          .print-stats-table-container th:nth-child(1), .print-stats-table-container td:nth-child(1) { width: 14% !important; } /* 보고서번호 */
+          .print-stats-table-container th:nth-child(2), .print-stats-table-container td:nth-child(2) { width: 23% !important; } /* 교육명 */
+          .print-stats-table-container th:nth-child(3), .print-stats-table-container td:nth-child(3) { width: 10% !important; } /* 교육대상자 */
+          .print-stats-table-container th:nth-child(4), .print-stats-table-container td:nth-child(4) { width: 11% !important; } /* 교육일정 */
+          .print-stats-table-container th:nth-child(5), .print-stats-table-container td:nth-child(5) { width: 10% !important; } /* 교육시간 */
+          .print-stats-table-container th:nth-child(6), .print-stats-table-container td:nth-child(6) { width: 12% !important; } /* 실집행비용 */
+          .print-stats-table-container th:nth-child(7), .print-stats-table-container td:nth-child(7) { width: 8%  !important; } /* 만족도 */
+          .print-stats-table-container th:nth-child(8), .print-stats-table-container td:nth-child(8) { width: 6%  !important; } /* 수료증 */
+
           /* 결재방 규격 고정 및 우측 정렬 */
           .print-stats-table-container table.approval-table {
               width: 45mm !important;
@@ -719,66 +729,95 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           <table className="w-full min-w-[850px] table-fixed text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-gray-150 text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50">
-                <th style={{ width: '13%' }} className="py-2.5 px-2">보고서번호</th>
-                <th style={{ width: '25%' }} className="py-2.5 px-1.5">교육명</th>
-                <th style={{ width: '15%' }} className="py-2.5 px-1.5">교육대상자</th>
-                <th style={{ width: '15%' }} className="py-2.5 px-1.5">교육일정</th>
+                <th style={{ width: '14%' }} className="py-2.5 px-2">보고서번호</th>
+                <th style={{ width: '23%' }} className="py-2.5 px-1.5">교육명</th>
+                <th style={{ width: '10%' }} className="py-2.5 px-1.5">교육대상자</th>
+                <th style={{ width: '11%' }} className="py-2.5 px-1.5">교육일정</th>
+                <th style={{ width: '10%' }} className="py-2.5 px-1.5 text-center">교육시간</th>
                 <th style={{ width: '12%' }} className="py-2.5 px-1.5 text-right">실집행비용</th>
-                <th style={{ width: '6%' }} className="py-2.5 px-1 text-center">만족도</th>
-                <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">수료증</th>
-                <th style={{ width: '7%' }} className="py-2.5 px-2 text-center no-print">기능</th>
+                <th style={{ width: '8%' }} className="py-2.5 px-1 text-center">만족도</th>
+                <th style={{ width: '6%' }} className="py-2.5 px-1 text-center">수료증</th>
+                <th style={{ width: '6%' }} className="py-2.5 px-2 text-center no-print">기능</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-150 text-[11px] md:text-xs">
               {completedReportsWithDetails.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400 font-medium">
+                  <td colSpan={9} className="py-12 text-center text-gray-400 font-medium">
                     완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)
                   </td>
                 </tr>
               ) : (
-                completedReportsWithDetails.map(({ report, plan, draft }) => {
-                  const associatedPlan = plans.find((p) => p.id === (report.plan_id || report.planId));
-                  const targetText = associatedPlan ? associatedPlan.target : (report.target || '-');
-                  return (
-                    <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="py-2.5 px-2 font-mono font-bold text-gray-700 truncate">{report.id}</td>
-                      <td className="py-2.5 px-1.5 font-semibold text-gray-800 break-all truncate" title={plan.title}>{plan.title}</td>
-                      <td className="py-2.5 px-1.5 text-gray-600 font-medium truncate" title={targetText}>
-                        {targetText}
-                      </td>
-                      <td className="py-2.5 px-1.5 text-gray-600 font-mono text-[10px]">
-                        <div className="font-medium text-gray-700 truncate">{plan.date}</div>
-                        <div className="text-gray-400 text-[9px] truncate">{plan.hours}시간 ({plan.schedule})</div>
-                      </td>
-                      <td className="py-2.5 px-1.5 text-right font-mono font-bold text-emerald-700">
-                        {formatCurrency(plan.cost)}
-                      </td>
-                      <td className="py-2.5 px-1 text-center font-bold text-indigo-700">
-                        {report.satisfaction_score?.toFixed(1)}
-                      </td>
-                      <td className="py-2.5 px-1 text-center">
-                        {report.certificate_file ? (
-                          <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap">
-                            <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            첨부 완료
-                          </span>
-                        ) : (
-                          <span className="text-gray-300 font-bold">-</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-2 text-center no-print">
-                        <button
-                          onClick={() => setSelectedReportDetail({ report, plan, draft })}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg transition-all border border-indigo-100 cursor-pointer whitespace-nowrap"
-                        >
-                          <Eye className="w-3 h-3" />
-                          상세보기
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                <>
+                  {completedReportsWithDetails.map(({ report, plan, draft }) => {
+                    const associatedPlan = plans.find((p) => p.id === (report.plan_id || report.planId));
+                    const targetText = associatedPlan ? associatedPlan.target : (report.target || '-');
+                    const headcountValue = associatedPlan 
+                      ? (associatedPlan.headcount !== undefined ? associatedPlan.headcount : parseTraineeCount(associatedPlan.target))
+                      : (report.target ? parseTraineeCount(report.target) : 0);
+                    return (
+                      <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-2.5 px-2 font-mono font-bold text-gray-700 truncate">{report.id}</td>
+                        <td className="py-2.5 px-1.5 font-semibold text-gray-800 break-all truncate" title={plan.title}>{plan.title}</td>
+                        <td className="py-2.5 px-1.5 text-gray-600 font-medium truncate" title={`${targetText} (${headcountValue}명)`}>
+                          {targetText} {headcountValue > 0 ? `(${headcountValue}명)` : ''}
+                        </td>
+                        <td className="py-2.5 px-1.5 text-gray-600 font-mono text-[10px]">
+                          <div className="font-medium text-gray-700 truncate">{plan.date}</div>
+                          <div className="text-gray-400 text-[9px] truncate">({plan.schedule})</div>
+                        </td>
+                        <td className="py-2.5 px-1.5 text-center font-mono font-medium text-gray-700">
+                          {plan.hours}시간
+                        </td>
+                        <td className="py-2.5 px-1.5 text-right font-mono font-bold text-emerald-700">
+                          {formatCurrency(plan.cost)}
+                        </td>
+                        <td className="py-2.5 px-1 text-center font-bold text-indigo-700">
+                          {report.satisfaction_score?.toFixed(1)}
+                        </td>
+                        <td className="py-2.5 px-1 text-center">
+                          {report.certificate_file ? (
+                            <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              첨부 완료
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 font-bold">-</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-2 text-center no-print">
+                          <button
+                            onClick={() => setSelectedReportDetail({ report, plan, draft })}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg transition-all border border-indigo-100 cursor-pointer whitespace-nowrap"
+                          >
+                            <Eye className="w-3 h-3" />
+                            상세보기
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* 최하단 종합 합계 행 */}
+                  <tr className="bg-indigo-50/40 font-bold border-t-2 border-slate-300">
+                    <td className="py-3 px-2 text-slate-800 text-center font-bold">합계</td>
+                    <td className="py-3 px-1.5"></td>
+                    <td className="py-3 px-1.5 text-slate-800 font-bold">
+                      {totalHeadcount}명
+                    </td>
+                    <td className="py-3 px-1.5"></td>
+                    <td className="py-3 px-1.5 text-center font-mono text-slate-800 font-bold">
+                      {totalHours}시간
+                    </td>
+                    <td className="py-3 px-1.5 text-right font-mono text-slate-800 font-bold">
+                      {formatCurrency(totalCost)}
+                    </td>
+                    <td className="py-3 px-1 text-center font-bold text-slate-800">
+                      {avgSatisfaction.toFixed(1)}
+                    </td>
+                    <td className="py-3 px-1 text-center text-slate-400">-</td>
+                    <td className="py-3 px-2 text-center no-print"></td>
+                  </tr>
+                </>
               )}
             </tbody>
           </table>
