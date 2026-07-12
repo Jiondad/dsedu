@@ -999,53 +999,72 @@ export default function ReportManager({
             <style>{`
               @media print {
                 @page { size: A4 portrait; margin: 10mm; }
-                
-                /* 1. 불필요 요소 제거 (visibility 꼼수 버림) */
-                .no-print, header, nav, aside, footer, button { display: none !important; }
-                
-                /* 2. 상위 부모들의 화면 제한(스크롤 이동 현상) 완벽 해제 */
-                html, body, #root, main, div {
-                    overflow: visible !important;
-                    display: block !important;
-                    max-width: none !important;
-                }
 
-                /* 3. 문서 양식을 A4 세로폭(190mm)에 강제 안착 및 중앙 정렬 (absolute 버림) */
-                #print-area-wrapper {
+                /* 1. 불필요 요소 숨김 */
+                .no-print, header, nav, aside, footer, button { display: none !important; }
+
+                /* 2. 무차별 div 덮어쓰기 제거! -> 최상위 래퍼와 그리드만 제한 해제 */
+                html, body, #root, main {
+                    display: block !important;
                     width: 100% !important;
+                    max-width: none !important;
                     margin: 0 !important;
                     padding: 0 !important;
-                    display: block !important;
-                    background: transparent !important;
+                    overflow: visible !important;
                 }
-                
-                #printable-area {
-                    position: static !important; /* 스크롤 위치에 따라 화면이 날아가는 버그 차단 */
-                    width: 190mm !important;
-                    max-width: 190mm !important;
-                    margin: 0 auto !important; /* A4 중앙 정렬 */
+
+                /* 3. 그리드 시스템 무력화 (화면 쏠림 방지 핵심) */
+                .grid { display: block !important; }
+                .lg\\:col-span-7 {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    display: block !important;
+                }
+
+                /* 4. 괴상한 스크롤바 원천 제거 및 100% 폭 안착 (양쪽 여백 대칭) */
+                #print-area-wrapper {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 !important;
                     padding: 0 !important;
+                    border: none !important;
+                    background: transparent !important;
+                    overflow: visible !important;
+                }
+
+                #printable-area {
+                    position: static !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 auto !important;
+                    padding: 0 !important; /* 패딩을 제거해야 표가 좌우 끝까지 쫙 펴짐 */
                     border: none !important;
                     box-shadow: none !important;
                     background: white !important;
-                    display: block !important;
+                    overflow: visible !important;
                 }
 
-                /* 4. 결재방 쏠림 방지 및 테이블 규격 고정 */
-                #printable-area table.approval-table {
-                    width: 45mm !important;
-                    margin-left: auto !important;
-                    margin-right: 0 !important;
-                }
+                /* 5. 내부 요소 레이아웃 정상화 */
                 #printable-area table {
                     width: 100% !important;
                     max-width: 100% !important;
                     table-layout: fixed !important;
                     word-break: break-all !important;
+                    border-collapse: collapse !important;
                 }
-                #printable-area table td { padding: 8px 6px !important; }
                 
-                /* 5. 보고서 및 기안서 전용 높이 보장 */
+                #printable-area table.approval-table {
+                    width: 45mm !important;
+                    margin-left: auto !important;
+                    margin-right: 0 !important;
+                }
+                
+                #printable-area table td, 
+                #printable-area table th {
+                    padding: 8px 6px !important;
+                }
+                
+                /* 결과보고서/기안서 전용 높이 유지 */
                 .report-summary-box { min-height: 140px !important; }
                 .report-future-box { min-height: 75px !important; }
                 .draft-summary-box { min-height: 240px !important; }
