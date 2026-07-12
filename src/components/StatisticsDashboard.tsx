@@ -962,12 +962,12 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                         <table className="approval-table border-collapse border border-black text-center text-xs w-[180px]" style={{ borderCollapse: 'collapse', border: '1px solid #000000' }}>
                           <tbody>
                             <tr className="border-b border-black">
-                              <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]" style={{ border: '1px solid #000000' }}>
+                              <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px]" style={{ border: '1px solid #000000', width: '15%' }}>
                                 결<br />재
                               </td>
-                              <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>작 성</td>
-                              <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>검 토</td>
-                              <td className="p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>승 인</td>
+                              <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>작 성</td>
+                              <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>검 토</td>
+                              <td className="p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>승 인</td>
                             </tr>
                             <tr style={{ height: '45px' }}>
                               <td className="border-r border-black p-1 text-center font-bold text-gray-700 text-[10px]" style={{ border: '1px solid #000000', height: '45px', verticalAlign: 'middle' }}>
