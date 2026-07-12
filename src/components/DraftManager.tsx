@@ -874,17 +874,27 @@ export default function DraftManager({
               @media print {
                 @page { size: A4 portrait; margin: 10mm; }
 
-                /* 불필요 요소 숨김 */
+                /* 1. 불필요 요소 숨김 및 스크롤바 렌더링 원천 차단 */
                 .no-print, header, nav, aside, footer, button { display: none !important; }
+                ::-webkit-scrollbar { display: none !important; }
+                * { overflow: visible !important; } /* 모든 숨겨진 스크롤 해제 */
 
-                /* 상위 래퍼들의 제한 완벽 해제 (100% 공간 확보) */
+                /* 2. 상위 래퍼 제한 완벽 해제 (높이를 auto로 주어 종스크롤 방지) */
                 html, body, #root, main {
                     display: block !important;
                     width: 100% !important;
+                    height: auto !important; /* 종스크롤 방지 핵심 */
                     max-width: 100% !important;
                     margin: 0 !important;
                     padding: 0 !important;
                     box-sizing: border-box !important;
+                }
+
+                /* 3. 모달/오버레이의 강제 고정 및 스크롤 속성 해제 */
+                .fixed, .absolute, .overflow-y-auto {
+                    position: static !important;
+                    height: auto !important;
+                    max-height: none !important;
                 }
 
                 .grid { display: block !important; gap: 0 !important; }
@@ -894,13 +904,14 @@ export default function DraftManager({
                     max-width: 100% !important;
                 }
 
-                /* 190mm 고정폭 폐기 -> 100%로 설정하여 @page 여백(10mm) 내에서 자동 대칭 중앙 정렬 */
+                /* 4. 여백 대칭 및 컨테이너 100% 안착 */
                 #print-area-wrapper, #printable-area {
                     display: block !important;
                     position: static !important;
                     width: 100% !important;
                     max-width: 100% !important;
-                    margin: 0 !important;
+                    height: auto !important;
+                    margin: 0 auto !important;
                     padding: 0 !important;
                     border: none !important;
                     box-shadow: none !important;
@@ -908,7 +919,7 @@ export default function DraftManager({
                     box-sizing: border-box !important;
                 }
 
-                /* 테이블을 부모 요소(100%)에 꽉 채우기 */
+                /* 5. 테이블 레이아웃 고정 */
                 #printable-area table {
                     width: 100% !important;
                     max-width: 100% !important;
@@ -917,16 +928,18 @@ export default function DraftManager({
                     border-collapse: collapse !important;
                 }
                 
-                /* 결재방 크기만 고정 */
                 #printable-area table.approval-table {
                     width: 45mm !important;
                     margin-left: auto !important;
                     margin-right: 0 !important;
                 }
                 
+                /* 6. 글씨 크기 한 단계 확대 및 가독성 확보 */
                 #printable-area table td, 
                 #printable-area table th {
                     padding: 8px 6px !important;
+                    font-size: 13px !important; /* 글씨 크기 확대 (핵심) */
+                    line-height: 1.5 !important;
                 }
                 
                 /* 결과보고서/기안서 전용 높이 유지 */
