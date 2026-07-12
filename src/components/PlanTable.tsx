@@ -177,12 +177,19 @@ export default function PlanTable({
                 overflow-wrap: break-word !important;
             }
             
-            /* 아이콘과 텍스트가 묶인 컨테이너는 break-all 무력화 및 한 줄 강제 고정 */
+            /* 아이콘과 텍스트가 묶인 컨테이너는 break-all 무력화 및 flex 레이아웃 복원 */
             .print-plan-table-container table:not(.approval-table) td .no-break-wrap {
+                display: inline-flex !important; /* 핵심 처방: flex 컨텍스트 복원 */
+                align-items: center !important;  /* 수직 중앙 정렬 */
                 white-space: nowrap !important;
                 word-break: keep-all !important;
                 overflow-wrap: normal !important;
-                display: inline-block !important;
+            }
+            
+            /* SVG 아이콘이 텍스트와 적절한 간격을 유지하도록 보정 */
+            .print-plan-table-container table:not(.approval-table) td .no-break-wrap svg {
+                margin-right: 4px !important;
+                display: block !important;
             }
 
             /* 7. 결재란 고정 사이즈 */
