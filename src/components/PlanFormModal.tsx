@@ -35,7 +35,7 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
   useEffect(() => {
     if (editPlan) {
       setFormData({
-        edu_date: editPlan.date || editPlan.edu_date || '',
+        edu_date: editPlan.date || editPlan.edu_date || new Date().toISOString().split('T')[0],
         category: editPlan.category || '사내',
         title: editPlan.title || '',
         agency: editPlan.institution || editPlan.agency || '',
@@ -85,7 +85,6 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.edu_date) newErrors.edu_date = '교육일자를 선택해주세요.';
     if (!formData.title.trim()) newErrors.title = '교육명을 입력해주세요.';
     if (!formData.agency.trim()) newErrors.agency = '교육기관을 입력해주세요.';
     if (!formData.instructor.trim()) newErrors.instructor = '강사를 입력해주세요.';
@@ -180,7 +179,7 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Category */}
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">구분</label>
               <div className="flex gap-4 p-1 bg-gray-50 rounded-xl border border-gray-200">
                 <label className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium cursor-pointer transition-all has-checked:bg-white has-checked:shadow-xs has-checked:text-indigo-600">
@@ -206,21 +205,6 @@ export default function PlanFormModal({ isOpen, onClose, onSubmit, editPlan }: P
                   <span>사외 교육</span>
                 </label>
               </div>
-            </div>
-
-            {/* Date */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" /> 교육일자
-              </label>
-              <input
-                type="date"
-                name="edu_date"
-                value={formData.edu_date}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-              />
-              {errors.edu_date && <p className="text-xs text-rose-500 mt-1">{errors.edu_date}</p>}
             </div>
 
             {/* Title */}

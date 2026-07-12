@@ -158,18 +158,17 @@ export default function PlanTable({
                 font-size: 11px !important;
             }
 
-            /* 5. 칼럼 황금비율 재조정 (합계 100%) - 기안/보고서 축소, 강사/일정/시간 공간 확보 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(1), .print-plan-table-container table:not(.approval-table) td:nth-child(1) { width: 3%  !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(2), .print-plan-table-container table:not(.approval-table) td:nth-child(2) { width: 8%  !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(3), .print-plan-table-container table:not(.approval-table) td:nth-child(3) { width: 5%  !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(4), .print-plan-table-container table:not(.approval-table) td:nth-child(4) { width: 20% !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(5), .print-plan-table-container table:not(.approval-table) td:nth-child(5) { width: 14% !important; } /* 강사 확보 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(6), .print-plan-table-container table:not(.approval-table) td:nth-child(6) { width: 10% !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(7), .print-plan-table-container table:not(.approval-table) td:nth-child(7) { width: 11% !important; } /* 일정 확보 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(8), .print-plan-table-container table:not(.approval-table) td:nth-child(8) { width: 11% !important; } /* 시간 확보 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(9), .print-plan-table-container table:not(.approval-table) td:nth-child(9) { width: 8%  !important; }
-            .print-plan-table-container table:not(.approval-table) th:nth-child(10), .print-plan-table-container table:not(.approval-table) td:nth-child(10) { width: 5% !important; } /* 기안 축소 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(11), .print-plan-table-container table:not(.approval-table) td:nth-child(11) { width: 5% !important; } /* 보고서 축소 */
+            /* 5. 칼럼 황금비율 재조정 (총 10개 컬럼, 합계 100%) */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(1), .print-plan-table-container table:not(.approval-table) td:nth-child(1) { width: 3%  !important; } /* No */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(2), .print-plan-table-container table:not(.approval-table) td:nth-child(2) { width: 5%  !important; } /* 구분 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(3), .print-plan-table-container table:not(.approval-table) td:nth-child(3) { width: 20% !important; } /* 교육명 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(4), .print-plan-table-container table:not(.approval-table) td:nth-child(4) { width: 14% !important; } /* 기관/강사 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(5), .print-plan-table-container table:not(.approval-table) td:nth-child(5) { width: 14% !important; } /* 대상자 (10% -> 14% 확장) */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(6), .print-plan-table-container table:not(.approval-table) td:nth-child(6) { width: 11% !important; } /* 교육일정 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(7), .print-plan-table-container table:not(.approval-table) td:nth-child(7) { width: 11% !important; } /* 교육시간 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(8), .print-plan-table-container table:not(.approval-table) td:nth-child(8) { width: 12% !important; } /* 예상비용 (8% -> 12% 확장) */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(9), .print-plan-table-container table:not(.approval-table) td:nth-child(9) { width: 5%  !important; } /* 기안 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(10), .print-plan-table-container table:not(.approval-table) td:nth-child(10) { width: 5%  !important; } /* 보고서 */
 
             /* 6. 텍스트 줄바꿈 및 아이콘 분리 방지 (핵심 디테일) */
             .print-plan-table-container table:not(.approval-table) td,
@@ -279,9 +278,6 @@ export default function PlanTable({
           <thead>
             <tr className="border-b border-gray-100 text-[11px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
               <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">No</th>
-              <th className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('date')}>
-                교육일자 {sortField === 'date' && (sortDirection === 'asc' ? '▲' : '▼')}
-              </th>
               <th className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => handleSort('category')}>
                 구분 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
@@ -305,7 +301,7 @@ export default function PlanTable({
           <tbody className="divide-y divide-gray-100">
             {sortedPlans.length === 0 ? (
               <tr>
-                <td colSpan={12} className="py-12 text-center text-gray-400 font-medium">
+                <td colSpan={11} className="py-12 text-center text-gray-400 font-medium">
                   수립된 교육 계획이 없습니다.
                 </td>
               </tr>
@@ -330,11 +326,6 @@ export default function PlanTable({
                       {idx + 1}
                     </td>
 
-                    {/* Date */}
-                    <td className="py-3.5 px-1 md:px-1.5 font-medium text-gray-700 whitespace-nowrap">
-                      {plan.date}
-                    </td>
-
                     {/* Category */}
                     <td className="py-3.5 px-1 md:px-1.5 text-center whitespace-nowrap">
                       <span
@@ -356,8 +347,8 @@ export default function PlanTable({
                     {/* Agency / Instructor */}
                     <td className="py-3.5 px-1.5 md:px-2 text-gray-500 break-all">
                       <div className="font-medium text-gray-700 leading-snug">{plan.institution}</div>
-                      <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap">
-                        <User className="w-3 h-3 shrink-0" /> <span className="whitespace-nowrap">{plan.instructor}</span>
+                      <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex">
+                        <User className="w-3.5 h-3.5 shrink-0" /> <span className="whitespace-nowrap">{plan.instructor}</span>
                       </div>
                     </td>
 
@@ -368,7 +359,7 @@ export default function PlanTable({
 
                     {/* Schedule */}
                     <td className="py-3.5 px-1 md:px-1.5 text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center gap-1 whitespace-nowrap">
+                      <div className="flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex">
                         <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         <span className="whitespace-nowrap">{plan.schedule}</span>
                       </div>
@@ -376,7 +367,7 @@ export default function PlanTable({
 
                     {/* Integrated Education Time */}
                     <td className="py-3.5 px-1 md:px-1.5 text-center text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1 whitespace-nowrap flex-nowrap inline-flex">
                         <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         <span className="whitespace-nowrap">{plan.time_range} ({plan.hours}시간)</span>
                       </div>
@@ -458,7 +449,7 @@ export default function PlanTable({
                 );
               })}
               <tr className="bg-slate-50/80 font-bold border-t border-b border-slate-300">
-                <td colSpan={5} className="py-3 px-1.5 text-center text-slate-700 font-extrabold">
+                <td colSpan={4} className="py-3 px-1.5 text-center text-slate-700 font-extrabold">
                   합계
                 </td>
                 <td className="py-3 px-1.5 text-slate-800 font-bold text-center md:text-left">
