@@ -311,8 +311,39 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+      <style>{`
+        @media print {
+          /* 상단 차트 카드, 버튼, 네비게이션 등 통계 탭의 비표 형식 요소만 인쇄 제외 */
+          .stats-chart-card, .stats-filter-section { 
+              display: none !important; 
+          }
+
+          /* 하단 실적 현황 테이블 컨테이너 폭 100% 최적화 및 텍스트 줄바꿈 보장 */
+          .print-stats-table-container {
+              display: block !important;
+              position: static !important;
+              width: 100% !important;
+              max-width: 100% !important;
+          }
+
+          .print-stats-table-container table {
+              width: 100% !important;
+              max-width: 100% !important;
+              border-collapse: collapse !important;
+              table-layout: fixed !important;
+              font-size: 11px !important;
+          }
+
+          .print-stats-table-container td,
+          .print-stats-table-container th {
+              word-break: break-all !important;
+              overflow-wrap: break-word !important;
+              padding: 6px 4px !important;
+          }
+        }
+      `}</style>
       {/* All top dashboards & analytics are excluded from print */}
-      <div className="no-print space-y-6">
+      <div className="no-print space-y-6 stats-chart-card">
         {/* Header Info */}
         <div className="bg-indigo-900 text-white p-6 rounded-3xl shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-800/50 via-indigo-950 to-indigo-950 opacity-90 z-0" />
@@ -614,7 +645,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
       </div>
 
       {/* Education Performance List Table */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-4 print-report-table-container">
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-4 print-report-table-container print-stats-table-container">
         {/* 인쇄 전용 헤더 (화면 숨김, 인쇄 시에만 가로 상단 표출) */}
         <div className="hidden print:block mb-6 w-full">
           <div className="flex justify-between items-baseline border-b-2 border-slate-800 pb-2.5">
