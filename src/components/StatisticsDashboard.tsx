@@ -748,23 +748,11 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5 font-medium">기안 및 결과보고 제출이 100% 완료된 실적 상세 현황입니다.</p>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
-              총 {filteredReports.length}건 완료
-            </div>
-            <button
-              onClick={handlePrintList}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-950 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
-            >
-              <Printer className="w-4 h-4 text-slate-500" />
-              <span>교육 실적 목록 출력</span>
-            </button>
-          </div>
         </div>
 
         {/* Search and Filters bar */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50 p-4 rounded-xl border border-gray-100 no-print">
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center">
+        <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-gray-50/50 p-4 rounded-xl border border-gray-100 no-print">
+          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto items-center">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
               <input
@@ -776,7 +764,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               />
             </div>
 
-            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 items-center">
               {(['전체', '사내', '사외'] as const).map((cat) => (
                 <button
                   key={cat}
@@ -791,6 +779,19 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+            <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
+              총 {filteredReports.length}건 완료
+            </div>
+            <button
+              onClick={handlePrintList}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-950 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <Printer className="w-4 h-4 text-slate-500" />
+              <span>교육 실적 목록 출력</span>
+            </button>
           </div>
         </div>
 
