@@ -4,8 +4,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_URL } from '../sheetsService';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, getSatisfactionLabel } from '../utils';
 import {
   FileText,
   Trash2,
@@ -26,25 +28,53 @@ interface ReportManagerProps {
   plans: EducationPlan[];
   drafts: EducationDraft[];
   reports: EducationReport[];
+  setReports?: React.Dispatch<React.SetStateAction<EducationReport[]>>;
   onAddReport: (report: EducationReport) => Promise<string | void>;
   onUpdateReport: (report: EducationReport, index: number) => Promise<void>;
   onDeleteReport: (index: number) => Promise<void>;
   isLoading: boolean;
   preselectedPlanId?: string | null;
   onClearPreselectedPlan?: () => void;
+  selectedYear: string;
+  onFetchReports: (year: string) => Promise<void>;
 }
 
 export default function ReportManager({
   plans,
   drafts,
-  reports,
+  reports: initialReports,
+  setReports: parentSetReports,
   onAddReport,
   onUpdateReport,
   onDeleteReport,
-  isLoading,
+  isLoading: parentIsLoading,
   preselectedPlanId,
   onClearPreselectedPlan,
+  selectedYear,
+  onFetchReports,
 }: ReportManagerProps) {
+  const [reports, setLocalReports] = useState<EducationReport[]>(initialReports);
+  const [isLoading, setIsLoading] = useState(parentIsLoading);
+
+  useEffect(() => {
+    setLocalReports(initialReports);
+  }, [initialReports]);
+
+  useEffect(() => {
+    setIsLoading(parentIsLoading);
+  }, [parentIsLoading]);
+
+  const setReports = (newReports: EducationReport[] | ((prev: EducationReport[]) => EducationReport[])) => {
+    if (typeof newReports === 'function') {
+      const resolved = newReports(reports);
+      setLocalReports(resolved);
+      if (parentSetReports) parentSetReports(resolved);
+    } else {
+      setLocalReports(newReports);
+      if (parentSetReports) parentSetReports(newReports);
+    }
+  };
+
   // Currently editing report state (form)
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [reportId, setReportId] = useState('');
@@ -169,6 +199,9 @@ export default function ReportManager({
   // Filter for plan categories ('전체', '사내', '사외')
   const [planCategoryFilter, setPlanCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
 
+  // 연도 선택 필터 State (디폴트는 현재 연도)
+  const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
+
   // Filter education plans that already have drafts (COMPLETED DRAFTS ONLY!)
   const plansWithDrafts = plans.filter((p) => drafts.some((d) => d.plan_id === p.id));
 
@@ -177,7 +210,7 @@ export default function ReportManager({
     if (matchedDraft && matchedDraft.id) {
       return matchedDraft.id.replace('DSEDU-', 'DSEREP-').replace('DSED-', 'DSEREP-');
     }
-    const cleanDate = date.split('T')[0].split(' ')[0];
+    const cleanDate = date.split('T')[0].trim();
     const dateStr = cleanDate.replace(/-/g, '');
     const sameDateReports = reports.filter((r) => r.id.startsWith(`DSEREP-${dateStr}`));
     const nextSerial = String(sameDateReports.length + 1).padStart(3, '0');
@@ -239,10 +272,11 @@ export default function ReportManager({
       if (plan) {
         setSelectedPlanId(preselectedPlanId);
 
-        const existingReport = reports.find((r) => r.plan_id === preselectedPlanId);
+        const existingReport = reports.find((r) => (r.plan_id || r.planId || '').toString().trim() === preselectedPlanId.toString().trim());
         if (existingReport) {
-          const index = reports.findIndex((r) => r.plan_id === preselectedPlanId);
+          const index = reports.findIndex((r) => (r.plan_id || r.planId || '').toString().trim() === preselectedPlanId.toString().trim());
           handleSelectReportForEdit(existingReport, index);
+          setReportDate((existingReport.report_date || existingReport.reportDate || '').split('T')[0].trim());
           triggerLocalNotification('이미 작성된 결과보고서가 존재하여 해당 보고서를 불러왔습니다.', 'info');
         } else {
           const matchedDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
@@ -307,16 +341,16 @@ export default function ReportManager({
       return;
     }
 
-    const existingReport = reports.find((r) => r.plan_id === planId);
+    const existingReport = reports.find((r) => (r.plan_id || r.planId || '').toString().trim() === planId.toString().trim());
     if (existingReport) {
-      if (editingReportIndex === null || reports[editingReportIndex].plan_id !== planId) {
+      if (editingReportIndex === null || (reports[editingReportIndex].plan_id || reports[editingReportIndex].planId || '') !== planId) {
         setErrors((prev) => ({
           ...prev,
           selectedPlanId: '이미 결과보고서가 작성된 교육계획입니다.',
         }));
         triggerLocalNotification('이미 결과보고서가 작성된 교육계획입니다. 해당 보고서가 로드됩니다.', 'info');
         
-        const index = reports.findIndex((r) => r.plan_id === planId);
+        const index = reports.findIndex((r) => (r.plan_id || r.planId || '').toString().trim() === planId.toString().trim());
         handleSelectReportForEdit(existingReport, index);
       }
     }
@@ -324,22 +358,21 @@ export default function ReportManager({
 
   const handleSelectReportForEdit = (report: EducationReport, index: number) => {
     setEditingReportIndex(index);
-    setSelectedPlanId(report.plan_id);
+    setSelectedPlanId(report.plan_id || report.planId || '');
     setReportId(report.id);
-    setDraftId(report.draft_id);
+    setDraftId(report.draft_id || report.draftId || '');
     setDepartment(report.department);
     setPosition(report.position);
-    setDrafterName(report.drafter_name);
+    setDrafterName(report.drafter_name || report.drafterName || '');
 
-    const rawDate = report.report_date || '';
-    setReportDate(rawDate.split('T')[0].split(' ')[0]);
+    setReportDate((report.report_date || report.reportDate || '').split('T')[0].trim());
     setSummary(report.summary);
-    setFuturePlan(report.future_plan);
-    setSatisfactionScore(report.satisfaction_score || 5.0);
-    setCertificateFile(report.certificate_file || '');
-    setCertificateFileName(report.certificate_file_name || '');
+    setFuturePlan(report.future_plan || report.futurePlan || '');
+    setSatisfactionScore(report.satisfaction_score !== undefined ? report.satisfaction_score : (report.satisfactionScore || 5.0));
+    setCertificateFile(report.certificate_file || report.certificateFile || '');
+    setCertificateFileName(report.certificate_file_name || report.certificateFileName || '');
     
-    const matchedDraft = drafts.find((d) => d.plan_id === report.plan_id);
+    const matchedDraft = drafts.find((d) => d.plan_id === (report.plan_id || report.planId));
     if (matchedDraft) {
       setPurpose(matchedDraft.purpose || '');
       setBudgetBreakdown(matchedDraft.budget_breakdown || '');
@@ -386,20 +419,31 @@ export default function ReportManager({
     triggerLocalNotification('교육 결과보고서가 즉시 삭제되었습니다.', 'success');
   };
 
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+
   const handlePrint = () => {
     const isIframe = window.self !== window.top;
     if (isIframe) {
       setShowPrintIframeWarning(true);
     } else {
+      const originalTitle = document.title;
       try {
+        const planTitle = selectedPlan ? selectedPlan.title : '교육결과보고서';
+        const planTarget = selectedPlan ? selectedPlan.target : '대상자';
+        const titleParts = [reportDate, planTitle, planTarget]
+          .filter(Boolean)
+          .map((p) => p.replace(/[\/\\?%*:|"<>\x00-\x1F\s]+/g, '_').trim());
+        const dynamicTitle = titleParts.join('_');
+        
+        document.title = dynamicTitle;
         window.print();
       } catch (err) {
         setShowPrintIframeWarning(true);
+      } finally {
+        document.title = originalTitle;
       }
     }
   };
-
-  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -410,17 +454,17 @@ export default function ReportManager({
     if (!drafterName.trim()) newErrors.drafterName = '성명을 입력해주세요.';
     if (!reportDate) newErrors.reportDate = '보고일자를 선택해주세요.';
 
-    // 💡 보고일자 >= 교육 마지막 일정 검증
+    // 💡 보고일자 >= 교육 마지막 일정 검증 (시차 및 UTC 타임스탬프 오류를 원천 차단하는 정밀 문자열 비교)
     if (reportDate && selectedPlan && selectedPlan.schedule) {
-      const reportTime = new Date(reportDate.split('T')[0]).getTime();
-      const eduYear = selectedPlan.date ? selectedPlan.date.split('-')[0] : new Date().getFullYear();
+      const reportDateClean = reportDate.split('T')[0].trim();
+      const eduYear = selectedPlan.date ? selectedPlan.date.split('T')[0].trim().split('-')[0] : new Date().getFullYear();
       const scheduleParts = selectedPlan.schedule.split('~');
       
       if (scheduleParts.length === 2) {
-        const endDateStr = `${eduYear}-${scheduleParts[1].replace('/', '-')}`;
-        const eduEndTime = new Date(endDateStr.split('T')[0]).getTime();
+        const endDateStr = `${eduYear}-${scheduleParts[1].trim().replace('/', '-')}`;
+        const eduEndTimeStr = endDateStr.split('T')[0].trim();
 
-        if (reportTime < eduEndTime) {
+        if (reportDateClean < eduEndTimeStr) {
           newErrors.reportDate = '보고일자는 교육 마지막 일자보다 같거나 나중이어야 합니다.';
           alert('❌ 보고일자는 교육 마지막 일자보다 같거나 나중이어야 합니다.');
         }
@@ -434,12 +478,56 @@ export default function ReportManager({
     return Object.keys(newErrors).length === 0;
   };
 
+  const fetchReports = async (year: string) => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get(`${API_URL}?action=read&sheetName=education_reports&year=${year}&t=${new Date().getTime()}`);
+      
+      if (response.data && Array.isArray(response.data)) {
+        const mappedData: EducationReport[] = response.data.map((item: any) => ({
+          id: item.id || '',
+          // 💡 카멜 케이스로 변환되어 넘어오든 원본이 오든 무조건 컴포넌트 표준인 스네이크 케이스로 강제 통합 수용
+          plan_id: (item.plan_id || item.planId || '').toString().trim(),
+          planId: (item.plan_id || item.planId || '').toString().trim(),
+          draft_id: (item.draft_id || item.draftId || '').toString().trim(),
+          draftId: (item.draft_id || item.draftId || '').toString().trim(),
+          department: item.department || '',
+          position: item.position || '',
+          drafter_name: item.drafter_name || item.drafterName || '',
+          drafterName: item.drafter_name || item.drafterName || '',
+          report_date: item.report_date || item.reportDate || '',
+          reportDate: item.report_date || item.reportDate || '',
+          summary: item.summary || '',
+          future_plan: item.future_plan || item.futurePlan || '',
+          futurePlan: item.future_plan || item.futurePlan || '',
+          satisfaction_score: Number(item.satisfaction_score || item.satisfactionScore || 5.0),
+          satisfactionScore: Number(item.satisfaction_score || item.satisfactionScore || 5.0),
+          certificate_file: item.certificate_file || item.certificateFile || '',
+          certificateFile: item.certificate_file || item.certificateFile || '',
+          certificate_file_name: item.certificate_file_name || item.certificateFileName || '',
+          certificateFileName: item.certificate_file_name || item.certificateFileName || '',
+          year: (item.year || year).toString().trim()
+        }));
+        
+        const filtered = mappedData.filter((r: EducationReport) => r.year === year.toString().trim());
+        setReports(filtered);
+      } else {
+        setReports([]);
+      }
+    } catch (error) {
+      console.error("결과보고서 로드 실패:", error);
+      setReports([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSaveReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    // 💡 [2중 보고서 저장부 정밀 타격] 타임스탬프 잔재 소멸 처리
-    const cleanReportDate = reportDate.split('T')[0].split(' ')[0];
+    // 💡 [2중 보고서 저장부 정밀 타격] 전송 페이로드에 UTC 타임스탬프가 절대 붙지 않도록 완벽하게 날짜 가공 격리
+    const cleanReportDate = reportDate.split('T')[0].trim();
 
     const reportData: EducationReport = {
       id: reportId.trim(),
@@ -454,28 +542,47 @@ export default function ReportManager({
       satisfaction_score: Number(satisfactionScore) || 5.0,
       certificate_file: certificateFile || undefined,
       certificate_file_name: certificateFileName || undefined,
+      // camelCase aliases for complete robustness and double compatibility
+      draftId: draftId,
+      planId: selectedPlanId,
+      drafterName: drafterName.trim(),
+      reportDate: cleanReportDate,
+      futurePlan: futurePlan.trim(),
+      satisfactionScore: Number(satisfactionScore) || 5.0,
+      certificateFile: certificateFile || undefined,
+      certificateFileName: certificateFileName || undefined,
     };
 
-    if (editingReportIndex !== null) {
-      await onUpdateReport(reportData, editingReportIndex);
-      triggerLocalNotification('결과보고서가 수정되었습니다.', 'success');
-    } else {
-      if (reports.some((r) => r.id === reportData.id)) {
-        setErrors((prev) => ({
-          ...prev,
-          reportId: '이미 존재하는 보고서 번호입니다. 다른 번호를 사용해 주세요.',
-        }));
-        return;
-      }
-      try {
+    try {
+      if (editingReportIndex !== null) {
+        await onUpdateReport(reportData, editingReportIndex);
+        triggerLocalNotification('결과보고서가 수정되었습니다.', 'success');
+      } else {
+        if (reports.some((r) => r.id === reportData.id)) {
+          setErrors((prev) => ({
+            ...prev,
+            reportId: '이미 존재하는 보고서 번호입니다. 다른 번호를 사용해 주세요.',
+          }));
+          return;
+        }
         const finalId = await onAddReport(reportData);
         if (finalId) {
           setReportId(finalId);
         }
         triggerLocalNotification('새 교육 결과보고서가 작성되었습니다.', 'success');
-      } catch (err) {
-        console.error('Failed to add report:', err);
       }
+
+      // 구글 시트 등록이 성공한 즉시(또는 수정 완료 후) 강제로 최신 데이터 다시 리로드
+      await fetchReports(selectedYear);
+      if (onFetchReports) {
+        await onFetchReports(selectedYear);
+      }
+
+      // 데이터 저장이 완전히 끝난 후에는 입력 폼 내부의 모든 작성란 State 값들을 깨끗하게 비워줌 (Clear)
+      handleResetForm();
+    } catch (err) {
+      console.error('Failed to save report:', err);
+      triggerLocalNotification('결과보고서 저장 중 오류가 발생했습니다.', 'error');
     }
   };
 
@@ -585,7 +692,7 @@ export default function ReportManager({
                     <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
                   </p>
                   <p>
-                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target || '미지정'}
+                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target || '미지정'} {selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}
                   </p>
                   <p>
                     <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
@@ -680,14 +787,13 @@ export default function ReportManager({
                   onChange={(e) => setSatisfactionScore(Number(e.target.value))}
                   className="w-full sm:w-48 bg-white border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
                 >
-                  <option value="5.0">5.0점 (매우 만족)</option>
-                  <option value="4.8">4.8점 (우수)</option>
-                  <option value="4.5">4.5점 (매우 우수)</option>
-                  <option value="4.0">4.0점 (만족)</option>
-                  <option value="3.5">3.5점 (보통)</option>
-                  <option value="3.0">3.0점 (보통)</option>
-                  <option value="2.0">2.0점 (불만족)</option>
-                  <option value="1.0">1.0점 (매우 불만족)</option>
+                  <option value="5.0">5.0 (매우 만족)</option>
+                  <option value="4.5">4.5 (만족)</option>
+                  <option value="4.0">4.0 (약간 만족)</option>
+                  <option value="3.5">3.5 (보통)</option>
+                  <option value="3.0">3.0 (약간 불만족)</option>
+                  <option value="2.0">2.0 (불만족)</option>
+                  <option value="1.0">1.0 (매우 불만족)</option>
                 </select>
                 <span className="text-[11px] text-gray-400">결과보고서 제출 및 마감 처리를 위해 수강생 설문 조사 기준 평점을 입력해 주세요.</span>
               </div>
@@ -812,51 +918,188 @@ export default function ReportManager({
 
         {/* History List */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5">
-          <h3 className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2.5 mb-3 flex items-center gap-2">
-            <CheckCircle className="w-4.5 h-4.5 text-emerald-500" />
-            작성된 교육 결과보고서 목록 ({reports.length})
-          </h3>
-          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            {reports.length === 0 ? (
-              <p className="text-center text-xs text-gray-400 py-6">저장된 교육 결과보고서가 없습니다.</p>
-            ) : (
-              reports.map((r, index) => {
-                const associatedPlan = plans.find((p) => p.id === r.plan_id);
-                return (
-                  <div
-                    key={r.id}
-                    className={`p-3 rounded-xl border text-xs transition-all flex items-start justify-between gap-3 cursor-pointer ${
-                      editingReportIndex === index ? 'border-indigo-500 bg-indigo-50/20 shadow-xs' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => handleSelectReportForEdit(r, index)}
+          {(() => {
+            // 작성된 결과보고서 목록에서 고유 연도를 추출하고 현재 연도를 항상 포함
+            const availableYears = Array.from(new Set([
+              new Date().getFullYear().toString(),
+              ...reports.map((r) => {
+                const rDate = r.report_date || r.reportDate || '';
+                return rDate ? rDate.split('T')[0].substring(0, 4) : '';
+              }).filter(Boolean)
+            ])).sort((a, b) => b.localeCompare(a));
+
+            const filteredReportsWithIndex = reports
+              .map((r, originalIndex) => ({ r, originalIndex }))
+              .filter(({ r }) => {
+                const rDate = r.report_date || r.reportDate || '';
+                const year = rDate ? rDate.split('T')[0].substring(0, 4) : '';
+                return year === filterYear;
+              });
+
+            return (
+              <>
+                <div className="border-b border-gray-100 pb-2.5 mb-3 flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                    <CheckCircle className="w-4.5 h-4.5 text-emerald-500" />
+                    작성된 교육 결과보고서 목록 ({filteredReportsWithIndex.length})
+                  </h3>
+                  <select
+                    value={filterYear}
+                    onChange={(e) => setFilterYear(e.target.value)}
+                    className="text-xs font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 outline-none focus:border-indigo-500 cursor-pointer"
                   >
-                    <div className="space-y-1 overflow-hidden">
-                      <p className="font-bold text-gray-800 truncate">{associatedPlan ? associatedPlan.title : '연관 계획 정보 없음'}</p>
-                      <div className="flex gap-2 text-gray-400 text-[10px]">
-                        <span>번호: {r.id}</span>
-                        <span>•</span>
-                        <span>보고자: {r.drafter_name} {r.position} ({r.department})</span>
-                      </div>
-                    </div>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTargetId(r.id); }} className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                    {availableYears.map((y) => (
+                      <option key={y} value={y}>{y}년</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                  {filteredReportsWithIndex.length === 0 ? (
+                    <p className="text-center text-xs text-gray-400 py-6">
+                      {filterYear}년에 저장된 교육 결과보고서가 없습니다.
+                    </p>
+                  ) : (
+                    filteredReportsWithIndex.map(({ r, originalIndex }) => {
+                      const associatedPlan = plans.find((p) => p.id === (r.plan_id || r.planId));
+                      return (
+                        <div
+                          key={r.id}
+                          className={`p-3 rounded-xl border text-xs transition-all flex items-start justify-between gap-3 cursor-pointer ${
+                            editingReportIndex === originalIndex ? 'border-indigo-500 bg-indigo-50/20 shadow-xs' : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => handleSelectReportForEdit(r, originalIndex)}
+                        >
+                          <div className="space-y-1 overflow-hidden">
+                            <p className="font-bold text-gray-800 truncate">{associatedPlan ? associatedPlan.title : '연관 계획 정보 없음'}</p>
+                            <div className="flex gap-2 text-gray-400 text-[10px]">
+                              <span>번호: {r.id}</span>
+                              <span>•</span>
+                              <span>보고자: {r.drafter_name || r.drafterName} {r.position} ({r.department})</span>
+                            </div>
+                          </div>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTargetId(r.id); }} className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
       {/* RIGHT COLUMN */}
       <div className="lg:col-span-7 flex flex-col items-center">
-        <div id="print-area-wrapper" className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border">
-          <div id="print-area" className="w-full max-w-[210mm] h-auto min-h-0 p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
+        <div id="print-area-wrapper" className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border print-section">
+          <div id="printable-area" className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
+            <style>{`
+              @media print {
+                @page { size: A4 portrait; margin: 10mm; }
+
+                /* 1. 불필요 요소 숨김 및 스크롤바 렌더링 원천 차단 */
+                .no-print, header, nav, aside, footer, button { display: none !important; }
+                ::-webkit-scrollbar { display: none !important; }
+                /* ⚠️ overflow: visible (양축 동시 해제)이 아니라 overflow-y만 풀어야 함.
+                   양축을 다 풀면 #print-area-wrapper/#printable-area에 걸려있던
+                   overflow-x-hidden(가로 초과분을 조용히 가려주던 안전장치)까지 꺼져버려서,
+                   결재란처럼 실제 폭보다 살짝 큰 요소의 초과분이 그대로 드러나고
+                   그게 A4 용지 폭을 벗어나 물리적으로 잘려 인쇄되는 원인이 됨. */
+                * { overflow-y: visible !important; } /* 세로 스크롤(내용 잘림)만 해제, 가로는 안전하게 유지 */
+
+                /* 2. 상위 래퍼 제한 완벽 해제 (높이를 auto로 주어 종스크롤 방지) */
+                html, body, #root, main {
+                    display: block !important;
+                    width: 100% !important;
+                    height: auto !important; /* 종스크롤 방지 핵심 */
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    box-sizing: border-box !important;
+                }
+
+                /* 3. 모달/오버레이의 강제 고정 및 스크롤 속성 해제 */
+                .fixed, .absolute, .overflow-y-auto {
+                    position: static !important;
+                    height: auto !important;
+                    max-height: none !important;
+                }
+
+                .grid { display: block !important; gap: 0 !important; }
+                .lg\\:col-span-7 {
+                    display: block !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                }
+
+                /* 4. 여백 대칭 및 컨테이너 100% 안착 */
+                #print-area-wrapper, #printable-area {
+                    display: block !important;
+                    position: static !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    height: auto !important;
+                    margin: 0 auto !important;
+                    padding: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    background: white !important;
+                    box-sizing: border-box !important;
+                }
+
+                /* 5. 테이블 레이아웃 고정 */
+                #printable-area table {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    table-layout: fixed !important;
+                    word-break: break-all !important;
+                    border-collapse: collapse !important;
+                }
+                
+                #printable-area table.approval-table {
+                    /* 화면용 원본 디자인은 180px(≈47.6mm)인데 기존엔 45mm로 축소 지정되어 있어
+                       내부 셀 고정폭 합계(175px)보다 좁았음 → 항상 우측으로 초과분 발생.
+                       셀 폭을 %로 바꾼 것과 함께, 표 자체 폭도 여유 있게 48mm로 보정. */
+                    width: 48mm !important;
+                    max-width: 48mm !important;
+                    margin-left: auto !important;
+                    margin-right: 0 !important;
+                    box-sizing: border-box !important;
+                }
+
+                /* 결재란 내부 셀은 고정 px 대신 %로 동작하도록 강제 (표 폭이 얼마든 항상 합계 100%)
+                   table-layout: fixed 에서는 "1행"의 셀 폭이 전체 열 폭을 결정하므로
+                   1행(tr:first-child)의 4개 셀에만 명시적으로 지정한다. */
+                #printable-area table.approval-table td {
+                    box-sizing: border-box !important;
+                }
+                #printable-area table.approval-table tr:first-child td:nth-child(1) { width: 14% !important; } /* 결재 (rowSpan) */
+                #printable-area table.approval-table tr:first-child td:nth-child(2) { width: 29% !important; } /* 작성 */
+                #printable-area table.approval-table tr:first-child td:nth-child(3) { width: 29% !important; } /* 검토 */
+                #printable-area table.approval-table tr:first-child td:nth-child(4) { width: 28% !important; } /* 승인 */
+                
+                /* 6. 글씨 크기 한 단계 확대 및 가독성 확보 */
+                #printable-area table td, 
+                #printable-area table th {
+                    padding: 8px 6px !important;
+                    font-size: 13px !important; /* 글씨 크기 확대 (핵심) */
+                    line-height: 1.5 !important;
+                }
+                
+                /* 결과보고서/기안서 전용 높이 유지 */
+                .report-summary-box { min-height: 140px !important; }
+                .report-future-box { min-height: 75px !important; }
+                .draft-summary-box { min-height: 240px !important; }
+                .draft-budget-box { min-height: 80px !important; }
+              }
+            `}</style>
             <div>
               <div className="flex justify-between items-start mb-4">
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">{reportId || 'DSEREP-YYYYMMDD-XXX'}</div>
-                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px]" style={{ borderCollapse: 'collapse', border: '1px solid #000000' }}>
+                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px] ml-auto" style={{ borderCollapse: 'collapse', border: '1px solid #000000', marginLeft: 'auto' }}>
                   <tbody>
                     <tr className="border-b border-black">
                       <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]" style={{ border: '1px solid #000000' }}>결<br />재</td>
@@ -903,7 +1146,7 @@ export default function ReportManager({
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? `${selectedPlan.target} ${selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}` : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
                     <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
                   </tr>
@@ -911,7 +1154,7 @@ export default function ReportManager({
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
                     <td className="border-r border-black p-2.5 font-bold text-emerald-800">{selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
-                    <td className="p-2.5 font-bold text-indigo-700">{selectedPlan ? `만족도 ${satisfactionScore.toFixed(1)} / 5.0` : ''}</td>
+                    <td className="p-2.5 font-bold text-indigo-700">{selectedPlan ? `만족도 ${satisfactionScore.toFixed(1)} (${getSatisfactionLabel(satisfactionScore)}) / 5.0` : ''}</td>
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>
@@ -924,13 +1167,13 @@ export default function ReportManager({
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육 결과<br />요약 및 성과</td>
                     <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                      <div className="min-h-[168px] w-full">{summary || '(교육 수료 내용 및 이수 평가 기재)'}</div>
+                      <div className="report-summary-box min-h-[168px] w-full">{summary || '(교육 수료 내용 및 이수 평가 기재)'}</div>
                     </td>
                   </tr>
                   <tr>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">향후 현업<br />적용 계획 및<br />기대효과</td>
                     <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                      <div className="min-h-[60px] w-full">{futurePlan || '(과제 및 정량적/정성적 기대효과 기재)'}</div>
+                      <div className="report-future-box min-h-[60px] w-full">{futurePlan || '(과제 및 정량적/정성적 기대효과 기재)'}</div>
                     </td>
                   </tr>
                   {certificateFile && (
