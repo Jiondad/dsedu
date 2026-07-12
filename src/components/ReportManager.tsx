@@ -368,7 +368,7 @@ export default function ReportManager({
     setReportDate((report.report_date || report.reportDate || '').split('T')[0].trim());
     setSummary(report.summary);
     setFuturePlan(report.future_plan || report.futurePlan || '');
-    setSatisfactionScore(report.satisfaction_score !== undefined ? report.satisfaction_score : (report.satisfactionScore || 5.0));
+    setSatisfactionScore(report.satisfaction_score !== undefined ? Number(report.satisfaction_score) : (Number(report.satisfactionScore) || 5.0));
     setCertificateFile(report.certificate_file || report.certificateFile || '');
     setCertificateFileName(report.certificate_file_name || report.certificateFileName || '');
     
@@ -784,7 +784,10 @@ export default function ReportManager({
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-indigo-50/20 p-3 rounded-xl border border-indigo-50">
                 <select
                   value={satisfactionScore}
-                  onChange={(e) => setSatisfactionScore(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setSatisfactionScore(!isNaN(val) ? val : 5.0);
+                  }}
                   className="w-full sm:w-48 bg-white border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
                 >
                   <option value="5.0">5.0 (매우 만족)</option>
