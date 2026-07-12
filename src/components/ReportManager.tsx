@@ -692,7 +692,7 @@ export default function ReportManager({
                     <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
                   </p>
                   <p>
-                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target || '미지정'}
+                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target || '미지정'} {selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}
                   </p>
                   <p>
                     <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
@@ -998,43 +998,85 @@ export default function ReportManager({
           <div id="printable-area" className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
             <style>{`
               @media print {
-                /* 1. 페이지 규격 및 기본 설정 */
-                @page { size: A4 portrait; margin: 10mm; }
-                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; }
+                @page { size: A4 portrait; margin: 0; }
+
+                /* 1. 불필요 요소 제거 및 공간 소멸 (display: none 복원) */
+                .no-print, header, nav, aside, footer, button { display: none !important; }
+                ::-webkit-scrollbar { display: none !important; }
                 
-                /* 2. 불필요한 영역 확실히 제거 (좌측 폼은 이미 no-print 클래스가 있음) */
-                .no-print, header, nav, aside, button { display: none !important; }
-                
-                /* 3. Grid 레이아웃 강제 해제 (핵심: 이거 안 풀면 백지 됨) */
+                /* 2. 상위 래퍼 제한 완벽 해제 */
+                html, body, #root, main {
+                    display: block !important;
+                    width: 100% !important;
+                    height: auto !important; 
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    box-sizing: border-box !important;
+                    overflow: visible !important;
+                }
+
                 .grid { display: block !important; gap: 0 !important; }
-                .lg\\:col-span-7, .lg\\:col-span-12 { width: 100% !important; max-width: 100% !important; display: block !important; }
-                
-                /* 4. 인쇄 컨테이너 배경 및 테두리 초기화 */
+                .lg\\:col-span-7 {
+                    display: block !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                }
+
+                /* 3. absolute 버리고 position: fixed로 페이지 기준 고정 (좌우 쏠림/잘림 근본 해결) */
                 #print-area-wrapper {
-                  background: transparent !important;
-                  border: none !important;
-                  padding: 0 !important;
-                  margin: 0 !important;
-                  display: block !important;
+                    display: block !important;
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: none !important;
+                    background: transparent !important;
+                    overflow: visible !important;
                 }
-                
-                /* 5. 문서 양식 본연의 흐름 복구 (absolute 절대 금지) */
+
                 #printable-area {
-                  position: relative !important;
-                  width: 100% !important;
-                  max-width: none !important;
-                  margin: 0 auto !important;
-                  padding: 0 !important;
-                  box-shadow: none !important;
-                  border: none !important;
+                    position: fixed !important; /* 조상 relative 탈출, 뷰포트/페이지 기준 배치 */
+                    left: 10mm !important;      /* 직접 여백 제어 */
+                    top: 10mm !important;
+                    width: 190mm !important;    /* A4 세로폭(210mm - 양쪽 여백 20mm) 정확히 안착 */
+                    max-width: 190mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    background: white !important;
+                    box-sizing: border-box !important;
+                    overflow: visible !important;
+                }
+
+                /* 4. 테이블 레이아웃 고정 및 결재방 규격 */
+                #printable-area table {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    table-layout: fixed !important;
+                    word-break: break-all !important;
+                    border-collapse: collapse !important;
                 }
                 
-                /* 6. 테이블 및 결재방 최적화 */
-                table { width: 100% !important; table-layout: fixed !important; word-break: break-all !important; page-break-inside: avoid; }
-                table.approval-table { width: 180px !important; margin-left: auto !important; margin-right: 0 !important; }
-                table td { padding: 8px 6px !important; }
+                #printable-area table.approval-table {
+                    width: 48mm !important;
+                    margin-left: auto !important;
+                    margin-right: 0 !important;
+                }
+                
+                /* 5. 폰트 크기 확대 및 가독성 확보 */
+                #printable-area table td, 
+                #printable-area table th {
+                    padding: 8px 6px !important;
+                    font-size: 13px !important; 
+                    line-height: 1.5 !important;
+                }
+                
+                /* 전용 높이 유지 */
                 .report-summary-box { min-height: 140px !important; }
                 .report-future-box { min-height: 75px !important; }
+                .draft-summary-box { min-height: 240px !important; }
+                .draft-budget-box { min-height: 80px !important; }
               }
             `}</style>
             <div>
@@ -1043,10 +1085,10 @@ export default function ReportManager({
                 <table className="approval-table border-collapse border border-black text-center text-xs w-[180px] ml-auto" style={{ borderCollapse: 'collapse', border: '1px solid #000000', marginLeft: 'auto' }}>
                   <tbody>
                     <tr className="border-b border-black">
-                      <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]" style={{ border: '1px solid #000000' }}>결<br />재</td>
-                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>작 성</td>
-                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>검 토</td>
-                      <td className="p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>승 인</td>
+                      <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px]" style={{ border: '1px solid #000000', width: '15%' }}>결<br />재</td>
+                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>작 성</td>
+                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>검 토</td>
+                      <td className="p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>승 인</td>
                     </tr>
                     <tr style={{ height: '45px' }}>
                       <td className="border-r border-black p-1 text-center" style={{ border: '1px solid #000000', height: '45px', verticalAlign: 'middle' }}></td>
@@ -1087,7 +1129,7 @@ export default function ReportManager({
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? `${selectedPlan.target} ${selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}` : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
                     <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
                   </tr>
