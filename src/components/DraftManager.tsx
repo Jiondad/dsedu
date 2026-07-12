@@ -877,7 +877,12 @@ export default function DraftManager({
                 /* 1. 불필요 요소 숨김 및 스크롤바 렌더링 원천 차단 */
                 .no-print, header, nav, aside, footer, button { display: none !important; }
                 ::-webkit-scrollbar { display: none !important; }
-                * { overflow: visible !important; } /* 모든 숨겨진 스크롤 해제 */
+                /* ⚠️ overflow: visible (양축 동시 해제)이 아니라 overflow-y만 풀어야 함.
+                   양축을 다 풀면 #print-area-wrapper/#printable-area에 걸려있던
+                   overflow-x-hidden(가로 초과분을 조용히 가려주던 안전장치)까지 꺼져버려서,
+                   결재란처럼 실제 폭보다 살짝 큰 요소의 초과분이 그대로 드러나고
+                   그게 A4 용지 폭을 벗어나 물리적으로 잘려 인쇄되는 원인이 됨. */
+                * { overflow-y: visible !important; } /* 세로 스크롤(내용 잘림)만 해제, 가로는 안전하게 유지 */
 
                 /* 2. 상위 래퍼 제한 완벽 해제 (높이를 auto로 주어 종스크롤 방지) */
                 html, body, #root, main {
@@ -929,10 +934,26 @@ export default function DraftManager({
                 }
                 
                 #printable-area table.approval-table {
-                    width: 45mm !important;
+                    /* 화면용 원본 디자인은 180px(≈47.6mm)인데 기존엔 45mm로 축소 지정되어 있어
+                       내부 셀 고정폭 합계(175px)보다 좁았음 → 항상 우측으로 초과분 발생.
+                       셀 폭을 %로 바꾼 것과 함께, 표 자체 폭도 여유 있게 48mm로 보정. */
+                    width: 48mm !important;
+                    max-width: 48mm !important;
                     margin-left: auto !important;
                     margin-right: 0 !important;
+                    box-sizing: border-box !important;
                 }
+
+                /* 결재란 내부 셀은 고정 px 대신 %로 동작하도록 강제 (표 폭이 얼마든 항상 합계 100%)
+                   table-layout: fixed 에서는 "1행"의 셀 폭이 전체 열 폭을 결정하므로
+                   1행(tr:first-child)의 4개 셀에만 명시적으로 지정한다. */
+                #printable-area table.approval-table td {
+                    box-sizing: border-box !important;
+                }
+                #printable-area table.approval-table tr:first-child td:nth-child(1) { width: 14% !important; } /* 결재 (rowSpan) */
+                #printable-area table.approval-table tr:first-child td:nth-child(2) { width: 29% !important; } /* 작성 */
+                #printable-area table.approval-table tr:first-child td:nth-child(3) { width: 29% !important; } /* 검토 */
+                #printable-area table.approval-table tr:first-child td:nth-child(4) { width: 28% !important; } /* 승인 */
                 
                 /* 6. 글씨 크기 한 단계 확대 및 가독성 확보 */
                 #printable-area table td, 
