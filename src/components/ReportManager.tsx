@@ -103,7 +103,7 @@ export default function ReportManager({
     reader.onloadend = () => {
       setCertificateFile(reader.result as string);
       setCertificateFileName(file.name);
-      triggerLocalNotification('수료증 파일이 등록되었습니다.', 'success');
+      triggerLocalNotification('파일이 등록되었습니다.', 'success');
     };
     reader.readAsDataURL(file);
   };
@@ -137,7 +137,7 @@ export default function ReportManager({
   const handleRemoveFile = () => {
     setCertificateFile('');
     setCertificateFileName('');
-    triggerLocalNotification('수료증 파일이 삭제되었습니다.', 'info');
+    triggerLocalNotification('파일이 삭제되었습니다.', 'info');
   };
 
   const parseDrafter = (drafterStr: string) => {
@@ -846,7 +846,7 @@ export default function ReportManager({
 
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                7. 수료증 업로드 (선택)
+                7. 교육증빙 업로드 (선택)
               </label>
               <div
                 onDragOver={handleDragOver}
@@ -1161,7 +1161,7 @@ export default function ReportManager({
                   </tr>
                   {certificateFile && (
                     <tr className="border-t border-black">
-                      <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">첨부 수료증</td>
+                      <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">첨부 교육증빙</td>
                       <td colSpan={3} className="p-2.5 text-center">
                         <div className="flex flex-col items-center justify-center p-2 bg-gray-50/50 rounded-xl border border-gray-100 max-w-md mx-auto">
                           <img src={certificateFile} alt="Certificate Attachment" className="max-h-[140px] max-w-full object-contain rounded-lg shadow-sm border border-gray-200" referrerPolicy="no-referrer" />
