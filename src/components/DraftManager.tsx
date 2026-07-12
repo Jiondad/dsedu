@@ -873,81 +873,41 @@ export default function DraftManager({
             <style>{`
               @media print {
                 @page { size: A4 portrait; margin: 10mm; }
-
-                /* 불필요 요소 숨김 및 스크롤바 차단 */
-                .no-print, header, nav, aside, footer, button { display: none !important; }
-                ::-webkit-scrollbar { display: none !important; }
+                body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 
-                /* 핵심 수정 1: 가로 잘림은 안전하게 숨기고, 세로 스크롤은 허용 */
-                * { overflow-y: visible !important; overflow-x: hidden !important; } 
-
-                /* 상위 래퍼 제한 완벽 해제 */
-                html, body, #root, main {
-                    display: block !important;
-                    width: 100% !important;
-                    height: auto !important; 
-                    max-width: 100% !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    box-sizing: border-box !important;
-                }
-
-                /* 모달/오버레이 고정 해제 */
-                .fixed, .absolute, .overflow-y-auto {
-                    position: static !important;
-                    height: auto !important;
-                    max-height: none !important;
-                }
-
-                .grid { display: block !important; gap: 0 !important; }
-                .lg\\:col-span-7 {
-                    display: block !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                }
-
-                /* 여백 대칭 및 컨테이너 안착 */
-                #print-area-wrapper, #printable-area {
-                    display: block !important;
-                    position: static !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    height: auto !important;
-                    margin: 0 auto !important;
-                    padding: 0 !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    background: white !important;
-                    box-sizing: border-box !important;
-                }
-
-                /* 테이블 레이아웃 고정 */
-                #printable-area table {
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    table-layout: fixed !important;
-                    word-break: break-all !important;
-                    border-collapse: collapse !important;
+                /* 1. 불필요한 요소 확실히 제거 (visibility 절대 금지) */
+                .no-print, header, nav, aside, footer, button { 
+                  display: none !important; 
                 }
                 
-                /* 핵심 수정 2: 45mm -> 48mm로 보정하여 잘림 방지 */
-                #printable-area table.approval-table {
-                    width: 48mm !important;
-                    margin-left: auto !important;
-                    margin-right: 0 !important;
+                /* 2. Grid 등 상위 컨테이너 레이아웃 붕괴 방지 */
+                .grid { display: block !important; }
+                .lg\\:col-span-7, .lg\\:col-span-12 { width: 100% !important; display: block !important; }
+                
+                /* 3. 부모 컨테이너의 제한(overflow) 해제 */
+                #print-area-wrapper {
+                  padding: 0 !important;
+                  margin: 0 !important;
+                  border: none !important;
+                  background: white !important;
+                  overflow: visible !important; /* overflow-x-hidden 무력화 및 클리핑 방지 핵심 */
                 }
                 
-                /* 폰트 크기 확대 유지 */
-                #printable-area table td, 
-                #printable-area table th {
-                    padding: 8px 6px !important;
-                    font-size: 13px !important; 
-                    line-height: 1.5 !important;
+                /* 4. 문서 양식 A4 최적화 (190mm 고정폭) */
+                #printable-area {
+                  width: 190mm !important;
+                  max-width: 190mm !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  overflow: visible !important;
                 }
                 
-                /* 전용 높이 유지 */
-                .report-summary-box { min-height: 140px !important; }
-                .report-future-box { min-height: 75px !important; }
+                /* 5. 내부 테이블 및 결재방 규격 고정 */
+                table { width: 100% !important; table-layout: fixed !important; word-break: break-all !important; page-break-inside: avoid; }
+                table.approval-table { width: 45mm !important; margin-left: auto !important; margin-right: 0 !important; }
+                table td { padding: 8px 6px !important; }
                 .draft-summary-box { min-height: 240px !important; }
                 .draft-budget-box { min-height: 80px !important; }
               }
@@ -961,10 +921,12 @@ export default function DraftManager({
                 <table className="approval-table border-collapse border border-black text-center text-xs w-[180px] ml-auto" style={{ borderCollapse: 'collapse', border: '1px solid #000000', marginLeft: 'auto' }}>
                   <tbody>
                     <tr className="border-b border-black">
-                      <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px]" style={{ border: '1px solid #000000', width: '15%' }}>결<br />재</td>
-                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>작 성</td>
-                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>검 토</td>
-                      <td className="p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>승 인</td>
+                      <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]" style={{ border: '1px solid #000000' }}>
+                        결<br />재
+                      </td>
+                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>작 성</td>
+                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>검 토</td>
+                      <td className="p-1 bg-gray-50 font-bold text-[10px] w-[50px]" style={{ border: '1px solid #000000' }}>승 인</td>
                     </tr>
                     <tr style={{ height: '45px' }}>
                       <td className="border-r border-black p-1 text-center" style={{ border: '1px solid #000000', height: '45px', verticalAlign: 'middle' }}></td>
