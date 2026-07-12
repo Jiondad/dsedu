@@ -619,7 +619,7 @@ export default function DraftManager({
                 </div>
                 <div className="bg-white px-3 py-2 rounded-lg border border-gray-150 shrink-0 text-right shadow-2xs">
                   <p className="text-[9px] text-gray-400 font-bold tracking-wider mb-0.5">교육 대상자</p>
-                  <p className="font-bold text-indigo-600 text-[11px]">{selectedPlan.target || '미지정'} {selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}</p>
+                  <p className="font-bold text-indigo-600 text-[11px]">{selectedPlan.target || '미지정'}</p>
                 </div>
               </div>
             )}
@@ -863,53 +863,68 @@ export default function DraftManager({
       <div className="lg:col-span-7 flex flex-col items-center">
         <div
           id="print-area-wrapper"
-          className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border print-section"
+          className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border"
         >
           <div
-            id="printable-area"
+            id="print-area"
             className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden"
             style={{ boxSizing: 'border-box' }}
           >
             <style>{`
               @media print {
-                @page { size: A4 portrait; margin: 10mm; }
-                body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                
-                /* 1. 불필요한 요소 확실히 제거 (visibility 절대 금지) */
-                .no-print, header, nav, aside, footer, button { 
-                  display: none !important; 
+                /* 불필요한 요소 숨김 처리 */
+                header, nav, aside, form, input, textarea, select, button, .no-print, [class*="no-print"] {
+                  display: none !important;
                 }
-                
-                /* 2. Grid 등 상위 컨테이너 레이아웃 붕괴 방지 */
-                .grid { display: block !important; }
-                .lg\\:col-span-7, .lg\\:col-span-12 { width: 100% !important; display: block !important; }
-                
-                /* 3. 부모 컨테이너의 제한(overflow) 해제 */
-                #print-area-wrapper {
-                  padding: 0 !important;
-                  margin: 0 !important;
-                  border: none !important;
+                /* 좌측 칼럼 및 불필요한 그리드 레이아웃 초기화 */
+                .lg\\:col-span-5, .lg\\:col-span-12, .grid {
+                  display: block !important;
+                  width: 100% !important;
+                }
+                /* 인쇄 문서 양식 외 모든 레이아웃의 마진/패딩 제거 및 배경화면 초기화 */
+                body, html, #root, main, .print-container, .lg\\:col-span-7 {
                   background: white !important;
-                  overflow: visible !important; /* overflow-x-hidden 무력화 및 클리핑 방지 핵심 */
-                }
-                
-                /* 4. 문서 양식 A4 최적화 (190mm 고정폭) */
-                #printable-area {
-                  width: 190mm !important;
-                  max-width: 190mm !important;
                   margin: 0 !important;
                   padding: 0 !important;
-                  border: none !important;
+                  width: 100% !important;
+                  height: auto !important;
+                  display: block !important;
                   box-shadow: none !important;
-                  overflow: visible !important;
+                }
+                #print-area-wrapper {
+                  background: transparent !important;
+                  border: none !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  display: block !important;
+                  width: 100% !important;
+                  max-width: none !important;
+                  box-shadow: none !important;
+                }
+                #print-area {
+                  display: block !important;
+                  width: 100% !important;
+                  max-width: none !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  background: transparent !important;
+                  page-break-after: avoid !important;
+                  break-inside: avoid !important;
+                }
+                #print-area * {
+                  box-shadow: none !important;
+                  text-shadow: none !important;
+                }
+                /* 표 및 내부 셀 여유 공간 */
+                #print-area table td {
+                  padding: 8px 6px !important;
                 }
                 
-                /* 5. 내부 테이블 및 결재방 규격 고정 */
-                table { width: 100% !important; table-layout: fixed !important; word-break: break-all !important; page-break-inside: avoid; }
-                table.approval-table { width: 45mm !important; margin-left: auto !important; margin-right: 0 !important; }
-                table td { padding: 8px 6px !important; }
-                .draft-summary-box { min-height: 240px !important; }
-                .draft-budget-box { min-height: 80px !important; }
+                /* 기안서 전용 인쇄 박스 높이 확보 */
+                .draft-summary-box { min-height: 180px !important; }
+                .draft-budget-box { min-height: 60px !important; }
               }
             `}</style>
             <div>
@@ -918,7 +933,7 @@ export default function DraftManager({
                   {draftId || 'DSEDU-YYYYMMDD-XXX'}
                 </div>
 
-                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px] ml-auto" style={{ borderCollapse: 'collapse', border: '1px solid #000000', marginLeft: 'auto' }}>
+                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px]" style={{ borderCollapse: 'collapse', border: '1px solid #000000' }}>
                   <tbody>
                     <tr className="border-b border-black">
                       <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] w-[25px]" style={{ border: '1px solid #000000' }}>
@@ -971,7 +986,7 @@ export default function DraftManager({
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? `${selectedPlan.target} ${selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}` : ''}</td>
+                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.target : ''}</td>
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
                     <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule})` : ''}</td>
                   </tr>
