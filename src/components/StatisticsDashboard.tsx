@@ -35,6 +35,7 @@ import {
   Check,
   AlertCircle,
   Users,
+  Search,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -155,6 +156,10 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
     draft: EducationDraft;
   } | null>(null);
   const [showPrintIframeWarning, setShowPrintIframeWarning] = React.useState(false);
+
+  // States for search and category filters
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [categoryFilter, setCategoryFilter] = React.useState<'전체' | '사내' | '사외'>('전체');
 
   const getFormattedKoreanDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -308,6 +313,38 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
     hidden: { opacity: 0, scale: 0.95 },
     visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } },
   };
+
+  // Filter list by searchQuery and categoryFilter
+  const filteredReports = completedReportsWithDetails.filter(({ report, plan, draft }) => {
+    const query = searchQuery.toLowerCase();
+    const associatedPlan = plans.find((p) => p.id === (report.plan_id || report.planId));
+    const planTitle = associatedPlan ? associatedPlan.title.toLowerCase() : '';
+    const reportNo = report.id ? report.id.toLowerCase() : '';
+    const drafterName = (report.drafter_name || report.drafterName || '').toLowerCase();
+    const department = (report.department || '').toLowerCase();
+
+    const matchesSearch =
+      planTitle.includes(query) ||
+      reportNo.includes(query) ||
+      drafterName.includes(query) ||
+      department.includes(query);
+
+    const matchesCategory =
+      categoryFilter === '전체' ||
+      (associatedPlan && associatedPlan.category === categoryFilter);
+
+    return matchesSearch && matchesCategory;
+  });
+
+  // Calculate totals for the filtered list
+  const filteredHeadcount = filteredReports.reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
+  const filteredCost = filteredReports.reduce((sum, item) => sum + (item.plan.cost || 0), 0);
+  const filteredHours = filteredReports.reduce((sum, item) => sum + (item.plan.hours || 0), 0);
+  const filteredAvgSatisfaction =
+    filteredReports.length > 0
+      ? filteredReports.reduce((sum, item) => sum + (item.report.satisfaction_score || 5.0), 0) /
+        filteredReports.length
+      : 0.0;
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
@@ -713,7 +750,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
-              총 {completedReportsWithDetails.length}건 완료
+              총 {filteredReports.length}건 완료
             </div>
             <button
               onClick={handlePrintList}
@@ -722,6 +759,38 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               <Printer className="w-4 h-4 text-slate-500" />
               <span>교육 실적 목록 출력</span>
             </button>
+          </div>
+        </div>
+
+        {/* Search and Filters bar */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50 p-4 rounded-xl border border-gray-100 no-print">
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="교육명, 보고서번호, 부서, 보고자 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
+              />
+            </div>
+
+            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+              {(['전체', '사내', '사외'] as const).map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    categoryFilter === cat
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -740,15 +809,19 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-150 text-[11px] md:text-xs">
-              {completedReportsWithDetails.length === 0 ? (
+              {filteredReports.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-gray-400 font-medium">
-                    완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)
+                    {completedReportsWithDetails.length === 0 ? (
+                      "완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)"
+                    ) : (
+                      "검색 조건에 부합하는 교육 실적이 없습니다."
+                    )}
                   </td>
                 </tr>
               ) : (
                 <>
-                  {completedReportsWithDetails.map(({ report, plan, draft }) => {
+                  {filteredReports.map(({ report, plan, draft }) => {
                     const associatedPlan = plans.find((p) => p.id === (report.plan_id || report.planId));
                     const targetText = associatedPlan ? associatedPlan.target : (report.target || '-');
                     const headcountValue = associatedPlan 
@@ -791,17 +864,17 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                     <td className="py-3 px-2 text-slate-800 text-center font-bold">합계</td>
                     <td className="py-3 px-1.5"></td>
                     <td className="py-3 px-1.5 text-slate-800 font-bold">
-                      {totalHeadcount}명
+                      {filteredHeadcount}명
                     </td>
                     <td className="py-3 px-1.5"></td>
                     <td className="py-3 px-1.5 text-center font-mono text-slate-800 font-bold">
-                      {totalHours}시간
+                      {filteredHours}시간
                     </td>
                     <td className="py-3 px-1.5 text-right font-mono text-slate-800 font-bold">
-                      {formatCurrency(totalCost)}
+                      {formatCurrency(filteredCost)}
                     </td>
                     <td className="py-3 px-1 text-center font-bold text-slate-800">
-                      {avgSatisfaction.toFixed(1)}
+                      {filteredAvgSatisfaction.toFixed(1)}
                     </td>
                     <td className="py-3 px-1 text-center text-slate-400">-</td>
                   </tr>
