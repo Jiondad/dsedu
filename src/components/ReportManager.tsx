@@ -1003,12 +1003,7 @@ export default function ReportManager({
                 /* 1. 불필요 요소 숨김 및 스크롤바 렌더링 원천 차단 */
                 .no-print, header, nav, aside, footer, button { display: none !important; }
                 ::-webkit-scrollbar { display: none !important; }
-                /* ⚠️ overflow: visible (양축 동시 해제)이 아니라 overflow-y만 풀어야 함.
-                   양축을 다 풀면 #print-area-wrapper/#printable-area에 걸려있던
-                   overflow-x-hidden(가로 초과분을 조용히 가려주던 안전장치)까지 꺼져버려서,
-                   결재란처럼 실제 폭보다 살짝 큰 요소의 초과분이 그대로 드러나고
-                   그게 A4 용지 폭을 벗어나 물리적으로 잘려 인쇄되는 원인이 됨. */
-                * { overflow-y: visible !important; } /* 세로 스크롤(내용 잘림)만 해제, 가로는 안전하게 유지 */
+                * { overflow: visible !important; } /* 모든 숨겨진 스크롤 해제 */
 
                 /* 2. 상위 래퍼 제한 완벽 해제 (높이를 auto로 주어 종스크롤 방지) */
                 html, body, #root, main {
@@ -1048,16 +1043,6 @@ export default function ReportManager({
                     box-shadow: none !important;
                     background: white !important;
                     box-sizing: border-box !important;
-                    gap: 0 !important; /* display:block이어도 최신 브라우저는 gap-y-4(row-gap)를 여전히 적용할 수 있어 명시적으로 0 처리 */
-                }
-
-                /* 세로 한 페이지 초과 방지: 표 행/결재란/마무리 문구가 페이지 경계에서
-                   문장 중간에 잘리지 않고 통째로 다음 페이지로 넘어가도록 고정 */
-                #printable-area tr,
-                #printable-area table.approval-table,
-                #printable-area .print-signoff-block {
-                    page-break-inside: avoid !important;
-                    break-inside: avoid !important;
                 }
 
                 /* 5. 테이블 레이아웃 고정 */
@@ -1070,26 +1055,10 @@ export default function ReportManager({
                 }
                 
                 #printable-area table.approval-table {
-                    /* 화면용 원본 디자인은 180px(≈47.6mm)인데 기존엔 45mm로 축소 지정되어 있어
-                       내부 셀 고정폭 합계(175px)보다 좁았음 → 항상 우측으로 초과분 발생.
-                       셀 폭을 %로 바꾼 것과 함께, 표 자체 폭도 여유 있게 48mm로 보정. */
-                    width: 48mm !important;
-                    max-width: 48mm !important;
+                    width: 45mm !important;
                     margin-left: auto !important;
                     margin-right: 0 !important;
-                    box-sizing: border-box !important;
                 }
-
-                /* 결재란 내부 셀은 고정 px 대신 %로 동작하도록 강제 (표 폭이 얼마든 항상 합계 100%)
-                   table-layout: fixed 에서는 "1행"의 셀 폭이 전체 열 폭을 결정하므로
-                   1행(tr:first-child)의 4개 셀에만 명시적으로 지정한다. */
-                #printable-area table.approval-table td {
-                    box-sizing: border-box !important;
-                }
-                #printable-area table.approval-table tr:first-child td:nth-child(1) { width: 14% !important; } /* 결재 (rowSpan) */
-                #printable-area table.approval-table tr:first-child td:nth-child(2) { width: 29% !important; } /* 작성 */
-                #printable-area table.approval-table tr:first-child td:nth-child(3) { width: 29% !important; } /* 검토 */
-                #printable-area table.approval-table tr:first-child td:nth-child(4) { width: 28% !important; } /* 승인 */
                 
                 /* 6. 글씨 크기 한 단계 확대 및 가독성 확보 */
                 #printable-area table td, 
@@ -1107,7 +1076,7 @@ export default function ReportManager({
               }
             `}</style>
             <div>
-              <div className="flex justify-between items-start mb-4 print:mb-2">
+              <div className="flex justify-between items-start mb-4">
                 <div className="text-[10px] text-gray-400 font-mono tracking-tight">{reportId || 'DSEREP-YYYYMMDD-XXX'}</div>
                 <table className="approval-table border-collapse border border-black text-center text-xs w-[180px] ml-auto" style={{ borderCollapse: 'collapse', border: '1px solid #000000', marginLeft: 'auto' }}>
                   <tbody>
@@ -1126,11 +1095,11 @@ export default function ReportManager({
                 </table>
               </div>
 
-              <div className="text-center mb-10 print:mb-5">
+              <div className="text-center mb-10">
                 <h1 className="text-2xl font-black tracking-[0.4em] border-b-2 border-double border-black pb-2 inline-block pl-[0.4em]">교 육 결 과 보 고 서</h1>
               </div>
 
-              <table className="w-full border-collapse border border-black text-xs mb-3 print:mb-2">
+              <table className="w-full border-collapse border border-black text-xs mb-3">
                 <tbody>
                   <tr className="border-b border-black">
                     <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고서번호</td>
@@ -1201,7 +1170,7 @@ export default function ReportManager({
               </table>
             </div>
 
-            <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1 pb-0 print-signoff-block">
+            <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1.5 pb-0">
               <p className="text-[11px] sm:text-xs text-gray-500 tracking-tight leading-relaxed mb-2 print:mb-1.5 font-medium max-w-[95%] mx-auto">위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 교육 결과를 보고하오니,<br />검토 후 결재하여 주시기 바랍니다.</p>
               <p className="text-[11px] sm:text-xs font-bold text-gray-700 tracking-wider mb-2 print:mb-1.5">{getFormattedKoreanDate(reportDate)}</p>
               <div className="flex flex-col items-center">
