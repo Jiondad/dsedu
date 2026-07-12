@@ -198,6 +198,15 @@ export default function PlanTable({
                 margin-left: auto !important;
                 margin-right: 0 !important;
             }
+
+            /* 테이블 선 굵기 얇게 조정 (투박함 제거) */
+            .print-plan-table-container table:not(.approval-table) th,
+            .print-plan-table-container table:not(.approval-table) td {
+                border: 0.5pt solid #64748b !important; /* 얇고 깔끔한 슬레이트 색상 */
+            }
+            .print-plan-table-container table:not(.approval-table) {
+                border: 1pt solid #334155 !important; /* 외곽선만 살짝 형태를 잡아줌 */
+            }
           }
         `;
         document.head.appendChild(styleEl);
@@ -216,7 +225,7 @@ export default function PlanTable({
     <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden print-plan-table-container">
       {/* 인쇄 전용 헤더 */}
       <div className="hidden print:block mb-6 w-full">
-        <div className="flex justify-between items-end border-b-2 border-slate-800 pb-2.5">
+        <div className="flex justify-between items-end pb-2.5">
           <h1 className="text-lg font-black text-slate-900 self-end mb-2">{selectedYear ? `${selectedYear}년도 ` : ''}대성스틸 연간 교육 계획 목록</h1>
           <div className="ml-auto">
             <table className="approval-table w-[180px] border-collapse border border-black text-center" style={{ width: '180px', borderCollapse: 'collapse', border: '1px solid black' }}>
