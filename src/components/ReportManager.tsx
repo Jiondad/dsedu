@@ -1000,51 +1000,41 @@ export default function ReportManager({
               @media print {
                 @page { size: A4 portrait; margin: 10mm; }
 
-                /* 1. 불필요 요소 숨김 */
+                /* 불필요 요소 숨김 */
                 .no-print, header, nav, aside, footer, button { display: none !important; }
 
-                /* 2. 무차별 div 덮어쓰기 제거! -> 최상위 래퍼와 그리드만 제한 해제 */
+                /* 상위 래퍼들의 제한 완벽 해제 (100% 공간 확보) */
                 html, body, #root, main {
                     display: block !important;
                     width: 100% !important;
-                    max-width: none !important;
+                    max-width: 100% !important;
                     margin: 0 !important;
                     padding: 0 !important;
-                    overflow: visible !important;
+                    box-sizing: border-box !important;
                 }
 
-                /* 3. 그리드 시스템 무력화 (화면 쏠림 방지 핵심) */
-                .grid { display: block !important; }
+                .grid { display: block !important; gap: 0 !important; }
                 .lg\\:col-span-7 {
-                    width: 100% !important;
-                    max-width: 100% !important;
                     display: block !important;
-                }
-
-                /* 4. 괴상한 스크롤바 원천 제거 및 100% 폭 안착 (양쪽 여백 대칭) */
-                #print-area-wrapper {
                     width: 100% !important;
                     max-width: 100% !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    border: none !important;
-                    background: transparent !important;
-                    overflow: visible !important;
                 }
 
-                #printable-area {
+                /* 190mm 고정폭 폐기 -> 100%로 설정하여 @page 여백(10mm) 내에서 자동 대칭 중앙 정렬 */
+                #print-area-wrapper, #printable-area {
+                    display: block !important;
                     position: static !important;
                     width: 100% !important;
                     max-width: 100% !important;
-                    margin: 0 auto !important;
-                    padding: 0 !important; /* 패딩을 제거해야 표가 좌우 끝까지 쫙 펴짐 */
+                    margin: 0 !important;
+                    padding: 0 !important;
                     border: none !important;
                     box-shadow: none !important;
                     background: white !important;
-                    overflow: visible !important;
+                    box-sizing: border-box !important;
                 }
 
-                /* 5. 내부 요소 레이아웃 정상화 */
+                /* 테이블을 부모 요소(100%)에 꽉 채우기 */
                 #printable-area table {
                     width: 100% !important;
                     max-width: 100% !important;
@@ -1053,6 +1043,7 @@ export default function ReportManager({
                     border-collapse: collapse !important;
                 }
                 
+                /* 결재방 크기만 고정 */
                 #printable-area table.approval-table {
                     width: 45mm !important;
                     margin-left: auto !important;
