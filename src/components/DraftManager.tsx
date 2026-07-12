@@ -716,7 +716,7 @@ export default function DraftManager({
 
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                5. 교육내용 요약 (6. 교육내용 요약) <span className="text-rose-500">*</span>
+                5. 교육내용 요약 <span className="text-rose-500">*</span>
               </label>
               <textarea
                 value={contentSummary}
@@ -732,7 +732,7 @@ export default function DraftManager({
 
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                6. 소요예산 상세내역 (7. 소요예산 상세내역) <span className="text-rose-500">*</span>
+                6. 소요예산 상세내역 <span className="text-rose-500">*</span>
               </label>
               <textarea
                 value={budgetBreakdown}
