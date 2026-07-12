@@ -761,9 +761,8 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                         <td className="py-2.5 px-1.5 text-gray-600 font-medium truncate" title={`${targetText} (${headcountValue}명)`}>
                           {targetText} {headcountValue > 0 ? `(${headcountValue}명)` : ''}
                         </td>
-                        <td className="py-2.5 px-1.5 text-gray-600 font-mono text-[10px]">
-                          <div className="font-medium text-gray-700 truncate">{plan.date}</div>
-                          <div className="text-gray-400 text-[9px] truncate">({plan.schedule})</div>
+                        <td className="py-2.5 px-1.5 text-gray-700 font-medium text-[13px] whitespace-normal break-all">
+                          {plan.schedule}
                         </td>
                         <td className="py-2.5 px-1.5 text-center font-mono font-medium text-gray-700">
                           {plan.hours}시간
