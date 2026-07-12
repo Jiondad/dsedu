@@ -314,8 +314,21 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
       <style>{`
         @media print {
           /* 상단 차트 카드, 버튼, 네비게이션 등 통계 탭의 비표 형식 요소만 인쇄 제외 */
-          .stats-chart-card, .stats-filter-section { 
+          .stats-chart-card, .stats-filter-section, .no-print, header, nav, aside, footer, button { 
               display: none !important; 
+          }
+          ::-webkit-scrollbar { display: none !important; }
+
+          /* html, body 등 상위 래퍼 제한 해제하여 가로폭 확장 및 좌우 대칭 보장 */
+          html, body, #root, main {
+              display: block !important;
+              width: 100% !important;
+              height: auto !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-sizing: border-box !important;
+              overflow: visible !important;
           }
 
           /* 하단 실적 현황 테이블 컨테이너 폭 100% 최적화 및 텍스트 줄바꿈 보장 */
@@ -324,6 +337,9 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               position: static !important;
               width: 100% !important;
               max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-sizing: border-box !important;
           }
 
           .print-stats-table-container table {
@@ -339,6 +355,13 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               word-break: break-all !important;
               overflow-wrap: break-word !important;
               padding: 6px 4px !important;
+          }
+
+          /* 결재방 규격 고정 및 우측 정렬 */
+          .print-stats-table-container table.approval-table {
+              width: 45mm !important;
+              margin-left: auto !important;
+              margin-right: 0 !important;
           }
         }
       `}</style>
@@ -646,13 +669,27 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
 
       {/* Education Performance List Table */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-4 print-report-table-container print-stats-table-container">
-        {/* 인쇄 전용 헤더 (화면 숨김, 인쇄 시에만 가로 상단 표출) */}
+        {/* 인쇄 전용 헤더 */}
         <div className="hidden print:block mb-6 w-full">
-          <div className="flex justify-between items-baseline border-b-2 border-slate-800 pb-2.5">
-            <h1 className="text-lg font-black text-slate-900">대성스틸 연간 교육 실적 현황</h1>
-            <span className="text-xs text-slate-500 font-mono font-bold">
-              출력일자: {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </span>
+          <div className="flex justify-between items-end pb-2.5">
+            <h1 className="text-lg font-black text-slate-900 self-end mb-2">대성스틸 연간 교육 실적 현황</h1>
+            <div className="ml-auto">
+              <table className="approval-table w-[180px] border-collapse border border-black text-center" style={{ width: '180px', borderCollapse: 'collapse', border: '1px solid black' }}>
+                <tbody>
+                  <tr className="border-b border-black">
+                    <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-100 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '30px', padding: '4px', backgroundColor: '#f3f4f6', fontWeight: 'bold' }}>결<br/>재</td>
+                    <td className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>작성</td>
+                    <td className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>검토</td>
+                    <td className="font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>승인</td>
+                  </tr>
+                  <tr style={{ height: '40px' }}>
+                    <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '40px' }}></td>
+                    <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '40px' }}></td>
+                    <td style={{ height: '40px' }}></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -746,6 +783,13 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* 인쇄 전용 푸터 - 출력일자 */}
+      <div className="hidden print:block text-right mt-6">
+        <span className="text-xs text-slate-500 font-mono font-bold">
+          출력일자: {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </span>
       </div>
 
       {/* Detail View Modal */}
