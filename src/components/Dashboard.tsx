@@ -204,8 +204,9 @@ export default function Dashboard({ metrics }: DashboardProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                 <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" orientation="left" stroke="#6366F1" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" stroke="#10B981" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" stroke="#10B981" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={80} tickFormatter={(value) => formatCurrency(Number(value))} />
                 <Tooltip
+                  formatter={(value, name) => name === '총 비용 (원)' ? formatCurrency(Number(value)) : value}
                   contentStyle={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#4B5563' }} />
