@@ -22,6 +22,22 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+// MM/DD~MM/DD를 월/일 숫자로 비교합니다. 잘못된 일정은 마지막에 표시합니다.
+function getScheduleOrder(schedule: string): [number, number] | null {
+  const match = (schedule || '').match(/^\s*(\d{1,2})\/(\d{1,2})\s*~\s*(\d{1,2})\/(\d{1,2})\s*$/);
+  if (!match) return null;
+  const [startMonth, startDay, endMonth, endDay] = match.slice(1).map(Number);
+  const isValid = (month: number, day: number) => {
+    const date = new Date(Date.UTC(2000, month - 1, day));
+    return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  };
+  if (!isValid(startMonth, startDay) || !isValid(endMonth, endDay)) return null;
+  const start = startMonth * 100 + startDay;
+  const end = endMonth * 100 + endDay;
+  // 12/30~01/02처럼 연도를 넘기는 종료일은 다음 해로 간주합니다.
+  return [start, end < start ? end + 1200 : end];
+}
+
 interface PlanTableProps {
   plans: EducationPlan[];
   drafts: EducationDraft[];
@@ -49,7 +65,7 @@ export default function PlanTable({
   const [showPrintIframeWarning, setShowPrintIframeWarning] = useState(false);
 
   // Sorting state
-  const [sortField, setSortField] = useState<keyof EducationPlan>('date');
+  const [sortField, setSortField] = useState<keyof EducationPlan>('schedule');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const handleSort = (field: keyof EducationPlan) => {
@@ -83,6 +99,18 @@ export default function PlanTable({
 
   // Sort filtered plans
   const sortedPlans = [...filteredPlans].sort((a, b) => {
+    if (sortField === 'schedule') {
+      const aSchedule = getScheduleOrder(a.plan.schedule);
+      const bSchedule = getScheduleOrder(b.plan.schedule);
+      if (!aSchedule && !bSchedule) return a.originalIndex - b.originalIndex;
+      if (!aSchedule) return 1;
+      if (!bSchedule) return -1;
+      const difference = aSchedule[0] - bSchedule[0] || aSchedule[1] - bSchedule[1];
+      return difference
+        ? (sortDirection === 'asc' ? difference : -difference)
+        : a.originalIndex - b.originalIndex;
+    }
+
     let aVal = a.plan[sortField];
     let bVal = b.plan[sortField];
 
@@ -303,7 +331,9 @@ export default function PlanTable({
               </th>
               <th className="py-3 px-1.5 md:px-2">교육기관 / 강사</th>
               <th className="py-3 px-1.5 md:px-2">대상자</th>
-              <th className="py-3 px-1 md:px-1.5 whitespace-nowrap">교육일정</th>
+              <th className="py-3 px-1 md:px-1.5 whitespace-nowrap cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('schedule')}>
+                교육일정 {sortField === 'schedule' && (sortDirection === 'asc' ? '▲' : '▼')}
+              </th>
               <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('hours')}>
                 교육시간 {sortField === 'hours' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
