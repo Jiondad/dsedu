@@ -135,6 +135,17 @@ export default function PlanTable({
     return 0;
   });
 
+  const printCategorySummary = (['사내', '사외'] as const).map((category) => {
+    const items = sortedPlans.filter(({ plan }) => plan.category === category);
+    return {
+      category,
+      count: items.length,
+      headcount: items.reduce((sum, { plan }) => sum + (Number(plan.headcount) || 0), 0),
+      hours: items.reduce((sum, { plan }) => sum + (Number(plan.hours) || 0), 0),
+      cost: items.reduce((sum, { plan }) => sum + (Number(plan.cost) || 0), 0),
+    };
+  });
+
   const totalHours = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.hours) || 0), 0);
   const totalHeadcount = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.headcount) || 0), 0);
   const totalCost = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.cost) || 0), 0);
@@ -168,6 +179,31 @@ export default function PlanTable({
         styleEl.innerHTML = `
           @media print {
             @page { size: A4 landscape; margin: 10mm; }
+          .print-plan-table-container .plan-print-summary {
+            display: block !important;
+            margin-top: 6mm !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            color: #0f172a !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .plan-summary-heading { font-size: 11px; font-weight: 800; margin: 0 0 3mm; letter-spacing: .04em; }
+          .print-plan-table-container .plan-summary-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: 5mm; }
+          .plan-summary-card { border: 1px solid #cbd5e1; border-top: 3px solid #2563eb; border-radius: 8px; padding: 3mm 4mm; background: #f8fafc; min-width: 0; }
+          .plan-summary-card.external { border-top-color: #059669; }
+          .print-plan-table-container .plan-summary-title { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 3mm; }
+          .plan-summary-title strong { font-size: 12px; color: #1d4ed8; }
+          .external .plan-summary-title strong { color: #047857; }
+          .plan-summary-title span { font-size: 10px; color: #475569; }
+          .plan-summary-metrics { display: grid !important; grid-template-columns: 1fr 1fr 1.4fr; gap: 3mm; margin: 0; }
+          .plan-summary-metric { min-width: 0; }
+          .plan-summary-metric dt { font-size: 9px; color: #64748b; margin-bottom: 1mm; }
+          .plan-summary-metric dd { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+          .plan-summary-metric dd small { font-size: 10px; font-weight: 500; margin-left: 1mm; }
+          .plan-summary-note { font-size: 8px; color: #64748b; margin: 2mm 0 0; }
+
+
 
             /* 1. 불필요 요소 제거 및 공간 차지 원천 차단 */
             .no-print, header, nav, aside, footer, button { display: none !important; }
@@ -582,6 +618,26 @@ export default function PlanTable({
         </tbody>
       </table>
     </div>
+
+<section className="plan-print-summary hidden" aria-label="구분별 연간 교육계획 집계">
+          <h2 className="plan-summary-heading">구분별 연간 교육계획 집계</h2>
+          <div className="plan-summary-grid">
+            {printCategorySummary.map((item) => (
+              <article key={item.category} className={'plan-summary-card ' + (item.category === '사외' ? 'external' : '')}>
+                <div className="plan-summary-title">
+                  <strong>{item.category} 교육</strong>
+                  <span>계획 {item.count.toLocaleString('ko-KR')}건</span>
+                </div>
+                <dl className="plan-summary-metrics">
+                  <div className="plan-summary-metric"><dt>계획 인원</dt><dd>{item.headcount.toLocaleString('ko-KR')}<small>명</small></dd></div>
+                  <div className="plan-summary-metric"><dt>계획 시간</dt><dd>{item.hours.toLocaleString('ko-KR')}<small>시간</small></dd></div>
+                  <div className="plan-summary-metric"><dt>예상 비용</dt><dd>{item.cost.toLocaleString('ko-KR')}<small>원</small></dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          <p className="plan-summary-note">현재 출력 목록 기준 · 인원은 교육별 계획 인원 누계 · 시간과 비용은 교육계획의 등록값 기준</p>
+        </section>
 
     {/* 인쇄 전용 푸터 - 출력일자 */}
     <div className="hidden print:block text-right mt-6">
