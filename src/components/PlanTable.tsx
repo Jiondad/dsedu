@@ -370,8 +370,11 @@ export default function PlanTable({
                     </td>
 
                     {/* Target Group */}
-                    <td className="py-3.5 px-1.5 md:px-2 text-gray-600 leading-snug break-all">
-                      {plan.target || '-'} {plan.headcount ? `(${plan.headcount}명)` : ''}
+                    <td className="py-3.5 px-1.5 md:px-2 text-gray-600 leading-snug">
+                      <span className="block whitespace-nowrap">{plan.target || '-'}</span>
+                      {plan.headcount ? (
+                        <span className="block whitespace-nowrap mt-0.5 text-gray-400">({plan.headcount}명)</span>
+                      ) : null}
                     </td>
 
                     {/* Schedule */}
@@ -476,7 +479,7 @@ export default function PlanTable({
                 <td className="py-3 px-1 text-center text-slate-800 font-bold">
                   {totalHours}시간
                 </td>
-                <td className="py-3 px-1 text-right text-slate-900 font-mono font-bold">
+                <td className="py-3 px-1 text-right text-slate-900 font-mono font-bold whitespace-nowrap">
                   {formatCurrency(totalCost)}
                 </td>
                 <td className="py-3 px-1"></td>
