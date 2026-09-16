@@ -320,10 +320,10 @@ export default function PlanTable({
             /* 테이블 선 굵기 얇게 조정 (투박함 제거) */
             .print-plan-table-container table:not(.approval-table) th,
             .print-plan-table-container table:not(.approval-table) td {
-                border: 0.35pt solid #b8c2cf !important;
+                border: 0.2pt solid #d1d7df !important;
             }
             .print-plan-table-container table:not(.approval-table) {
-                border: 0.5pt solid #94a3b8 !important;
+                border: 0.3pt solid #b8c2cf !important;
             }
             /* 행에 지정된 기존 테두리가 셀의 얇은 선보다 우선하지 않도록 합니다. */
             .print-plan-table-container table:not(.approval-table) thead,
