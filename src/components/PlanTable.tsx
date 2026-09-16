@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
 import { formatCurrency } from '../utils';
 import {
@@ -63,6 +63,17 @@ export default function PlanTable({
   const [categoryFilter, setCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
   const [showPrintIframeWarning, setShowPrintIframeWarning] = useState(false);
+
+  useEffect(() => {
+    const clearPrintStyle = () => {
+      document.getElementById('dynamic-landscape-print-style')?.remove();
+    };
+    window.addEventListener('afterprint', clearPrintStyle);
+    return () => {
+      window.removeEventListener('afterprint', clearPrintStyle);
+      clearPrintStyle();
+    };
+  }, []);
 
   // Sorting state
   const [sortField, setSortField] = useState<keyof EducationPlan>('schedule');
@@ -146,6 +157,9 @@ export default function PlanTable({
       console.warn('Iframe sandbox detected. Showing instructions for secure print.');
       setShowPrintIframeWarning(true);
     } else {
+      // 이전 출력 종류나 클릭 순서에 따라 인쇄 규칙이 누적되지 않도록 초기화합니다.
+      ['dynamic-landscape-print-style', 'dynamic-landscape-print-style-reports', 'dynamic-portrait-print-style']
+        .forEach((id) => document.getElementById(id)?.remove());
       const styleId = 'dynamic-landscape-print-style';
       let styleEl = document.getElementById(styleId);
       if (!styleEl) {
@@ -165,11 +179,23 @@ export default function PlanTable({
                 max-width: none !important;
             }
 
+            /* 공통 CSS의 세로 A4 폭(210mm)과 화면용 여백을 해제합니다. */
+            html, body, #root, #root > div, main, main > div {
+                width: 100% !important;
+                max-width: none !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+                transform: none !important;
+            }
+
             /* 3. 문서 양식을 A4 가로폭(277mm)에 강제 안착 */
             .print-plan-table-container {
                 position: static !important;
-                width: 277mm !important;
-                max-width: 277mm !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 border: none !important;
@@ -271,6 +297,7 @@ export default function PlanTable({
       try {
         window.print();
       } catch (err) {
+        document.getElementById(styleId)?.remove();
         console.error('Print blocked or failed:', err);
         setShowPrintIframeWarning(true);
       }
