@@ -337,6 +337,18 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
   });
 
   // Calculate totals for the filtered list
+  // 검색 및 구분 필터가 적용된 출력 목록과 동일한 범위로 집계합니다.
+  const printCategorySummary = (['사내', '사외'] as const).map((category) => {
+    const items = filteredReports.filter(({ plan }) => plan.category === category);
+    return {
+      category,
+      count: items.length,
+      headcount: items.reduce((sum, { plan }) => sum + (Number(plan.headcount !== undefined ? plan.headcount : parseTraineeCount(plan.target)) || 0), 0),
+      hours: items.reduce((sum, { plan }) => sum + (Number(plan.hours) || 0), 0),
+      cost: items.reduce((sum, { plan }) => sum + (Number(plan.cost) || 0), 0),
+    };
+  });
+
   const filteredHeadcount = filteredReports.reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
   const filteredCost = filteredReports.reduce((sum, item) => sum + (item.plan.cost || 0), 0);
   const filteredHours = filteredReports.reduce((sum, item) => sum + (item.plan.hours || 0), 0);
@@ -349,7 +361,32 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <style>{`
+        .stats-print-summary { display: none; }
         @media print {
+          #printable-area .stats-print-summary {
+            display: block !important;
+            margin-top: 6mm !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            color: #0f172a !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .stats-summary-heading { font-size: 11px; font-weight: 800; margin: 0 0 3mm; letter-spacing: .04em; }
+          #printable-area .stats-summary-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: 5mm; }
+          .stats-summary-card { border: 1px solid #cbd5e1; border-top: 3px solid #2563eb; border-radius: 8px; padding: 3mm 4mm; background: #f8fafc; min-width: 0; }
+          .stats-summary-card.external { border-top-color: #059669; }
+          #printable-area .stats-summary-title { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 3mm; }
+          .stats-summary-title strong { font-size: 12px; color: #1d4ed8; }
+          .external .stats-summary-title strong { color: #047857; }
+          .stats-summary-title span { font-size: 10px; color: #475569; }
+          .stats-summary-metrics { display: grid !important; grid-template-columns: 1fr 1fr 1.4fr; gap: 3mm; margin: 0; }
+          .stats-summary-metric { min-width: 0; }
+          .stats-summary-metric dt { font-size: 9px; color: #64748b; margin-bottom: 1mm; }
+          .stats-summary-metric dd { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+          .stats-summary-metric dd small { font-size: 10px; font-weight: 500; margin-left: 1mm; }
+          .stats-summary-note { font-size: 8px; color: #64748b; margin: 2mm 0 0; }
+
           /* 상단 차트 카드, 버튼, 네비게이션 등 통계 탭의 비표 형식 요소만 인쇄 제외 */
           .stats-chart-card, .stats-filter-section, .no-print, header, nav, aside, footer, button { 
               display: none !important; 
@@ -398,11 +435,11 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           .print-stats-table-container table:not(.approval-table) th:nth-child(1) { width: 3% !important; }
           .print-stats-table-container table:not(.approval-table) th:nth-child(2) { width: 5% !important; }
           .print-stats-table-container table:not(.approval-table) th:nth-child(3) { width: 14% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(4) { width: 25% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(4) { width: 28.6% !important; }
           .print-stats-table-container table:not(.approval-table) th:nth-child(5) { width: 9% !important; }
           .print-stats-table-container table:not(.approval-table) th:nth-child(6) { width: 10% !important; }
           .print-stats-table-container table:not(.approval-table) th:nth-child(7) { width: 8% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(8) { width: 12% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(8) { width: 8.4% !important; }
           .print-stats-table-container table:not(.approval-table) th:nth-child(9) { width: 7% !important; }
           .print-stats-table-container table:not(.approval-table) th:nth-child(10) { width: 7% !important; }
 
@@ -822,11 +859,11 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                 <th style={{ width: '3%' }} className="py-2.5 px-1 text-center">NO</th>
                 <th style={{ width: '5%' }} className="py-2.5 px-1 text-center">구분</th>
                 <th style={{ width: '14%' }} className="py-2.5 px-2">보고서번호</th>
-                <th style={{ width: '25%' }} className="py-2.5 px-1.5 min-w-[200px]">교육명</th>
+                <th style={{ width: '28.6%' }} className="py-2.5 px-1.5 min-w-[200px]">교육명</th>
                 <th style={{ width: '9%' }} className="py-2.5 px-1.5">교육대상자</th>
                 <th style={{ width: '10%' }} className="py-2.5 px-1.5">교육일정</th>
                 <th style={{ width: '8%' }} className="py-2.5 px-1.5 text-center">교육시간</th>
-                <th style={{ width: '12%' }} className="py-2.5 px-1.5 text-right">실집행비용</th>
+                <th style={{ width: '8.4%' }} className="py-2.5 px-1.5 text-right">실집행비용</th>
                 <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">만족도</th>
                 <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">교육증빙</th>
               </tr>
@@ -908,6 +945,25 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
             </tbody>
           </table>
         </div>
+        <section className="stats-print-summary" aria-label="구분별 교육 실적 집계">
+          <h2 className="stats-summary-heading">구분별 교육 실적 집계</h2>
+          <div className="stats-summary-grid">
+            {printCategorySummary.map((item) => (
+              <article key={item.category} className={'stats-summary-card ' + (item.category === '사외' ? 'external' : '')}>
+                <div className="stats-summary-title">
+                  <strong>{item.category} 교육</strong>
+                  <span>이수 완료 {item.count.toLocaleString('ko-KR')}건</span>
+                </div>
+                <dl className="stats-summary-metrics">
+                  <div className="stats-summary-metric"><dt>교육 인원</dt><dd>{item.headcount.toLocaleString('ko-KR')}<small>명</small></dd></div>
+                  <div className="stats-summary-metric"><dt>교육 시간</dt><dd>{item.hours.toLocaleString('ko-KR')}<small>시간</small></dd></div>
+                  <div className="stats-summary-metric"><dt>교육 비용</dt><dd>{item.cost.toLocaleString('ko-KR')}<small>원</small></dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          <p className="stats-summary-note">현재 출력 목록 기준 · 인원은 교육별 참여 인원 누계 · 시간과 비용은 연결된 교육계획의 등록값 기준</p>
+        </section>
       </div>
 
       {/* 인쇄 전용 푸터 - 출력일자 */}
