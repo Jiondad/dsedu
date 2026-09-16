@@ -783,7 +783,7 @@ export default function ReportManager({
               </label>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-indigo-50/20 p-3 rounded-xl border border-indigo-50">
                 <select
-                  value={satisfactionScore}
+                  value={satisfactionScore.toFixed(1)}
                   onChange={(e) => {
                     const val = Number(e.target.value);
                     setSatisfactionScore(!isNaN(val) ? val : 5.0);
