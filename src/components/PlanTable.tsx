@@ -320,10 +320,16 @@ export default function PlanTable({
             /* 테이블 선 굵기 얇게 조정 (투박함 제거) */
             .print-plan-table-container table:not(.approval-table) th,
             .print-plan-table-container table:not(.approval-table) td {
-                border: 0.5pt solid #64748b !important; /* 얇고 깔끔한 슬레이트 색상 */
+                border: 0.35pt solid #b8c2cf !important;
             }
             .print-plan-table-container table:not(.approval-table) {
-                border: 1pt solid #334155 !important; /* 외곽선만 살짝 형태를 잡아줌 */
+                border: 0.5pt solid #94a3b8 !important;
+            }
+            /* 행에 지정된 기존 테두리가 셀의 얇은 선보다 우선하지 않도록 합니다. */
+            .print-plan-table-container table:not(.approval-table) thead,
+            .print-plan-table-container table:not(.approval-table) tbody,
+            .print-plan-table-container table:not(.approval-table) tr {
+                border: 0 !important;
             }
           }
         `;
