@@ -190,11 +190,11 @@ export default function PlanTable({
             .print-plan-table-container table:not(.approval-table) th:nth-child(1), .print-plan-table-container table:not(.approval-table) td:nth-child(1) { width: 3%  !important; } /* No */
             .print-plan-table-container table:not(.approval-table) th:nth-child(2), .print-plan-table-container table:not(.approval-table) td:nth-child(2) { width: 5%  !important; } /* 구분 */
             .print-plan-table-container table:not(.approval-table) th:nth-child(3), .print-plan-table-container table:not(.approval-table) td:nth-child(3) { width: 20% !important; } /* 교육명 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(4), .print-plan-table-container table:not(.approval-table) td:nth-child(4) { width: 14% !important; } /* 기관/강사 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(5), .print-plan-table-container table:not(.approval-table) td:nth-child(5) { width: 14% !important; } /* 대상자 (10% -> 14% 확장) */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(4), .print-plan-table-container table:not(.approval-table) td:nth-child(4) { width: 27% !important; } /* 기관/강사 */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(5), .print-plan-table-container table:not(.approval-table) td:nth-child(5) { width: 7% !important; } /* 대상자 */
             .print-plan-table-container table:not(.approval-table) th:nth-child(6), .print-plan-table-container table:not(.approval-table) td:nth-child(6) { width: 11% !important; } /* 교육일정 */
             .print-plan-table-container table:not(.approval-table) th:nth-child(7), .print-plan-table-container table:not(.approval-table) td:nth-child(7) { width: 11% !important; } /* 교육시간 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(8), .print-plan-table-container table:not(.approval-table) td:nth-child(8) { width: 12% !important; } /* 예상비용 (8% -> 12% 확장) */
+            .print-plan-table-container table:not(.approval-table) th:nth-child(8), .print-plan-table-container table:not(.approval-table) td:nth-child(8) { width: 6% !important; } /* 예상비용 */
             .print-plan-table-container table:not(.approval-table) th:nth-child(9), .print-plan-table-container table:not(.approval-table) td:nth-child(9) { width: 5%  !important; } /* 기안 */
             .print-plan-table-container table:not(.approval-table) th:nth-child(10), .print-plan-table-container table:not(.approval-table) td:nth-child(10) { width: 5%  !important; } /* 보고서 */
 
@@ -222,9 +222,37 @@ export default function PlanTable({
 
             /* 7. 결재란 고정 사이즈 */
             .print-plan-table-container table.approval-table {
-                width: 45mm !important;
+                width: 48mm !important;
+                height: 18mm !important;
+                table-layout: fixed !important;
+                border-collapse: collapse !important;
                 margin-left: auto !important;
                 margin-right: 0 !important;
+            }
+
+            .print-plan-table-container table.approval-table td {
+                text-align: center !important;
+                vertical-align: middle !important;
+                padding: 2px !important;
+                font-size: 10px !important;
+                line-height: 1.2 !important;
+            }
+            .print-plan-table-container table:not(.approval-table) th {
+                text-align: center !important;
+                vertical-align: middle !important;
+            }
+            /* 긴 강사명도 인쇄 시 해당 칸 안에서 줄바꿈합니다. */
+            .print-plan-table-container table:not(.approval-table) td .plan-instructor {
+                display: flex !important;
+                align-items: flex-start !important;
+                white-space: normal !important;
+                width: 100% !important;
+            }
+            .print-plan-table-container table:not(.approval-table) td .plan-instructor span {
+                min-width: 0 !important;
+                white-space: normal !important;
+                word-break: normal !important;
+                overflow-wrap: anywhere !important;
             }
 
             /* 테이블 선 굵기 얇게 조정 (투박함 제거) */
@@ -256,21 +284,27 @@ export default function PlanTable({
         <div className="flex justify-between items-end pb-2.5">
           <h1 className="text-lg font-black text-slate-900 self-end mb-2">{selectedYear ? `${selectedYear}년도 ` : ''}대성스틸 연간 교육 계획 목록</h1>
           <div className="ml-auto">
-            <table className="approval-table w-[180px] border-collapse border border-black text-center" style={{ width: '180px', borderCollapse: 'collapse', border: '1px solid black' }}>
-              <tbody>
-                <tr className="border-b border-black">
-                  <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-100 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '30px', padding: '4px', backgroundColor: '#f3f4f6', fontWeight: 'bold' }}>결<br/>재</td>
-                  <td className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>작성</td>
-                  <td className="border-r border-black font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>검토</td>
-                  <td className="font-bold p-1 bg-gray-50 text-[10px] text-center" style={{ width: '50px', padding: '4px', backgroundColor: '#f9fafb' }}>승인</td>
-                </tr>
-                <tr style={{ height: '40px' }}>
-                  <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '40px' }}></td>
-                  <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '40px' }}></td>
-                  <td style={{ height: '40px' }}></td>
-                </tr>
-              </tbody>
-            </table>
+            <table className="approval-table border-collapse border border-black text-center" style={{ width: '48mm', height: '18mm', tableLayout: 'fixed', borderCollapse: 'collapse', marginLeft: 'auto', marginRight: '0', border: '1px solid black' }}>
+                <colgroup>
+                  <col style={{ width: '6mm' }} />
+                  <col style={{ width: '14mm' }} />
+                  <col style={{ width: '14mm' }} />
+                  <col style={{ width: '14mm' }} />
+                </colgroup>
+                <tbody>
+                  <tr className="border-b border-black">
+                    <td rowSpan={2} className="border-r border-black font-bold p-0.5 bg-gray-100 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '6mm', padding: '2px', backgroundColor: '#f3f4f6', fontWeight: 'bold', fontSize: '10px', lineHeight: '1.2' }}>결<br/>재</td>
+                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>작성</td>
+                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>검토</td>
+                    <td className="font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ border: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>승인</td>
+                  </tr>
+                  <tr style={{ height: '12mm' }}>
+                    <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '12mm' }}></td>
+                    <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '12mm' }}></td>
+                    <td style={{ border: '1px solid black', height: '12mm' }}></td>
+                  </tr>
+                </tbody>
+              </table>
           </div>
         </div>
       </div>
@@ -394,7 +428,7 @@ export default function PlanTable({
                     {/* Agency / Instructor */}
                     <td className="py-3.5 px-1.5 md:px-2 text-gray-500 break-all">
                       <div className="font-medium text-gray-700 leading-snug">{plan.institution}</div>
-                      <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex no-break-wrap">
+                      <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex no-break-wrap plan-instructor">
                         <User className="w-3.5 h-3.5 shrink-0" /> <span className="whitespace-nowrap">{plan.instructor}</span>
                       </div>
                     </td>
