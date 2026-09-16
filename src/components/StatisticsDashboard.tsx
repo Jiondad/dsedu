@@ -387,22 +387,22 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               font-size: 11px !important;
           }
 
-          .print-stats-table-container td,
-          .print-stats-table-container th {
+          .print-stats-table-container table:not(.approval-table) td,
+          .print-stats-table-container table:not(.approval-table) th {
               word-break: break-all !important;
               overflow-wrap: break-word !important;
               padding: 6px 4px !important;
           }
 
           /* 인쇄용 CSS 칼럼 폭 황금비율 재조정 (총 8개 인쇄 대상 컬럼) */
-          .print-stats-table-container th:nth-child(1), .print-stats-table-container td:nth-child(1) { width: 14% !important; } /* 보고서번호 */
-          .print-stats-table-container th:nth-child(2), .print-stats-table-container td:nth-child(2) { width: 29% !important; } /* 교육명 대폭 확장 */
-          .print-stats-table-container th:nth-child(3), .print-stats-table-container td:nth-child(3) { width: 10% !important; } /* 교육대상자 */
-          .print-stats-table-container th:nth-child(4), .print-stats-table-container td:nth-child(4) { width: 11% !important; } /* 교육일정 */
-          .print-stats-table-container th:nth-child(5), .print-stats-table-container td:nth-child(5) { width: 10% !important; } /* 교육시간 */
-          .print-stats-table-container th:nth-child(6), .print-stats-table-container td:nth-child(6) { width: 12% !important; } /* 실집행비용 */
-          .print-stats-table-container th:nth-child(7), .print-stats-table-container td:nth-child(7) { width: 8%  !important; } /* 만족도 */
-          .print-stats-table-container th:nth-child(8), .print-stats-table-container td:nth-child(8) { width: 6%  !important; } /* 교육증빙 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(1), .print-stats-table-container table:not(.approval-table) td:nth-child(1) { width: 14% !important; } /* 보고서번호 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(2), .print-stats-table-container table:not(.approval-table) td:nth-child(2) { width: 29% !important; } /* 교육명 대폭 확장 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(3), .print-stats-table-container table:not(.approval-table) td:nth-child(3) { width: 10% !important; } /* 교육대상자 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(4), .print-stats-table-container table:not(.approval-table) td:nth-child(4) { width: 11% !important; } /* 교육일정 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(5), .print-stats-table-container table:not(.approval-table) td:nth-child(5) { width: 10% !important; } /* 교육시간 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(6), .print-stats-table-container table:not(.approval-table) td:nth-child(6) { width: 12% !important; } /* 실집행비용 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(7), .print-stats-table-container table:not(.approval-table) td:nth-child(7) { width: 8%  !important; } /* 만족도 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(8), .print-stats-table-container table:not(.approval-table) td:nth-child(8) { width: 6%  !important; } /* 교육증빙 */
 
           /* 결재방 규격 고정 및 우측 정렬 */
           #printable-area table.approval-table {
@@ -415,6 +415,8 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           }
 
           #printable-area table.approval-table td {
+              text-align: center !important;
+              vertical-align: middle !important;
               padding: 2px !important;
               font-size: 10px !important;
               line-height: 1.2 !important;
@@ -732,12 +734,18 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
             <h1 className="text-lg font-black text-slate-900 self-end mb-2">대성스틸 연간 교육 실적 현황</h1>
             <div className="ml-auto">
               <table className="approval-table border-collapse border border-black text-center" style={{ width: '48mm', height: '18mm', tableLayout: 'fixed', borderCollapse: 'collapse', marginLeft: 'auto', marginRight: '0', border: '1px solid black' }}>
+                <colgroup>
+                  <col style={{ width: '6mm' }} />
+                  <col style={{ width: '14mm' }} />
+                  <col style={{ width: '14mm' }} />
+                  <col style={{ width: '14mm' }} />
+                </colgroup>
                 <tbody>
                   <tr className="border-b border-black">
-                    <td rowSpan={2} className="border-r border-black font-bold p-0.5 bg-gray-100 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '8mm', padding: '2px', backgroundColor: '#f3f4f6', fontWeight: 'bold', fontSize: '10px', lineHeight: '1.2' }}>결<br/>재</td>
-                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '13.3mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>작성</td>
-                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '13.3mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>검토</td>
-                    <td className="font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ border: '1px solid black', width: '13.3mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>승인</td>
+                    <td rowSpan={2} className="border-r border-black font-bold p-0.5 bg-gray-100 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '6mm', padding: '2px', backgroundColor: '#f3f4f6', fontWeight: 'bold', fontSize: '10px', lineHeight: '1.2' }}>결<br/>재</td>
+                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>작성</td>
+                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>검토</td>
+                    <td className="font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ border: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>승인</td>
                   </tr>
                   <tr style={{ height: '12mm' }}>
                     <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '12mm' }}></td>
