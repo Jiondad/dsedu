@@ -349,7 +349,9 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <style>{`
+        .stats-print-column { display: none; }
         @media print {
+          .stats-print-column { display: table-cell !important; }
           /* 상단 차트 카드, 버튼, 네비게이션 등 통계 탭의 비표 형식 요소만 인쇄 제외 */
           .stats-chart-card, .stats-filter-section, .no-print, header, nav, aside, footer, button { 
               display: none !important; 
@@ -394,15 +396,17 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
               padding: 6px 4px !important;
           }
 
-          /* 인쇄용 CSS 칼럼 폭 황금비율 재조정 (총 8개 인쇄 대상 컬럼) */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(1), .print-stats-table-container table:not(.approval-table) td:nth-child(1) { width: 14% !important; } /* 보고서번호 */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(2), .print-stats-table-container table:not(.approval-table) td:nth-child(2) { width: 29% !important; } /* 교육명 대폭 확장 */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(3), .print-stats-table-container table:not(.approval-table) td:nth-child(3) { width: 10% !important; } /* 교육대상자 */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(4), .print-stats-table-container table:not(.approval-table) td:nth-child(4) { width: 11% !important; } /* 교육일정 */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(5), .print-stats-table-container table:not(.approval-table) td:nth-child(5) { width: 10% !important; } /* 교육시간 */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(6), .print-stats-table-container table:not(.approval-table) td:nth-child(6) { width: 12% !important; } /* 실집행비용 */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(7), .print-stats-table-container table:not(.approval-table) td:nth-child(7) { width: 8%  !important; } /* 만족도 */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(8), .print-stats-table-container table:not(.approval-table) td:nth-child(8) { width: 6%  !important; } /* 교육증빙 */
+          /* 인쇄용 10개 칼럼: 전체 폭 100% 유지 */
+          .print-stats-table-container table:not(.approval-table) th:nth-child(1) { width: 3% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(2) { width: 5% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(3) { width: 14% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(4) { width: 25% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(5) { width: 9% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(6) { width: 10% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(7) { width: 8% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(8) { width: 12% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(9) { width: 7% !important; }
+          .print-stats-table-container table:not(.approval-table) th:nth-child(10) { width: 7% !important; }
 
           /* 결재방 규격 고정 및 우측 정렬 */
           #printable-area table.approval-table {
@@ -817,6 +821,8 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           <table className="w-full min-w-[850px] table-fixed text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-gray-150 text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50">
+                <th className="stats-print-column text-center">NO</th>
+                <th className="stats-print-column text-center">구분</th>
                 <th style={{ width: '14%' }} className="py-2.5 px-2">보고서번호</th>
                 <th style={{ width: '29%' }} className="py-2.5 px-1.5 min-w-[200px]">교육명</th>
                 <th style={{ width: '10%' }} className="py-2.5 px-1.5">교육대상자</th>
@@ -830,6 +836,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
             <tbody className="divide-y divide-gray-150 text-[11px] md:text-xs">
               {filteredReports.length === 0 ? (
                 <tr>
+                  <td colSpan={2} className="stats-print-column"></td>
                   <td colSpan={8} className="py-12 text-center text-gray-400 font-medium">
                     {completedReportsWithDetails.length === 0 ? (
                       "완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)"
@@ -840,7 +847,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                 </tr>
               ) : (
                 <>
-                  {filteredReports.map(({ report, plan, draft }) => {
+                  {filteredReports.map(({ report, plan, draft }, index) => {
                     const associatedPlan = plans.find((p) => p.id === (report.plan_id || report.planId));
                     const targetText = associatedPlan ? associatedPlan.target : (report.target || '-');
                     const headcountValue = associatedPlan 
@@ -848,6 +855,8 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                       : (report.target ? parseTraineeCount(report.target) : 0);
                     return (
                       <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="stats-print-column text-center font-mono">{index + 1}</td>
+                        <td className="stats-print-column text-center whitespace-nowrap">{plan.category || '-'}</td>
                         <td className="py-2.5 px-2 font-mono font-bold text-gray-700 truncate">{report.id}</td>
                         <td className="py-2.5 px-1.5 font-semibold text-gray-800 break-all whitespace-normal" title={plan.title}>{plan.title}</td>
                         <td className="py-2.5 px-1.5 text-gray-600 font-medium truncate" title={`${targetText} (${headcountValue}명)`}>
@@ -880,6 +889,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                   })}
                   {/* 최하단 종합 합계 행 */}
                   <tr className="bg-indigo-50/40 font-bold border-t-2 border-slate-300">
+                    <td colSpan={2} className="stats-print-column"></td>
                     <td className="py-3 px-2 text-slate-800 text-center font-bold">합계</td>
                     <td className="py-3 px-1.5"></td>
                     <td className="py-3 px-1.5 text-slate-800 font-bold">
