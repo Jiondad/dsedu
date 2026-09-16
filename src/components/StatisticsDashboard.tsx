@@ -349,9 +349,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <style>{`
-        .stats-print-column { display: none; }
         @media print {
-          .stats-print-column { display: table-cell !important; }
           /* 상단 차트 카드, 버튼, 네비게이션 등 통계 탭의 비표 형식 요소만 인쇄 제외 */
           .stats-chart-card, .stats-filter-section, .no-print, header, nav, aside, footer, button { 
               display: none !important; 
@@ -821,23 +819,22 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
           <table className="w-full min-w-[850px] table-fixed text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-gray-150 text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50">
-                <th className="stats-print-column text-center">NO</th>
-                <th className="stats-print-column text-center">구분</th>
+                <th style={{ width: '3%' }} className="py-2.5 px-1 text-center">NO</th>
+                <th style={{ width: '5%' }} className="py-2.5 px-1 text-center">구분</th>
                 <th style={{ width: '14%' }} className="py-2.5 px-2">보고서번호</th>
-                <th style={{ width: '29%' }} className="py-2.5 px-1.5 min-w-[200px]">교육명</th>
-                <th style={{ width: '10%' }} className="py-2.5 px-1.5">교육대상자</th>
-                <th style={{ width: '11%' }} className="py-2.5 px-1.5">교육일정</th>
-                <th style={{ width: '10%' }} className="py-2.5 px-1.5 text-center">교육시간</th>
+                <th style={{ width: '25%' }} className="py-2.5 px-1.5 min-w-[200px]">교육명</th>
+                <th style={{ width: '9%' }} className="py-2.5 px-1.5">교육대상자</th>
+                <th style={{ width: '10%' }} className="py-2.5 px-1.5">교육일정</th>
+                <th style={{ width: '8%' }} className="py-2.5 px-1.5 text-center">교육시간</th>
                 <th style={{ width: '12%' }} className="py-2.5 px-1.5 text-right">실집행비용</th>
-                <th style={{ width: '8%' }} className="py-2.5 px-1 text-center">만족도</th>
-                <th style={{ width: '6%' }} className="py-2.5 px-1 text-center">교육증빙</th>
+                <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">만족도</th>
+                <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">교육증빙</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-150 text-[11px] md:text-xs">
               {filteredReports.length === 0 ? (
                 <tr>
-                  <td colSpan={2} className="stats-print-column"></td>
-                  <td colSpan={8} className="py-12 text-center text-gray-400 font-medium">
+                  <td colSpan={10} className="py-12 text-center text-gray-400 font-medium">
                     {completedReportsWithDetails.length === 0 ? (
                       "완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)"
                     ) : (
@@ -855,8 +852,8 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                       : (report.target ? parseTraineeCount(report.target) : 0);
                     return (
                       <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="stats-print-column text-center font-mono">{index + 1}</td>
-                        <td className="stats-print-column text-center whitespace-nowrap">{plan.category || '-'}</td>
+                        <td className="text-center font-mono">{index + 1}</td>
+                        <td className="text-center whitespace-nowrap">{plan.category || '-'}</td>
                         <td className="py-2.5 px-2 font-mono font-bold text-gray-700 truncate">{report.id}</td>
                         <td className="py-2.5 px-1.5 font-semibold text-gray-800 break-all whitespace-normal" title={plan.title}>{plan.title}</td>
                         <td className="py-2.5 px-1.5 text-gray-600 font-medium truncate" title={`${targetText} (${headcountValue}명)`}>
@@ -889,8 +886,7 @@ export default function StatisticsDashboard({ plans, drafts, reports }: Statisti
                   })}
                   {/* 최하단 종합 합계 행 */}
                   <tr className="bg-indigo-50/40 font-bold border-t-2 border-slate-300">
-                    <td colSpan={2} className="stats-print-column"></td>
-                    <td className="py-3 px-2 text-slate-800 text-center font-bold">합계</td>
+                    <td colSpan={3} className="py-3 px-2 text-slate-800 text-center font-bold">합계</td>
                     <td className="py-3 px-1.5"></td>
                     <td className="py-3 px-1.5 text-slate-800 font-bold">
                       {filteredHeadcount}명
