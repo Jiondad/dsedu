@@ -486,3 +486,81 @@ export async function updateReport(
   rowIndex: number,
   year?: string
 ): Promise<void> {
+  try {
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const certFile = report.certificate_file || report.certificateFile || '';
+    const certFileName = report.certificate_file_name || report.certificateFileName || '';
+
+    const payload = {
+      action: 'update',
+      sheetName: SHEET_TAB_REPORT_NAME,
+      rowIndex,
+      year: year || '',
+      id: report.id || '',
+      draft_id: report.draft_id || report.draftId || '',
+      plan_id: report.plan_id || report.planId || '',
+      department: report.department || '',
+      position: report.position || '',
+      drafter_name: report.drafter_name || report.drafterName || '',
+      report_date: report.report_date || report.reportDate || '',
+      summary: report.summary || '',
+      future_plan: report.future_plan || report.futurePlan || '',
+      satisfaction_score:
+        report.satisfaction_score !== undefined
+          ? report.satisfaction_score
+          : report.satisfactionScore || 5.0,
+      certificate_file: certFile,
+      certificate_file_name: certFileName,
+      // camelCase 호환성 유지
+      draftId: report.draft_id || report.draftId || '',
+      planId: report.plan_id || report.planId || '',
+      drafterName: report.drafter_name || report.drafterName || '',
+      reportDate: report.report_date || report.reportDate || '',
+      futurePlan: report.future_plan || report.futurePlan || '',
+      satisfactionScore:
+        report.satisfaction_score !== undefined
+          ? report.satisfaction_score
+          : report.satisfactionScore || 5.0,
+      certificateFile: certFile,
+      certificateFileName: certFileName,
+    };
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) {
+    console.error('updateReport 실패:', err);
+    throw err;
+  }
+}
+
+export async function deleteReport(
+  spreadsheetId: string,
+  accessToken: string | null,
+  rowIndex: number,
+  id?: string,
+  year?: string
+): Promise<void> {
+  try {
+    const url = `${API_URL}${year ? `?year=${year}` : ''}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'delete',
+        sheetName: SHEET_TAB_REPORT_NAME,
+        rowIndex,
+        id,
+        year: year || '',
+      }),
+    });
+    const res = await response.json();
+    if (res.success === false) throw new Error(res.error);
+  } catch (err) {
+    console.error('deleteReport 실패:', err);
+    throw err;
+  }
+}
