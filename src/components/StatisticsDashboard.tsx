@@ -3,10 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
 import { formatCurrency, getSatisfactionLabel } from '../utils';
 import {
+  CheckCircle2,
+  Users,
+  Clock,
+  TrendingUp,
+  Star,
+  AlertCircle,
+  BarChart3,
+  Layers,
+  FileCheck2,
+  ClipboardCheck,
+  Wallet,
+} from 'lucide-react';
+import {
+  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -14,1234 +28,581 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Line,
   ComposedChart,
+  Line,
 } from 'recharts';
-import {
-  Award,
-  Clock,
-  BookOpen,
-  Layers,
-  Star,
-  TrendingUp,
-  PieChart as PieIcon,
-  Printer,
-  Eye,
-  X,
-  Check,
-  AlertCircle,
-  Users,
-  Search,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 
 interface StatisticsDashboardProps {
-  plans: EducationPlan[];
-  drafts: EducationDraft[];
-  reports: EducationReport[];
+  plans?: EducationPlan[];
+  drafts?: EducationDraft[];
+  reports?: EducationReport[];
+  selectedYear?: string;
 }
 
-// Utility to parse trainee count from target_group string
-function parseTraineeCount(targetGroup: string): number {
-  if (!targetGroup) return 1;
-  const regex = /(\d+)\s*(명|인|명\s*참석|명\s*대상)/;
-  const match = targetGroup.match(regex);
-  if (match) {
-    const num = parseInt(match[1], 10);
-    if (!isNaN(num)) return num;
-  }
-  const numMatch = targetGroup.match(/\d+/);
-  if (numMatch) {
-    const num = parseInt(numMatch[0], 10);
-    if (!isNaN(num) && num > 0 && num < 1000) return num;
-  }
-  if (targetGroup.includes('전사') || targetGroup.includes('전임직원') || targetGroup.includes('전 임직원')) {
-    return 120;
-  }
-  return 3; // sensible default
-}
+export default function StatisticsDashboard({
+  plans = [],
+  drafts = [],
+  reports = [],
+  selectedYear = String(new Date().getFullYear()),
+}: StatisticsDashboardProps) {
+  // 1. 계획 vs 기안 vs 결과보고 마감 정밀 매칭 분석
+  const analysis = useMemo(() => {
+    const reportedPlanIds = new Set(
+      reports.map((r) => String(r.plan_id || r.planId || '').trim()).filter(Boolean)
+    );
+    const draftedPlanIds = new Set(
+      drafts.map((d) => String(d.plan_id || '').trim()).filter(Boolean)
+    );
 
-export default function StatisticsDashboard({ plans, drafts, reports }: StatisticsDashboardProps) {
-  // Filter for completed plans (draft submitted AND report finalized)
-  const completedReportsWithDetails = reports
-    .filter((report) => {
-      const hasPlan = plans.some((p) => p.id === report.plan_id);
-      const hasDraft = drafts.some((d) => d.plan_id === report.plan_id);
-      return hasPlan && hasDraft;
-    })
-    .map((report) => {
-      const plan = plans.find((p) => p.id === report.plan_id)!;
-      const draft = drafts.find((d) => d.plan_id === report.plan_id)!;
-      return { report, plan, draft };
-    });
+    const completedPlans = plans.filter((p) =>
+      reportedPlanIds.has(String(p.id || '').trim())
+    );
+    const pendingPlans = plans.filter(
+      (p) => !reportedPlanIds.has(String(p.id || '').trim())
+    );
 
-  // Calculate KPIs
-  const totalCount = completedReportsWithDetails.length;
-  const inHouseCount = completedReportsWithDetails.filter((item) => item.plan.category === '사내').length;
-  const externalCount = completedReportsWithDetails.filter((item) => item.plan.category === '사외').length;
+    const inHouseCompleted = completedPlans.filter((p) => p.category === '사내');
+    const externalCompleted = completedPlans.filter((p) => p.category === '사외');
 
-  const totalHeadcount = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
-  const inHouseHeadcount = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
-  const externalHeadcount = completedReportsWithDetails.filter((item) => item.plan.category === '사외').reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
+    const sumHours = (arr: EducationPlan[]) =>
+      arr.reduce((acc, cur) => acc + (Number(cur.hours) || 0), 0);
+    const sumCost = (arr: EducationPlan[]) =>
+      arr.reduce((acc, cur) => acc + (Number(cur.cost) || 0), 0);
+    const sumHeadcount = (arr: EducationPlan[]) =>
+      arr.reduce((acc, cur) => acc + (Number(cur.headcount) || 1), 0);
 
-  const totalCost = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.cost || 0), 0);
-  const inHouseCost = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.cost || 0), 0);
-  const externalCost = completedReportsWithDetails.filter((item) => item.plan.category === '사외').reduce((sum, item) => sum + (item.plan.cost || 0), 0);
+    const totalPlanCount = plans.length;
+    const draftedCount = plans.filter((p) =>
+      draftedPlanIds.has(String(p.id || '').trim())
+    ).length;
+    const completedCount = completedPlans.length;
+    const pendingCount = Math.max(0, totalPlanCount - completedCount);
 
-  const totalHours = completedReportsWithDetails.reduce((sum, item) => sum + (item.plan.hours || 0), 0);
-  const inHouseHours = completedReportsWithDetails.filter((item) => item.plan.category === '사내').reduce((sum, item) => sum + (item.plan.hours || 0), 0);
-  const externalHours = completedReportsWithDetails.filter((item) => item.plan.category === '사외').reduce((sum, item) => sum + (item.plan.hours || 0), 0);
+    const completionRate =
+      totalPlanCount > 0 ? Math.round((completedCount / totalPlanCount) * 100) : 0;
+    const draftRate =
+      totalPlanCount > 0 ? Math.round((draftedCount / totalPlanCount) * 100) : 0;
 
-  const avgSatisfaction =
-    completedReportsWithDetails.length > 0
-      ? completedReportsWithDetails.reduce((sum, item) => sum + (item.report.satisfaction_score || 5.0), 0) /
-        completedReportsWithDetails.length
-      : 0.0;
+    // 인원/시간/비용 (계획 vs 실적)
+    const plannedHeadcount = sumHeadcount(plans);
+    const completedHeadcount = sumHeadcount(completedPlans);
+    const inHouseHeadcount = sumHeadcount(inHouseCompleted);
+    const externalHeadcount = sumHeadcount(externalCompleted);
 
-  // Chart Data: Donut Ratio
-  const costDistributionData = [
-    { name: '사내 교육 비용', value: inHouseCost, color: '#3B82F6' }, // Blue
-    { name: '사외 교육 비용', value: externalCost, color: '#10B981' }, // Emerald
-  ].filter((d) => d.value > 0);
+    const plannedHours = sumHours(plans);
+    const completedHours = sumHours(completedPlans);
+    const inHouseHours = sumHours(inHouseCompleted);
+    const externalHours = sumHours(externalCompleted);
 
-  const hoursDistributionData = [
-    { name: '사내 교육 시간', value: inHouseHours, color: '#6366F1' }, // Indigo
-    { name: '사외 교육 시간', value: externalHours, color: '#F59E0B' }, // Amber
-  ].filter((d) => d.value > 0);
+    const plannedCost = sumCost(plans);
+    const completedCost = sumCost(completedPlans);
+    const inHouseCost = sumCost(inHouseCompleted);
+    const externalCost = sumCost(externalCompleted);
 
-  // Chart Data: Monthly plan and completed trainee count
-  const monthlyData = Array.from({ length: 12 }, (_, i) => {
-    const monthNum = i + 1;
-    const monthName = `${monthNum}월`;
+    const budgetExecutionRate =
+      plannedCost > 0 ? Math.round((completedCost / plannedCost) * 100) : 0;
+    const hoursExecutionRate =
+      plannedHours > 0 ? Math.round((completedHours / plannedHours) * 100) : 0;
 
-    // 해당 월에 수립된 연간 교육 계획(plans) 필터링 및 참여 예정 인원(명) 계산
-    const monthlyPlans = plans.filter((p) => {
-      const dateStr = p.date;
-      if (!dateStr) return false;
-      const parts = dateStr.split('-');
-      if (parts.length >= 2) {
-        return parseInt(parts[1], 10) === monthNum;
-      }
-      return false;
-    });
-    const plannedTrainees = monthlyPlans.reduce((sum, p) => sum + (p.headcount !== undefined ? Number(p.headcount) : parseTraineeCount(p.target)), 0);
-
-    // 해당 월에 실제 완료된 교육 건(completedReportsWithDetails) 필터링 및 참여 완료 인원(명) 계산
-    const monthItems = completedReportsWithDetails.filter((item) => {
-      const dateStr = item.plan.date || item.report.report_date;
-      if (!dateStr) return false;
-      const parts = dateStr.split('-');
-      if (parts.length >= 2) {
-        return parseInt(parts[1], 10) === monthNum;
-      }
-      return false;
-    });
-    const completedTrainees = monthItems.reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
+    // 평균 만족도 계산
+    const validScores = reports
+      .map((r) => Number(r.satisfaction_score ?? r.satisfactionScore ?? 0))
+      .filter((s) => s > 0);
+    const avgSatisfaction =
+      validScores.length > 0
+        ? validScores.reduce((a, b) => a + b, 0) / validScores.length
+        : 5.0;
 
     return {
-      name: monthName,
-      '교육 계획 (명)': plannedTrainees,
-      '교육 완료 (명)': completedTrainees,
+      totalPlanCount,
+      draftedCount,
+      completedCount,
+      pendingCount,
+      completionRate,
+      draftRate,
+      inHouseCount: inHouseCompleted.length,
+      externalCount: externalCompleted.length,
+      plannedHeadcount,
+      completedHeadcount,
+      inHouseHeadcount,
+      externalHeadcount,
+      plannedHours,
+      completedHours,
+      inHouseHours,
+      externalHours,
+      plannedCost,
+      completedCost,
+      inHouseCost,
+      externalCost,
+      budgetExecutionRate,
+      hoursExecutionRate,
+      avgSatisfaction,
+      pendingPlans,
+      draftedPlanIds,
     };
-  });
+  }, [plans, drafts, reports]);
 
-  // States for preview modal & print sandbox warning
-  const [selectedReportDetail, setSelectedReportDetail] = React.useState<{
-    report: EducationReport;
-    plan: EducationPlan;
-    draft: EducationDraft;
-  } | null>(null);
-  const [showPrintIframeWarning, setShowPrintIframeWarning] = React.useState(false);
+  // 2. 월별 계획 대 실적 비교 데이터 (단일 축 사용으로 착시 현상 완벽 제거)
+  const monthlyStats = useMemo(() => {
+    const reportedPlanIds = new Set(
+      reports.map((r) => String(r.plan_id || r.planId || '').trim()).filter(Boolean)
+    );
 
-  // States for search and category filters
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [categoryFilter, setCategoryFilter] = React.useState<'전체' | '사내' | '사외'>('전체');
+    const months = Array.from({ length: 12 }, (_, i) => ({
+      name: `${i + 1}월`,
+      계획인원: 0,
+      수료인원: 0,
+      계획건수: 0,
+      완료건수: 0,
+      계획예산만원: 0,
+      집행비용만원: 0,
+      _rawPlannedCost: 0,
+      _rawCompletedCost: 0,
+    }));
 
-  const getFormattedKoreanDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-    return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
-  };
-
-  const handlePrint = () => {
-    // Remove list landscape print styles to prevent conflict
-    const listStyleEl = document.getElementById('dynamic-landscape-print-style-reports');
-    if (listStyleEl) {
-      listStyleEl.remove();
-    }
-    
-    const isIframe = window.self !== window.top;
-    if (isIframe) {
-      console.warn('Iframe sandbox detected. Showing instructions for secure print.');
-      setShowPrintIframeWarning(true);
-    } else {
-      // Add portrait print rules
-      const portraitStyleId = 'dynamic-portrait-print-style';
-      let styleEl = document.getElementById(portraitStyleId);
-      if (!styleEl) {
-        styleEl = document.createElement('style');
-        styleEl.id = portraitStyleId;
-        styleEl.innerHTML = `
-          @media print {
-            @page {
-              size: portrait !important;
-              margin: 10mm !important;
-            }
-          }
-        `;
-        document.head.appendChild(styleEl);
-      }
-      try {
-        window.print();
-      } catch (err) {
-        console.error('Print blocked or failed:', err);
-        setShowPrintIframeWarning(true);
-      }
-    }
-  };
-
-  const handlePrintList = () => {
-    // Remove portrait single-report style to prevent conflict
-    const portraitStyleEl = document.getElementById('dynamic-portrait-print-style');
-    if (portraitStyleEl) {
-      portraitStyleEl.remove();
-    }
-    
-    const isIframe = window.self !== window.top;
-    if (isIframe) {
-      console.warn('Iframe sandbox detected. Showing instructions for secure print.');
-      setShowPrintIframeWarning(true);
-    } else {
-      const styleId = 'dynamic-landscape-print-style-reports';
-      let styleEl = document.getElementById(styleId);
-      if (!styleEl) {
-        styleEl = document.createElement('style');
-        styleEl.id = styleId;
-        styleEl.innerHTML = `
-          @media print {
-            @page {
-              size: landscape !important;
-              margin: 10mm !important;
-            }
-            /* Hide general web app layouts & headers */
-            header, footer, nav, button, form, .no-print, .modal, [role="dialog"] {
-              display: none !important;
-            }
-            body > *:not(#root) {
-              display: none !important;
-            }
-            /* Ensure maximum printable area and keep parents visible */
-            body, #root, main, .mt-4, .space-y-6, .space-y-4 {
-              width: 100% !important;
-              max-width: none !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              display: block !important;
-              border: none !important;
-              box-shadow: none !important;
-              background: transparent !important;
-              min-height: 0 !important;
-            }
-            /* Style the container sheet to fill horizontal paper space */
-            .print-report-table-container {
-              display: block !important;
-              visibility: visible !important;
-              width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              border: none !important;
-              box-shadow: none !important;
-              background: transparent !important;
-              overflow: visible !important;
-            }
-            /* Table optimization for Landscape A4 */
-            .print-report-table-container table {
-              width: 100% !important;
-              table-layout: fixed !important;
-              border-collapse: collapse !important;
-              font-size: 10px !important;
-            }
-            .print-report-table-container th {
-              background-color: #f1f5f9 !important; /* Elegant slate-100 header */
-              color: #1e293b !important;
-              font-weight: 700 !important;
-              border: 1px solid #94a3b8 !important;
-              padding: 6px 4px !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            .print-report-table-container td {
-              border: 1px solid #cbd5e1 !important;
-              padding: 6px 4px !important;
-              font-size: 10px !important;
-              word-break: break-all !important;
-              line-height: 1.3 !important;
-              color: #000000 !important;
-            }
-          }
-        `;
-        document.head.appendChild(styleEl);
+    plans.forEach((plan) => {
+      const dateStr = (plan.date || plan.edu_date || '').split('T')[0].trim();
+      let monthIdx = -1;
+      if (dateStr && dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length >= 2) {
+          monthIdx = parseInt(parts[1], 10) - 1;
+        }
+      } else if (plan.schedule && plan.schedule.includes('/')) {
+        const m = parseInt(plan.schedule.split('/')[0], 10);
+        if (!isNaN(m)) monthIdx = m - 1;
       }
 
-      try {
-        window.print();
-      } catch (err) {
-        console.error('Print blocked or failed:', err);
-        setShowPrintIframeWarning(true);
+      if (monthIdx >= 0 && monthIdx < 12) {
+        const hc = Number(plan.headcount) || 1;
+        const cost = Number(plan.cost) || 0;
+        const isCompleted = reportedPlanIds.has(String(plan.id || '').trim());
+
+        months[monthIdx].계획인원 += hc;
+        months[monthIdx].계획건수 += 1;
+        months[monthIdx]._rawPlannedCost += cost;
+        months[monthIdx].계획예산만원 = Math.round(months[monthIdx]._rawPlannedCost / 10000);
+
+        if (isCompleted) {
+          months[monthIdx].수료인원 += hc;
+          months[monthIdx].완료건수 += 1;
+          months[monthIdx]._rawCompletedCost += cost;
+          months[monthIdx].집행비용만원 = Math.round(months[monthIdx]._rawCompletedCost / 10000);
+        }
       }
-    }
-  };
+    });
 
-  const containerVariants = {
-    hidden: { opacity: 0, y: 15 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.4,
-        staggerChildren: 0.08,
-      },
-    },
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, scale: 0.95 },
-    visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } },
-  };
-
-  // Filter list by searchQuery and categoryFilter
-  const filteredReports = completedReportsWithDetails.filter(({ report, plan, draft }) => {
-    const query = searchQuery.toLowerCase();
-    const associatedPlan = plans.find((p) => p.id === (report.plan_id || report.planId));
-    const planTitle = associatedPlan ? associatedPlan.title.toLowerCase() : '';
-    const reportNo = report.id ? report.id.toLowerCase() : '';
-    const drafterName = (report.drafter_name || report.drafterName || '').toLowerCase();
-    const department = (report.department || '').toLowerCase();
-
-    const matchesSearch =
-      planTitle.includes(query) ||
-      reportNo.includes(query) ||
-      drafterName.includes(query) ||
-      department.includes(query);
-
-    const matchesCategory =
-      categoryFilter === '전체' ||
-      (associatedPlan && associatedPlan.category === categoryFilter);
-
-    return matchesSearch && matchesCategory;
-  });
-
-  // Calculate totals for the filtered list
-  // 검색 및 구분 필터가 적용된 출력 목록과 동일한 범위로 집계합니다.
-  const printCategorySummary = (['사내', '사외'] as const).map((category) => {
-    const items = filteredReports.filter(({ plan }) => plan.category === category);
-    return {
-      category,
-      count: items.length,
-      headcount: items.reduce((sum, { plan }) => sum + (Number(plan.headcount !== undefined ? plan.headcount : parseTraineeCount(plan.target)) || 0), 0),
-      hours: items.reduce((sum, { plan }) => sum + (Number(plan.hours) || 0), 0),
-      cost: items.reduce((sum, { plan }) => sum + (Number(plan.cost) || 0), 0),
-    };
-  });
-
-  const filteredHeadcount = filteredReports.reduce((sum, item) => sum + (item.plan.headcount !== undefined ? Number(item.plan.headcount) : parseTraineeCount(item.plan.target)), 0);
-  const filteredCost = filteredReports.reduce((sum, item) => sum + (item.plan.cost || 0), 0);
-  const filteredHours = filteredReports.reduce((sum, item) => sum + (item.plan.hours || 0), 0);
-  const filteredAvgSatisfaction =
-    filteredReports.length > 0
-      ? filteredReports.reduce((sum, item) => sum + (item.report.satisfaction_score || 5.0), 0) /
-        filteredReports.length
-      : 0.0;
+    return months;
+  }, [plans, reports]);
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-      <style>{`
-        .stats-print-summary { display: none; }
-        @media print {
-          #printable-area .stats-print-summary {
-            display: block !important;
-            margin-top: 6mm !important;
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            color: #0f172a !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .stats-summary-heading { font-size: 11px; font-weight: 800; margin: 0 0 3mm; letter-spacing: .04em; }
-          #printable-area .stats-summary-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: 5mm; }
-          .stats-summary-card { border: 1px solid #cbd5e1; border-top: 3px solid #2563eb; border-radius: 8px; padding: 3mm 4mm; background: #f8fafc; min-width: 0; }
-          .stats-summary-card.external { border-top-color: #059669; }
-          #printable-area .stats-summary-title { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 3mm; }
-          .stats-summary-title strong { font-size: 12px; color: #1d4ed8; }
-          .external .stats-summary-title strong { color: #047857; }
-          .stats-summary-title span { font-size: 10px; color: #475569; }
-          .stats-summary-metrics { display: grid !important; grid-template-columns: 1fr 1fr 1.4fr; gap: 3mm; margin: 0; }
-          .stats-summary-metric { min-width: 0; }
-          .stats-summary-metric dt { font-size: 9px; color: #64748b; margin-bottom: 1mm; }
-          .stats-summary-metric dd { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; font-variant-numeric: tabular-nums; }
-          .stats-summary-metric dd small { font-size: 10px; font-weight: 500; margin-left: 1mm; }
-          .stats-summary-note { font-size: 8px; color: #64748b; margin: 2mm 0 0; }
-
-          /* 상단 차트 카드, 버튼, 네비게이션 등 통계 탭의 비표 형식 요소만 인쇄 제외 */
-          .stats-chart-card, .stats-filter-section, .no-print, header, nav, aside, footer, button { 
-              display: none !important; 
-          }
-          ::-webkit-scrollbar { display: none !important; }
-
-          /* html, body 등 상위 래퍼 제한 해제하여 가로폭 확장 및 좌우 대칭 보장 */
-          html, body, #root, main {
-              display: block !important;
-              width: 100% !important;
-              height: auto !important;
-              max-width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              box-sizing: border-box !important;
-              overflow: visible !important;
-          }
-
-          /* 하단 실적 현황 테이블 컨테이너 폭 100% 최적화 및 텍스트 줄바꿈 보장 */
-          .print-stats-table-container {
-              display: block !important;
-              position: static !important;
-              width: 100% !important;
-              max-width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              box-sizing: border-box !important;
-          }
-
-          .print-stats-table-container table {
-              width: 100% !important;
-              max-width: 100% !important;
-              border-collapse: collapse !important;
-              table-layout: fixed !important;
-              font-size: 11px !important;
-          }
-
-          .print-stats-table-container table:not(.approval-table) td,
-          .print-stats-table-container table:not(.approval-table) th {
-              word-break: break-all !important;
-              overflow-wrap: break-word !important;
-              padding: 6px 4px !important;
-          }
-
-          /* 인쇄용 10개 칼럼: 전체 폭 100% 유지 */
-          .print-stats-table-container table:not(.approval-table) th:nth-child(1) { width: 3% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(2) { width: 5% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(3) { width: 14% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(4) { width: 28.6% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(5) { width: 9% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(6) { width: 10% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(7) { width: 8% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(8) { width: 8.4% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(9) { width: 7% !important; }
-          .print-stats-table-container table:not(.approval-table) th:nth-child(10) { width: 7% !important; }
-
-          /* 결재방 규격 고정 및 우측 정렬 */
-          #printable-area table.approval-table {
-              width: 48mm !important;
-              height: 18mm !important;
-              table-layout: fixed !important;
-              border-collapse: collapse !important;
-              margin-left: auto !important;
-              margin-right: 0 !important;
-          }
-
-          #printable-area table.approval-table td {
-              text-align: center !important;
-              vertical-align: middle !important;
-              padding: 2px !important;
-              font-size: 10px !important;
-              line-height: 1.2 !important;
-              overflow: hidden !important;
-          }
-        }
-      `}</style>
-      {/* All top dashboards & analytics are excluded from print */}
-      <div className="no-print space-y-6 stats-chart-card">
-        {/* Header Info */}
-        <div className="bg-indigo-900 text-white p-6 rounded-3xl shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-800/50 via-indigo-950 to-indigo-950 opacity-90 z-0" />
-        <div className="relative z-10 space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-200 text-[10px] font-black uppercase tracking-wider rounded-full border border-indigo-500/30">
-            실적 마감 대시보드
+    <div className="space-y-6">
+      {/* 1. 상단 배너: 교육훈련 진행 파이프라인 & 종합 마감률 */}
+      <div className="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-lg">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-[11px] font-bold">
+              <ClipboardCheck className="w-3.5 h-3.5" />
+              <span>{selectedYear}년도 실적 마감 대시보드</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+              교육실적 통계 및 이수율 분석
+            </h2>
+            <p className="text-xs text-indigo-200/80">
+              연간 교육 계획 수립부터 기안 승인, 결과보고서 마감까지 전 과정의 이행 실적을 실시간 집계합니다.
+            </p>
           </div>
-          <h2 className="text-xl font-black tracking-tight text-white">교육실적 통계 및 분석</h2>
-          <p className="text-xs text-indigo-200">기안 및 보고 마감이 완료된 최종 수행 실적 데이터입니다.</p>
+
+          {/* 3단계 파이프라인 요약 블록 */}
+          <div className="grid grid-cols-3 gap-3 bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-4 shrink-0">
+            <div className="px-3 border-r border-white/10">
+              <p className="text-[11px] text-indigo-200 font-semibold">① 연간 계획</p>
+              <p className="text-xl font-black mt-0.5">{analysis.totalPlanCount}건</p>
+              <p className="text-[10px] text-indigo-300 mt-0.5">
+                총 {analysis.plannedHeadcount}명 계획
+              </p>
+            </div>
+            <div className="px-3 border-r border-white/10">
+              <p className="text-[11px] text-indigo-200 font-semibold">② 기안 완료</p>
+              <p className="text-xl font-black text-sky-300 mt-0.5">
+                {analysis.draftedCount}건
+                <span className="text-xs font-bold text-sky-200/80 ml-1">
+                  ({analysis.draftRate}%)
+                </span>
+              </p>
+              <p className="text-[10px] text-indigo-300 mt-0.5">
+                미기안 {Math.max(0, analysis.totalPlanCount - analysis.draftedCount)}건
+              </p>
+            </div>
+            <div className="px-3">
+              <p className="text-[11px] text-indigo-200 font-semibold">③ 결과보고 마감</p>
+              <p className="text-xl font-black text-emerald-300 mt-0.5">
+                {analysis.completedCount}건
+                <span className="text-xs font-bold text-emerald-200/80 ml-1">
+                  ({analysis.completionRate}%)
+                </span>
+              </p>
+              <p className="text-[10px] text-amber-300 font-bold mt-0.5">
+                미마감 잔여 {analysis.pendingCount}건
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="relative z-10 flex items-center gap-4 text-xs font-bold text-indigo-100 bg-white/5 border border-white/10 px-4 py-2.5 rounded-2xl backdrop-blur-xs">
-          <div>
-            <span className="text-[10px] text-indigo-300 block">계획 대비 마감율</span>
-            <span className="text-sm font-black text-white">
-              {plans.length > 0 ? `${Math.round((totalCount / plans.length) * 100)}%` : '0%'}
+
+        {/* 전체 마감 진행률 게이지 바 */}
+        <div className="mt-5 pt-4 border-t border-white/10">
+          <div className="flex justify-between text-xs font-bold mb-1.5">
+            <span className="text-indigo-200">연간 계획 대비 최종 결과보고서 마감 진행률</span>
+            <span className="text-emerald-300">{analysis.completionRate}% 달성</span>
+          </div>
+          <div className="w-full h-2.5 bg-indigo-950/80 rounded-full overflow-hidden p-0.5 border border-white/10">
+            <div
+              style={{ width: `${analysis.completionRate}%` }}
+              className="h-full bg-gradient-to-r from-sky-400 to-emerald-400 rounded-full transition-all duration-700"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. 5대 실적 핵심 KPI 카드 (글자 잘림 완벽 해결 & 계획 대비 달성률 표시) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* KPI 1: 완료 실적 건수 */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-slate-400">완료 실적 건수</p>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-2xl font-black text-slate-900">
+                  {analysis.completedCount}
+                </span>
+                <span className="text-xs font-bold text-slate-400">
+                  / {analysis.totalPlanCount}건
+                </span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
+            <span className="text-slate-500">
+              사내 <strong className="text-slate-700">{analysis.inHouseCount}건</strong>
+            </span>
+            <span className="text-slate-500">
+              사외 <strong className="text-slate-700">{analysis.externalCount}건</strong>
             </span>
           </div>
-          <div className="w-px h-8 bg-white/15" />
-          <div>
-            <span className="text-[10px] text-indigo-300 block">미마감 건수</span>
-            <span className="text-sm font-black text-amber-300">
-              {plans.length - totalCount > 0 ? `${plans.length - totalCount}건` : '0건'}
+        </div>
+
+        {/* KPI 2: 수료 완료 인원 */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-slate-400">총 수료 인원</p>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-2xl font-black text-slate-900">
+                  {analysis.completedHeadcount}
+                </span>
+                <span className="text-xs font-bold text-slate-400">
+                  / {analysis.plannedHeadcount}명
+                </span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
+            <span className="text-slate-500">
+              사내 <strong className="text-slate-700">{analysis.inHouseHeadcount}명</strong>
+            </span>
+            <span className="text-slate-500">
+              사외 <strong className="text-slate-700">{analysis.externalHeadcount}명</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 3: 누적 이수 시간 */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-slate-400">누적 교육 이수시간</p>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-2xl font-black text-slate-900">
+                  {analysis.completedHours}
+                </span>
+                <span className="text-xs font-bold text-slate-400">
+                  시간 ({analysis.hoursExecutionRate}%)
+                </span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
+            <span className="text-slate-500">
+              사내 <strong className="text-slate-700">{analysis.inHouseHours}H</strong>
+            </span>
+            <span className="text-slate-500">
+              사외 <strong className="text-slate-700">{analysis.externalHours}H</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 4: 실제 집행 비용 (2줄 구조로 잘림 완벽 해결) */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-400">실제 집행 비용</p>
+              <div className="mt-1.5 flex items-baseline gap-1">
+                <span className="text-xl font-black text-slate-900 tracking-tight">
+                  ₩{formatCurrency(analysis.completedCost)}
+                </span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 space-y-0.5 text-[11px] font-semibold">
+            <div className="flex justify-between text-slate-500">
+              <span>예산 집행률</span>
+              <span className="text-indigo-600 font-bold">{analysis.budgetExecutionRate}%</span>
+            </div>
+            <div className="flex justify-between text-slate-500">
+              <span>사외 집행액</span>
+              <span className="text-slate-700 font-bold">
+                ₩{formatCurrency(analysis.externalCost)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 5: 평균 교육 만족도 */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-slate-400">평균 교육 만족도</p>
+              <div className="mt-1.5 flex items-baseline gap-1">
+                <span className="text-2xl font-black text-slate-900">
+                  {analysis.avgSatisfaction.toFixed(1)}
+                </span>
+                <span className="text-xs font-bold text-slate-400">/ 5.0점</span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+              <Star className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
+            <span className="text-amber-500 tracking-tighter text-xs">★★★★★</span>
+            <span className="text-purple-700 font-bold">
+              {getSatisfactionLabel(analysis.avgSatisfaction)}
             </span>
           </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        {/* Card 1: Completed Performance Count */}
-        <motion.div
-          variants={cardVariants}
-          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
-        >
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl flex-shrink-0">
-            <BookOpen className="w-5.5 h-5.5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">완료 실적 건수</p>
-            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
-              {totalCount}건
-            </p>
-            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
-              <span>사내: {inHouseCount}건</span>
-              <span>•</span>
-              <span>사외: {externalCount}건</span>
+      {/* 3. 중단 차트 영역: 월별 인원 이수 추이(단일 축 교정) & 월별 예산 대 실집행 비교 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* 차트 1 (6칸): 월별 계획 인원 vs 실제 수료 인원 비교 (동일 스케일 막대 차트) */}
+        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                <BarChart3 className="w-4.5 h-4.5 text-indigo-600" />
+                월별 계획 인원 대비 실제 수료 인원
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                동일 축(명) 기준으로 월별 계획 인원과 보고서 마감이 완료된 수료 인원을 정밀 비교합니다.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500 shrink-0">
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-xs bg-slate-300 inline-block"></span> 계획 인원
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-xs bg-indigo-600 inline-block"></span> 수료 완료
+              </span>
             </div>
           </div>
-        </motion.div>
 
-        {/* Card 2: Total Trainees (교육 명수) */}
-        <motion.div
-          variants={cardVariants}
-          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
-        >
-          <div className="p-3 bg-sky-50 text-sky-600 rounded-xl flex-shrink-0">
-            <Users className="w-5.5 h-5.5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">총 교육 인원</p>
-            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
-              {totalHeadcount}명
-            </p>
-            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
-              <span>사내: {inHouseHeadcount}명</span>
-              <span>•</span>
-              <span>사외: {externalHeadcount}명</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Card 3: Cumulative Education Hours */}
-        <motion.div
-          variants={cardVariants}
-          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
-        >
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl flex-shrink-0">
-            <Clock className="w-5.5 h-5.5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">누적 교육 시간</p>
-            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1">
-              {totalHours}시간
-            </p>
-            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate">
-              <span>사내: {inHouseHours}H</span>
-              <span>•</span>
-              <span>사외: {externalHours}H</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Card 4: Actual Execution Cost */}
-        <motion.div
-          variants={cardVariants}
-          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
-        >
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0">
-            <TrendingUp className="w-5.5 h-5.5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">실제 집행 비용</p>
-            <p className="text-lg xl:text-xl text-gray-700 tracking-tight mt-1 font-normal">
-              {formatCurrency(totalCost)}원
-            </p>
-            <div className="flex gap-2 mt-1 text-[11px] text-gray-400 truncate font-normal">
-              <span>사내: {formatCurrency(inHouseCost)}원</span>
-              <span>•</span>
-              <span>사외: {formatCurrency(externalCost)}원</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Card 5: Average Education Satisfaction */}
-        <motion.div
-          variants={cardVariants}
-          className="bg-white p-4 xl:p-5 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-shadow flex items-center gap-3.5"
-        >
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl flex-shrink-0">
-            <Star className="w-5.5 h-5.5 fill-indigo-100" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">평균 교육 만족도</p>
-            <p className="text-lg xl:text-xl font-bold text-gray-800 tracking-tight mt-1 flex items-baseline gap-1">
-              {avgSatisfaction > 0 ? avgSatisfaction.toFixed(1) : '0.0'}
-              <span className="text-xs font-normal text-gray-400">/ 5.0</span>
-            </p>
-            <div className="flex items-center gap-0.5 mt-1">
-              {Array.from({ length: 5 }, (_, i) => {
-                const filled = i + 1 <= Math.round(avgSatisfaction);
-                return (
-                  <Star
-                    key={i}
-                    className={`w-3 h-3 ${filled ? 'text-indigo-500 fill-indigo-500' : 'text-gray-200'}`}
-                  />
-                );
-              })}
-              <span className="text-[10px] text-gray-400 ml-1">{avgSatisfaction > 0 ? getSatisfactionLabel(avgSatisfaction) : '기록 없음'}</span>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Visual Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Chart: Donut charts comparing cost and hour ratios */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex flex-col justify-between">
-          <div className="mb-4">
-            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-              <PieIcon className="w-4.5 h-4.5 text-indigo-500" />
-              <span>사내 vs 사외 실적 비중</span>
-            </h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">실제 집행된 비용과 이수 시간 비율 비교</p>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-center min-h-[260px]">
-            {costDistributionData.length === 0 && hoursDistributionData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-gray-400 text-xs py-10">
-                수행 완료된 교육 실적이 없어 차트를 표시할 수 없습니다.
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 h-full items-center">
-                {/* Cost Donut */}
-                <div className="flex flex-col items-center justify-center">
-                  <span className="text-xs font-semibold text-gray-500 mb-2">실집행 비용 비율</span>
-                  {costDistributionData.length > 0 ? (
-                    <div className="w-full h-[140px] relative flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={costDistributionData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={35}
-                            outerRadius={50}
-                            paddingAngle={3}
-                            dataKey="value"
-                          >
-                            {costDistributionData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => `${formatCurrency(Number(value))}원`} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1">
-                        <span className="text-[10px] text-gray-400 font-bold">비용</span>
-                        <span className="text-xs font-black text-gray-700">₩{formatCurrency(totalCost).slice(0, 4)}..</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-[140px] flex items-center justify-center text-[11px] text-gray-400">집행 비용 없음</div>
-                  )}
-                  <div className="flex flex-col gap-1 mt-3 text-[10px] text-gray-500 w-full px-4 border-t border-gray-50 pt-2">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                        <span>사내</span>
-                      </div>
-                      <span className="font-mono font-bold text-gray-700">
-                        {totalCost > 0 ? Math.round((inHouseCost / totalCost) * 100) : 0}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                        <span>사외</span>
-                      </div>
-                      <span className="font-mono font-bold text-gray-700">
-                        {totalCost > 0 ? Math.round((externalCost / totalCost) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hours Donut */}
-                <div className="flex flex-col items-center justify-center">
-                  <span className="text-xs font-semibold text-gray-500 mb-2">이수 시간 비율</span>
-                  {hoursDistributionData.length > 0 ? (
-                    <div className="w-full h-[140px] relative flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={hoursDistributionData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={35}
-                            outerRadius={50}
-                            paddingAngle={3}
-                            dataKey="value"
-                          >
-                            {hoursDistributionData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => `${value}시간`} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1">
-                        <span className="text-[10px] text-gray-400 font-bold">시간</span>
-                        <span className="text-xs font-black text-gray-700">{totalHours}H</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-[140px] flex items-center justify-center text-[11px] text-gray-400">이수 시간 없음</div>
-                  )}
-                  <div className="flex flex-col gap-1 mt-3 text-[10px] text-gray-500 w-full px-4 border-t border-gray-50 pt-2">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 bg-indigo-500 rounded-full" />
-                        <span>사내</span>
-                      </div>
-                      <span className="font-mono font-bold text-gray-700">
-                        {totalHours > 0 ? Math.round((inHouseHours / totalHours) * 100) : 0}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 bg-amber-500 rounded-full" />
-                        <span>사외</span>
-                      </div>
-                      <span className="font-mono font-bold text-gray-700">
-                        {totalHours > 0 ? Math.round((externalHours / totalHours) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Chart: Monthly actual education completion and trainee trend */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex flex-col justify-between">
-          <div className="mb-4">
-            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-              <Layers className="w-4.5 h-4.5 text-indigo-500" />
-              <span>월별 교육 계획 및 완료 인원 추이</span>
-            </h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">해당 월의 수립된 교육 계획 인원(명) 대비 실제 교육 완료 인원(명)</p>
-          </div>
-
-          <div className="flex-1 min-h-[260px] w-full">
+          <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" orientation="left" stroke="#6366F1" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} unit="명" />
-                <YAxis yAxisId="right" orientation="right" stroke="#F59E0B" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} unit="명" />
-                <Tooltip formatter={(value) => `${value}명`} contentStyle={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: '11px' }} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#4B5563', paddingTop: '10px' }} />
-                <Bar yAxisId="left" dataKey="교육 계획 (명)" fill="#6366F1" radius={[3, 3, 0, 0]} barSize={24} />
-                <Line yAxisId="right" type="monotone" dataKey="교육 완료 (명)" stroke="#F59E0B" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              <BarChart data={monthlyStats} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                  unit="명"
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                  }}
+                  formatter={(value: any, name: string) => [`${value}명`, name]}
+                />
+                <Bar dataKey="계획인원" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={14} />
+                <Bar dataKey="수료인원" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={14} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 차트 2 (6칸): 월별 편성 예산 vs 실제 집행 비용 추이 */}
+        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                <Wallet className="w-4.5 h-4.5 text-emerald-600" />
+                월별 계획 예산 대비 실집행 비용 추이
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                해당 월의 계획 예산(막대)과 결과보고가 완료된 실집행 비용(선)을 비교합니다.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500 shrink-0">
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-xs bg-emerald-200 inline-block"></span> 계획 예산
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-0.5 bg-emerald-600 inline-block"></span> 실집행액
+              </span>
+            </div>
+          </div>
+
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={monthlyStats} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                  unit="만"
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                  }}
+                  formatter={(value: any, name: string) => [
+                    `₩${formatCurrency(Number(value) * 10000)}`,
+                    name === '계획예산만원' ? '계획 예산' : '실집행 비용',
+                  ]}
+                />
+                <Bar
+                  dataKey="계획예산만원"
+                  fill="#a7f3d0"
+                  radius={[4, 4, 0, 0]}
+                  barSize={20}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="집행비용만원"
+                  stroke="#059669"
+                  strokeWidth={2.5}
+                  dot={{ r: 3.5, fill: '#059669', strokeWidth: 1.5, stroke: '#fff' }}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
-      </div>
 
-      {/* Education Performance List Table */}
-      <div id="printable-area" className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-4 print-report-table-container print-stats-table-container">
-        {/* 인쇄 전용 헤더 */}
-        <div className="hidden print:block mb-6 w-full">
-          <div className="flex justify-between items-end pb-2.5">
-            <h1 className="text-lg font-black text-slate-900 self-end mb-2">대성스틸 연간 교육 실적 현황</h1>
-            <div className="ml-auto">
-              <table className="approval-table border-collapse border border-black text-center" style={{ width: '48mm', height: '18mm', tableLayout: 'fixed', borderCollapse: 'collapse', marginLeft: 'auto', marginRight: '0', border: '1px solid black' }}>
-                <colgroup>
-                  <col style={{ width: '6mm' }} />
-                  <col style={{ width: '14mm' }} />
-                  <col style={{ width: '14mm' }} />
-                  <col style={{ width: '14mm' }} />
-                </colgroup>
-                <tbody>
-                  <tr className="border-b border-black">
-                    <td rowSpan={2} className="border-r border-black font-bold p-0.5 bg-gray-100 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '6mm', padding: '2px', backgroundColor: '#f3f4f6', fontWeight: 'bold', fontSize: '10px', lineHeight: '1.2' }}>결<br/>재</td>
-                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>작성</td>
-                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>검토</td>
-                    <td className="font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ border: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>승인</td>
-                  </tr>
-                  <tr style={{ height: '12mm' }}>
-                    <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '12mm' }}></td>
-                    <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '12mm' }}></td>
-                    <td style={{ border: '1px solid black', height: '12mm' }}></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+      {/* 4. 하단 실무 점검 섹션: 미마감(결과보고서 미작성) 교육 과정 리스트 */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
           <div>
-            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-              <Award className="w-4.5 h-4.5 text-indigo-500" />
-              <span>교육 실적 목록 (이수 완료)</span>
+            <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              <AlertCircle className="w-4.5 h-4.5 text-amber-500" />
+              결과보고서 미마감 교육 과정 점검 ({analysis.pendingPlans.length}건)
             </h3>
-            <p className="text-[11px] text-gray-400 mt-0.5 font-medium">기안 및 결과보고 제출이 100% 완료된 실적 상세 현황입니다.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              연간 계획에 등록되어 있으나 아직 최종 결과보고서가 제출되지 않은 교육 목록입니다.
+            </p>
           </div>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 self-start sm:self-auto">
+            잔여 미마감 {analysis.pendingPlans.length}건
+          </span>
         </div>
 
-        {/* Search and Filters bar */}
-        <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-gray-50/50 p-4 rounded-xl border border-gray-100 no-print">
-          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto items-center">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="교육명, 보고서번호, 부서, 보고자 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
-              />
-            </div>
-
-            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 items-center">
-              {(['전체', '사내', '사외'] as const).map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    categoryFilter === cat
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+        {analysis.pendingPlans.length === 0 ? (
+          <div className="py-8 text-center text-xs font-bold text-emerald-600 bg-emerald-50/40 rounded-xl border border-emerald-100">
+            🎉 모든 연간 교육 계획의 결과보고서 마감이 100% 완료되었습니다!
           </div>
-
-          <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
-            <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
-              총 {filteredReports.length}건 완료
-            </div>
-            <button
-              onClick={handlePrintList}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-950 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
-            >
-              <Printer className="w-4 h-4 text-slate-500" />
-              <span>교육 실적 목록 출력</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="w-full overflow-x-auto border border-gray-150 rounded-2xl bg-white">
-          <table className="w-full min-w-[850px] table-fixed text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-gray-150 text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50">
-                <th style={{ width: '3%' }} className="py-2.5 px-1 text-center">NO</th>
-                <th style={{ width: '5%' }} className="py-2.5 px-1 text-center">구분</th>
-                <th style={{ width: '14%' }} className="py-2.5 px-2">보고서번호</th>
-                <th style={{ width: '28.6%' }} className="py-2.5 px-1.5 min-w-[200px]">교육명</th>
-                <th style={{ width: '9%' }} className="py-2.5 px-1.5">교육대상자</th>
-                <th style={{ width: '10%' }} className="py-2.5 px-1.5">교육일정</th>
-                <th style={{ width: '8%' }} className="py-2.5 px-1.5 text-center">교육시간</th>
-                <th style={{ width: '8.4%' }} className="py-2.5 px-1.5 text-right">실집행비용</th>
-                <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">만족도</th>
-                <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">교육증빙</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-150 text-[11px] md:text-xs">
-              {filteredReports.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="py-12 text-center text-gray-400 font-medium">
-                    {completedReportsWithDetails.length === 0 ? (
-                      "완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)"
-                    ) : (
-                      "검색 조건에 부합하는 교육 실적이 없습니다."
-                    )}
-                  </td>
+        ) : (
+          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                  <th className="py-2.5 px-3 font-bold">진행상태</th>
+                  <th className="py-2.5 px-3 font-bold">구분</th>
+                  <th className="py-2.5 px-3 font-bold">교육일자</th>
+                  <th className="py-2.5 px-3 font-bold">교육과정명</th>
+                  <th className="py-2.5 px-3 font-bold">교육기관</th>
+                  <th className="py-2.5 px-3 font-bold">교육대상</th>
+                  <th className="py-2.5 px-3 font-bold text-right">예상비용</th>
                 </tr>
-              ) : (
-                <>
-                  {filteredReports.map(({ report, plan, draft }, index) => {
-                    const associatedPlan = plans.find((p) => p.id === (report.plan_id || report.planId));
-                    const targetText = associatedPlan ? associatedPlan.target : (report.target || '-');
-                    const headcountValue = associatedPlan 
-                      ? (associatedPlan.headcount !== undefined ? associatedPlan.headcount : parseTraineeCount(associatedPlan.target))
-                      : (report.target ? parseTraineeCount(report.target) : 0);
-                    return (
-                      <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="text-center font-mono">{index + 1}</td>
-                        <td className="text-center whitespace-nowrap">{plan.category || '-'}</td>
-                        <td className="py-2.5 px-2 font-mono font-bold text-gray-700 truncate">{report.id}</td>
-                        <td className="py-2.5 px-1.5 font-semibold text-gray-800 break-all whitespace-normal" title={plan.title}>{plan.title}</td>
-                        <td className="py-2.5 px-1.5 text-gray-600 font-medium truncate" title={`${targetText} (${headcountValue}명)`}>
-                          {targetText} {headcountValue > 0 ? `(${headcountValue}명)` : ''}
-                        </td>
-                        <td className="py-2.5 px-1.5 text-gray-700 font-medium text-[13px] whitespace-normal break-all">
-                          {plan.schedule}
-                        </td>
-                        <td className="py-2.5 px-1.5 text-center font-mono font-medium text-gray-700">
-                          {plan.hours}시간
-                        </td>
-                        <td className="py-2.5 px-1.5 text-right font-mono font-bold text-emerald-700">
-                          {formatCurrency(plan.cost)}
-                        </td>
-                        <td className="py-2.5 px-1 text-center font-bold text-indigo-700">
-                          {report.satisfaction_score?.toFixed(1)}
-                        </td>
-                        <td className="py-2.5 px-1 text-center">
-                          {report.certificate_file ? (
-                            <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                              첨부 완료
-                            </span>
-                          ) : (
-                            <span className="text-gray-300 font-bold">-</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {/* 최하단 종합 합계 행 */}
-                  <tr className="bg-indigo-50/40 font-bold border-t-2 border-slate-300">
-                    <td colSpan={3} className="py-3 px-2 text-slate-800 text-center font-bold">합계</td>
-                    <td className="py-3 px-1.5"></td>
-                    <td className="py-3 px-1.5 text-slate-800 font-bold">
-                      {filteredHeadcount}명
-                    </td>
-                    <td className="py-3 px-1.5"></td>
-                    <td className="py-3 px-1.5 text-center font-mono text-slate-800 font-bold">
-                      {filteredHours}시간
-                    </td>
-                    <td className="py-3 px-1.5 text-right font-mono text-slate-800 font-bold">
-                      {formatCurrency(filteredCost)}
-                    </td>
-                    <td className="py-3 px-1 text-center font-bold text-slate-800">
-                      {filteredAvgSatisfaction.toFixed(1)}
-                    </td>
-                    <td className="py-3 px-1 text-center text-slate-400">-</td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <section className="stats-print-summary" aria-label="구분별 교육 실적 집계">
-          <h2 className="stats-summary-heading">구분별 교육 실적 집계</h2>
-          <div className="stats-summary-grid">
-            {printCategorySummary.map((item) => (
-              <article key={item.category} className={'stats-summary-card ' + (item.category === '사외' ? 'external' : '')}>
-                <div className="stats-summary-title">
-                  <strong>{item.category} 교육</strong>
-                  <span>이수 완료 {item.count.toLocaleString('ko-KR')}건</span>
-                </div>
-                <dl className="stats-summary-metrics">
-                  <div className="stats-summary-metric"><dt>교육 인원</dt><dd>{item.headcount.toLocaleString('ko-KR')}<small>명</small></dd></div>
-                  <div className="stats-summary-metric"><dt>교육 시간</dt><dd>{item.hours.toLocaleString('ko-KR')}<small>시간</small></dd></div>
-                  <div className="stats-summary-metric"><dt>교육 비용</dt><dd>{item.cost.toLocaleString('ko-KR')}<small>원</small></dd></div>
-                </dl>
-              </article>
-            ))}
-          </div>
-          <p className="stats-summary-note">현재 출력 목록 기준 · 인원은 교육별 참여 인원 누계 · 시간과 비용은 연결된 교육계획의 등록값 기준</p>
-        </section>
-      </div>
-
-      {/* 인쇄 전용 푸터 - 출력일자 */}
-      <div className="hidden print:block text-right mt-6">
-        <span className="text-xs text-slate-500 font-mono font-bold">
-          출력일자: {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-        </span>
-      </div>
-
-      {/* Detail View Modal */}
-      <AnimatePresence>
-        {selectedReportDetail && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto no-print font-sans print:bg-transparent print:static print:p-0 print:overflow-visible print:z-0">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="bg-white rounded-3xl border border-gray-100 max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col my-8 print:border-none print:shadow-none print:my-0 print:p-0"
-            >
-              {/* Modal Top Header (Screen Only) */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 no-print">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                    <Award className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-800">교육 결과보고서 상세보기</h4>
-                    <p className="text-[11px] text-gray-400">최종 제출 및 이수 완료된 실적 합의 문서입니다.</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handlePrint}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs hover:shadow-md cursor-pointer"
-                  >
-                    <Printer className="w-4 h-4" />
-                    인쇄 및 출력
-                  </button>
-                  <button
-                    onClick={() => setSelectedReportDetail(null)}
-                    className="p-1.5 hover:bg-gray-100 text-gray-400 hover:text-gray-600 rounded-xl transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Body: A4 Paper Preview */}
-              <div className="p-6 overflow-y-auto max-h-[75vh] bg-gray-100/50 flex justify-center print:bg-white print:p-0 print:overflow-visible print:max-h-none">
-                <div id="print-area-wrapper" className="w-full bg-white flex justify-center print:p-0">
-                  <div
-                    id="print-area"
-                    className="w-full max-w-[210mm] p-6 sm:p-[10mm] bg-white border border-gray-200 shadow-sm text-black relative flex flex-col justify-start gap-y-4 print:border-none print:shadow-none print:p-0"
-                    style={{ boxSizing: 'border-box' }}
-                  >
-                    {/* Header Stamp Grids */}
-                    <div>
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="text-[10px] text-gray-400 font-mono tracking-tight">
-                          {selectedReportDetail.report.id}
-                        </div>
-
-                        {/* APPROVAL STAMP GRIDS */}
-                        <table className="approval-table border-collapse border border-black text-center text-xs w-[180px]" style={{ borderCollapse: 'collapse', border: '1px solid #000000' }}>
-                          <tbody>
-                            <tr className="border-b border-black">
-                              <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px]" style={{ border: '1px solid #000000', width: '15%' }}>
-                                결<br />재
-                              </td>
-                              <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>작 성</td>
-                              <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>검 토</td>
-                              <td className="p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>승 인</td>
-                            </tr>
-                            <tr style={{ height: '45px' }}>
-                              <td className="border-r border-black p-1 text-center font-bold text-gray-700 text-[10px]" style={{ border: '1px solid #000000', height: '45px', verticalAlign: 'middle' }}>
-                                {selectedReportDetail.report.drafter_name}
-                              </td>
-                              <td className="border-r border-black" style={{ border: '1px solid #000000', height: '45px' }}></td>
-                              <td style={{ border: '1px solid #000000', height: '45px' }}></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Central Title */}
-                      <div className="text-center mb-10">
-                        <h1 className="text-2xl font-black tracking-[0.4em] border-b-2 border-double border-black pb-2 inline-block pl-[0.4em]">
-                          교 육 결 과 보 고 서
-                        </h1>
-                      </div>
-
-                      {/* Meta Grid Corporate Table */}
-                      <table className="w-full border-collapse border border-black text-xs mb-3">
-                        <tbody>
-                          {/* Row 1: Report Number & Drafter Info */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고서번호</td>
-                            <td className="border-r border-black p-2.5 w-[32%] font-mono text-[11px]">{selectedReportDetail.report.id}</td>
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고자 정보</td>
-                            <td className="p-2.5 w-[32%] font-bold">
-                              {selectedReportDetail.report.department} {selectedReportDetail.report.drafter_name} {selectedReportDetail.report.position}
-                            </td>
-                          </tr>
-
-                          {/* Row 2: Draft Date & Category */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">보고일자</td>
-                            <td className="border-r border-black p-2.5">{getFormattedKoreanDate(selectedReportDetail.report.report_date)}</td>
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">기안연동번호</td>
-                            <td className="p-2.5 font-mono text-[10px] text-gray-600">
-                              {selectedReportDetail.report.draft_id}
-                            </td>
-                          </tr>
-
-                          {/* Row 3: Course Title */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교 육 명</td>
-                            <td colSpan={3} className="p-2.5 font-bold text-sm bg-gray-50/10">
-                              {selectedReportDetail.plan.title}
-                            </td>
-                          </tr>
-
-                          {/* Row 4: Institution & Instructor */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
-                            <td className="border-r border-black p-2.5">{selectedReportDetail.plan.institution}</td>
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
-                            <td className="p-2.5">{selectedReportDetail.plan.instructor}</td>
-                          </tr>
-
-                          {/* Row 5: Target Group & Dates */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                            <td className="border-r border-black p-2.5">{selectedReportDetail.plan.target}</td>
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                            <td className="p-2.5">{selectedReportDetail.plan.date} ({selectedReportDetail.plan.schedule}) ({selectedReportDetail.plan.hours}시간)</td>
-                          </tr>
-
-                          {/* Row 6: Budget & Satisfaction */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
-                            <td className="border-r border-black p-2.5 font-bold text-emerald-800">
-                              ₩{formatCurrency(selectedReportDetail.plan.cost)}
-                            </td>
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
-                            <td className="p-2.5 font-bold text-indigo-700">
-                              만족도 {selectedReportDetail.report.satisfaction_score.toFixed(1)} ({getSatisfactionLabel(selectedReportDetail.report.satisfaction_score)}) / 5.0
-                            </td>
-                          </tr>
-
-                          {/* Row 7: Purpose */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>
-                            <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px]">
-                              {selectedReportDetail.draft.purpose}
-                            </td>
-                          </tr>
-
-                          {/* Row 8: Budget Breakdown */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">소요예산 상세</td>
-                            <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] text-gray-700">
-                              {selectedReportDetail.draft.budget_breakdown}
-                            </td>
-                          </tr>
-
-                          {/* Row 9: Content Summary */}
-                          <tr className="border-b border-black">
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육 결과<br />요약 및 성과</td>
-                            <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                              <div className="min-h-[168px] w-full">
-                                {selectedReportDetail.report.summary}
-                              </div>
-                            </td>
-                          </tr>
-
-                          {/* Row 10: Future Plan */}
-                          <tr>
-                            <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">향후 현업<br />적용 계획 및<br />기대효과</td>
-                            <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                              <div className="min-h-[60px] w-full">
-                                {selectedReportDetail.report.future_plan}
-                              </div>
-                            </td>
-                          </tr>
-
-                          {/* Row 11: Certificate attachment (if exists) */}
-                          {selectedReportDetail.report.certificate_file && (
-                            <tr className="border-t border-black">
-                              <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">첨부 수료증</td>
-                              <td colSpan={3} className="p-2.5 text-center">
-                                <div className="flex flex-col items-center justify-center p-2 bg-gray-50/50 rounded-xl border border-gray-100 max-w-md mx-auto">
-                                  <img
-                                    src={selectedReportDetail.report.certificate_file}
-                                    alt="Certificate Attachment"
-                                    className="max-h-[140px] max-w-full object-contain rounded-lg shadow-sm border border-gray-200"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                  <p className="text-[10px] text-gray-500 mt-1.5 font-bold font-mono">{selectedReportDetail.report.certificate_file_name}</p>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Bottom Signature / Footer Area */}
-                    <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1.5 pb-0">
-                      <p className="text-[11px] sm:text-xs text-gray-500 tracking-tight leading-relaxed mb-2 print:mb-1.5 font-medium max-w-[95%] mx-auto">
-                        위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 교육 결과를 보고하오니,<br />
-                        검토 후 결재하여 주시기 바랍니다.
-                      </p>
-
-                      <p className="text-[11px] sm:text-xs font-bold text-gray-700 tracking-wider mb-2 print:mb-1.5">
-                        {getFormattedKoreanDate(selectedReportDetail.report.report_date)}
-                      </p>
-
-                      <div className="flex flex-col items-center">
-                        <p className="text-sm sm:text-md font-extrabold text-gray-900 leading-none">
-                          (주)대성스틸
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {analysis.pendingPlans.map((plan) => {
+                  const isDrafted = analysis.draftedPlanIds.has(String(plan.id || '').trim());
+                  return (
+                    <tr key={plan.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-2.5 px-3">
+                        {isDrafted ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                            <FileCheck2 className="w-3 h-3" /> 기안완료 (보고대기)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            기안 미작성
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-slate-700">{plan.category}</td>
+                      <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px]">
+                        {(plan.date || '').split('T')[0]} ({plan.schedule})
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-slate-800">{plan.title}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{plan.institution}</td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {plan.target} {plan.headcount ? `(${plan.headcount}명)` : ''}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-700">
+                        ₩{formatCurrency(plan.cost)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-      </AnimatePresence>
-
-      {/* Iframe Sandbox Print Warning Modal */}
-      <AnimatePresence>
-        {showPrintIframeWarning && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print font-sans">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="bg-white rounded-2xl border border-gray-100 p-6 max-w-md w-full shadow-2xl space-y-4 text-center"
-            >
-              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto text-indigo-500">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1.5">
-                <h4 className="text-sm font-bold text-gray-800">보안 및 브라우저 환경 안내</h4>
-                <p className="text-xs text-gray-500 leading-relaxed text-left bg-gray-50 p-3.5 rounded-xl border border-gray-150">
-                  현재 AI Studio 미리보기(Iframe Sandbox) 내부에서는 보안 규정으로 인해 인쇄 창을 직접 열 수 없습니다.<br /><br />
-                  출력을 정상 진행하려면 우측 상단의 <span className="font-semibold text-indigo-600">[새 창에서 열기 (Open in new tab)]</span>를 클릭하여 새 탭에서 접속해 주십시오. 아래 버튼으로 바로 이동하실 수도 있습니다.
-                </p>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPrintIframeWarning(false)}
-                  className="flex-1 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold py-2.5 transition-all cursor-pointer"
-                >
-                  닫기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.open(window.location.href, '_blank');
-                    setShowPrintIframeWarning(false);
-                  }}
-                  className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 transition-all cursor-pointer"
-                >
-                  새 창으로 열기 (인쇄 실행)
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      </div>
+    </div>
   );
 }
