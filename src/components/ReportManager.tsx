@@ -9,10 +9,8 @@ import { API_URL } from '../sheetsService';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
 import { formatCurrency, getSatisfactionLabel } from '../utils';
 import {
-  FileText,
   Trash2,
   Printer,
-  Sparkles,
   RefreshCw,
   FileCheck,
   AlertCircle,
@@ -64,7 +62,9 @@ export default function ReportManager({
     setIsLoading(parentIsLoading);
   }, [parentIsLoading]);
 
-  const setReports = (newReports: EducationReport[] | ((prev: EducationReport[]) => EducationReport[])) => {
+  const setReports = (
+    newReports: EducationReport[] | ((prev: EducationReport[]) => EducationReport[])
+  ) => {
     if (typeof newReports === 'function') {
       const resolved = newReports(reports);
       setLocalReports(resolved);
@@ -88,10 +88,30 @@ export default function ReportManager({
   const [purpose, setPurpose] = useState('');
   const [budgetBreakdown, setBudgetBreakdown] = useState('');
   const [satisfactionScore, setSatisfactionScore] = useState<number>(5.0);
-  const [certificateFile, setCertificateFile] = useState<string>(''); // Base64
+  const [certificateFile, setCertificateFile] = useState<string>(''); // Base64 (Compressed)
   const [certificateFileName, setCertificateFileName] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
 
+  // Selected report from history for editing
+  const [editingReportIndex, setEditingReportIndex] = useState<number | null>(null);
+
+  // Local notification state
+  const [localNotification, setLocalNotification] = useState<{
+    text: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
+
+  const triggerLocalNotification = (
+    text: string,
+    type: 'success' | 'error' | 'info' = 'success'
+  ) => {
+    setLocalNotification({ text, type });
+    setTimeout(() => {
+      setLocalNotification(null);
+    }, 4500);
+  };
+
+  // 이미지를 구글 시트 셀 용량(50,000자 제한) 이내로 안전하게 자동 리사이징/압축하는 함수
   const processFile = (file: File) => {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
@@ -100,10 +120,49 @@ export default function ReportManager({
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setCertificateFile(reader.result as string);
-      setCertificateFileName(file.name);
-      triggerLocalNotification('파일이 등록되었습니다.', 'success');
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // 1차 압축 (품질 0.65)
+          let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+
+          // 만약 Base64 문자열이 45,000자를 넘으면 한 번 더 압축 (구글 시트 50,000자 제한 방어)
+          if (compressedDataUrl.length > 45000) {
+            compressedDataUrl = canvas.toDataURL('image/jpeg', 0.45);
+          }
+
+          setCertificateFile(compressedDataUrl);
+          setCertificateFileName(file.name);
+          triggerLocalNotification('증빙 이미지가 최적화되어 등록되었습니다.', 'success');
+        }
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -137,7 +196,7 @@ export default function ReportManager({
   const handleRemoveFile = () => {
     setCertificateFile('');
     setCertificateFileName('');
-    triggerLocalNotification('파일이 삭제되었습니다.', 'info');
+    triggerLocalNotification('첨부 파일이 삭제되었습니다.', 'info');
   };
 
   const parseDrafter = (drafterStr: string) => {
@@ -171,22 +230,6 @@ export default function ReportManager({
     };
   };
 
-  // Selected report from history for editing
-  const [editingReportIndex, setEditingReportIndex] = useState<number | null>(null);
-
-  // Local notification state
-  const [localNotification, setLocalNotification] = useState<{
-    text: string;
-    type: 'success' | 'error' | 'info';
-  } | null>(null);
-
-  const triggerLocalNotification = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setLocalNotification({ text, type });
-    setTimeout(() => {
-      setLocalNotification(null);
-    }, 4500);
-  };
-
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -195,9 +238,6 @@ export default function ReportManager({
 
   // State to show print dialog error warning modal (when window.print is blocked by iframe sandbox)
   const [showPrintIframeWarning, setShowPrintIframeWarning] = useState(false);
-
-  // Filter for plan categories ('전체', '사내', '사외')
-  const [planCategoryFilter, setPlanCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
 
   // 연도 선택 필터 State (디폴트는 현재 연도)
   const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
@@ -272,22 +312,34 @@ export default function ReportManager({
       if (plan) {
         setSelectedPlanId(preselectedPlanId);
 
-        const existingReport = reports.find((r) => (r.plan_id || r.planId || '').toString().trim() === preselectedPlanId.toString().trim());
+        const existingReport = reports.find(
+          (r) =>
+            (r.plan_id || r.planId || '').toString().trim() === preselectedPlanId.toString().trim()
+        );
         if (existingReport) {
-          const index = reports.findIndex((r) => (r.plan_id || r.planId || '').toString().trim() === preselectedPlanId.toString().trim());
+          const index = reports.findIndex(
+            (r) =>
+              (r.plan_id || r.planId || '').toString().trim() ===
+              preselectedPlanId.toString().trim()
+          );
           handleSelectReportForEdit(existingReport, index);
-          setReportDate((existingReport.report_date || existingReport.reportDate || '').split('T')[0].trim());
-          triggerLocalNotification('이미 작성된 결과보고서가 존재하여 해당 보고서를 불러왔습니다.', 'info');
+          setReportDate(
+            (existingReport.report_date || existingReport.reportDate || '').split('T')[0].trim()
+          );
+          triggerLocalNotification(
+            '이미 작성된 결과보고서가 존재하여 해당 보고서를 불러왔습니다.',
+            'info'
+          );
         } else {
           const matchedDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
           setEditingReportIndex(null);
-          
+
           const nextId = autoGenerateReportId(matchedDraft, reportDate);
           setReportId(nextId);
 
           if (matchedDraft) {
             setDraftId(matchedDraft.id);
-            
+
             const parts = parseDrafter(matchedDraft.drafter);
             setDepartment(parts.dept);
             setPosition(parts.pos);
@@ -320,6 +372,8 @@ export default function ReportManager({
             setSummary('');
             setFuturePlan('');
           }
+          setCertificateFile('');
+          setCertificateFileName('');
           setErrors({});
           triggerLocalNotification('새 교육 결과보고서 작성을 시작합니다.', 'success');
         }
@@ -341,16 +395,26 @@ export default function ReportManager({
       return;
     }
 
-    const existingReport = reports.find((r) => (r.plan_id || r.planId || '').toString().trim() === planId.toString().trim());
+    const existingReport = reports.find(
+      (r) => (r.plan_id || r.planId || '').toString().trim() === planId.toString().trim()
+    );
     if (existingReport) {
-      if (editingReportIndex === null || (reports[editingReportIndex].plan_id || reports[editingReportIndex].planId || '') !== planId) {
+      if (
+        editingReportIndex === null ||
+        (reports[editingReportIndex].plan_id || reports[editingReportIndex].planId || '') !== planId
+      ) {
         setErrors((prev) => ({
           ...prev,
           selectedPlanId: '이미 결과보고서가 작성된 교육계획입니다.',
         }));
-        triggerLocalNotification('이미 결과보고서가 작성된 교육계획입니다. 해당 보고서가 로드됩니다.', 'info');
-        
-        const index = reports.findIndex((r) => (r.plan_id || r.planId || '').toString().trim() === planId.toString().trim());
+        triggerLocalNotification(
+          '이미 결과보고서가 작성된 교육계획입니다. 해당 보고서가 로드됩니다.',
+          'info'
+        );
+
+        const index = reports.findIndex(
+          (r) => (r.plan_id || r.planId || '').toString().trim() === planId.toString().trim()
+        );
         handleSelectReportForEdit(existingReport, index);
       }
     }
@@ -368,10 +432,14 @@ export default function ReportManager({
     setReportDate((report.report_date || report.reportDate || '').split('T')[0].trim());
     setSummary(report.summary);
     setFuturePlan(report.future_plan || report.futurePlan || '');
-    setSatisfactionScore(report.satisfaction_score !== undefined ? Number(report.satisfaction_score) : (Number(report.satisfactionScore) || 5.0));
+    setSatisfactionScore(
+      report.satisfaction_score !== undefined
+        ? Number(report.satisfaction_score)
+        : Number(report.satisfactionScore) || 5.0
+    );
     setCertificateFile(report.certificate_file || report.certificateFile || '');
     setCertificateFileName(report.certificate_file_name || report.certificateFileName || '');
-    
+
     const matchedDraft = drafts.find((d) => d.plan_id === (report.plan_id || report.planId));
     if (matchedDraft) {
       setPurpose(matchedDraft.purpose || '');
@@ -405,7 +473,7 @@ export default function ReportManager({
 
   const handleDeleteReport = (targetReportId: string) => {
     const targetIndex = reports.findIndex((r) => r.id === targetReportId);
-    
+
     onDeleteReport(targetIndex).catch((err) => {
       console.error('Failed to sync deletion on spreadsheet:', err);
       triggerLocalNotification('구글 스프레드시트 삭제 반영 실패', 'error');
@@ -413,7 +481,11 @@ export default function ReportManager({
 
     if (editingReportIndex === targetIndex && targetIndex !== -1) {
       handleResetForm();
-    } else if (editingReportIndex !== null && targetIndex !== -1 && targetIndex < editingReportIndex) {
+    } else if (
+      editingReportIndex !== null &&
+      targetIndex !== -1 &&
+      targetIndex < editingReportIndex
+    ) {
       setEditingReportIndex((prev) => (prev !== null ? prev - 1 : null));
     }
     triggerLocalNotification('교육 결과보고서가 즉시 삭제되었습니다.', 'success');
@@ -434,7 +506,7 @@ export default function ReportManager({
           .filter(Boolean)
           .map((p) => p.replace(/[\/\\?%*:|"<>\x00-\x1F\s]+/g, '_').trim());
         const dynamicTitle = titleParts.join('_');
-        
+
         document.title = dynamicTitle;
         window.print();
       } catch (err) {
@@ -454,12 +526,13 @@ export default function ReportManager({
     if (!drafterName.trim()) newErrors.drafterName = '성명을 입력해주세요.';
     if (!reportDate) newErrors.reportDate = '보고일자를 선택해주세요.';
 
-    // 💡 보고일자 >= 교육 마지막 일정 검증 (시차 및 UTC 타임스탬프 오류를 원천 차단하는 정밀 문자열 비교)
     if (reportDate && selectedPlan && selectedPlan.schedule) {
       const reportDateClean = reportDate.split('T')[0].trim();
-      const eduYear = selectedPlan.date ? selectedPlan.date.split('T')[0].trim().split('-')[0] : new Date().getFullYear();
+      const eduYear = selectedPlan.date
+        ? selectedPlan.date.split('T')[0].trim().split('-')[0]
+        : new Date().getFullYear();
       const scheduleParts = selectedPlan.schedule.split('~');
-      
+
       if (scheduleParts.length === 2) {
         const endDateStr = `${eduYear}-${scheduleParts[1].trim().replace('/', '-')}`;
         const eduEndTimeStr = endDateStr.split('T')[0].trim();
@@ -481,12 +554,13 @@ export default function ReportManager({
   const fetchReports = async (year: string) => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${API_URL}?action=read&sheetName=education_reports&year=${year}&t=${new Date().getTime()}`);
-      
+      const response = await axios.get(
+        `${API_URL}?action=read&sheetName=education_reports&year=${year}&t=${new Date().getTime()}`
+      );
+
       if (response.data && Array.isArray(response.data)) {
         const mappedData: EducationReport[] = response.data.map((item: any) => ({
           id: item.id || '',
-          // 💡 카멜 케이스로 변환되어 넘어오든 원본이 오든 무조건 컴포넌트 표준인 스네이크 케이스로 강제 통합 수용
           plan_id: (item.plan_id || item.planId || '').toString().trim(),
           planId: (item.plan_id || item.planId || '').toString().trim(),
           draft_id: (item.draft_id || item.draftId || '').toString().trim(),
@@ -506,16 +580,18 @@ export default function ReportManager({
           certificateFile: item.certificate_file || item.certificateFile || '',
           certificate_file_name: item.certificate_file_name || item.certificateFileName || '',
           certificateFileName: item.certificate_file_name || item.certificateFileName || '',
-          year: (item.year || year).toString().trim()
+          year: (item.year || year).toString().trim(),
         }));
-        
-        const filtered = mappedData.filter((r: EducationReport) => r.year === year.toString().trim());
+
+        const filtered = mappedData.filter(
+          (r: EducationReport) => !r.year || r.year === year.toString().trim()
+        );
         setReports(filtered);
       } else {
         setReports([]);
       }
     } catch (error) {
-      console.error("결과보고서 로드 실패:", error);
+      console.error('결과보고서 로드 실패:', error);
       setReports([]);
     } finally {
       setIsLoading(false);
@@ -526,7 +602,6 @@ export default function ReportManager({
     e.preventDefault();
     if (!validate()) return;
 
-    // 💡 [2중 보고서 저장부 정밀 타격] 전송 페이로드에 UTC 타임스탬프가 절대 붙지 않도록 완벽하게 날짜 가공 격리
     const cleanReportDate = reportDate.split('T')[0].trim();
 
     const reportData: EducationReport = {
@@ -540,17 +615,17 @@ export default function ReportManager({
       summary: summary.trim(),
       future_plan: futurePlan.trim(),
       satisfaction_score: Number(satisfactionScore) || 5.0,
-      certificate_file: certificateFile || undefined,
-      certificate_file_name: certificateFileName || undefined,
-      // camelCase aliases for complete robustness and double compatibility
+      certificate_file: certificateFile || '',
+      certificate_file_name: certificateFileName || '',
+      // camelCase 호환성 보장
       draftId: draftId,
       planId: selectedPlanId,
       drafterName: drafterName.trim(),
       reportDate: cleanReportDate,
       futurePlan: futurePlan.trim(),
       satisfactionScore: Number(satisfactionScore) || 5.0,
-      certificateFile: certificateFile || undefined,
-      certificateFileName: certificateFileName || undefined,
+      certificateFile: certificateFile || '',
+      certificateFileName: certificateFileName || '',
     };
 
     try {
@@ -572,14 +647,14 @@ export default function ReportManager({
         triggerLocalNotification('새 교육 결과보고서가 작성되었습니다.', 'success');
       }
 
-      // 구글 시트 등록이 성공한 즉시(또는 수정 완료 후) 강제로 최신 데이터 다시 리로드
+      // 최신 데이터 다시 리로드
       await fetchReports(selectedYear);
       if (onFetchReports) {
         await onFetchReports(selectedYear);
       }
 
-      // 데이터 저장이 완전히 끝난 후에는 입력 폼 내부의 모든 작성란 State 값들을 깨끗하게 비워줌 (Clear)
-      handleResetForm();
+      // 저장 완료 후에도 바로 인쇄하거나 증빙을 확인할 수 있도록 방금 저장한 데이터를 편집 상태로 유지
+      // (원치 않으시면 목록에서 다시 클릭해 확인 가능)
     } catch (err) {
       console.error('Failed to save report:', err);
       triggerLocalNotification('결과보고서 저장 중 오류가 발생했습니다.', 'error');
@@ -588,12 +663,12 @@ export default function ReportManager({
 
   const getFormattedKoreanDate = (dateStr: string) => {
     if (!dateStr) return '';
-    let cleanDate = dateStr.split('T')[0].split(' ')[0];
+    const cleanDate = dateStr.split('T')[0].split(' ')[0];
     const parts = cleanDate.split('-');
     if (parts.length !== 3) return dateStr;
     return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
   };
-  
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative w-full max-w-full box-border overflow-x-hidden">
       <AnimatePresence>
@@ -634,7 +709,9 @@ export default function ReportManager({
             <div>
               <p className="font-bold">기안 완료된 교육 계획 없음</p>
               <p className="mt-1 font-normal leading-relaxed">
-                결과보고서를 작성하기 위해서는, 먼저 <span className="font-semibold text-indigo-700">'교육 기안서 작성 및 인쇄'</span> 탭에서 기안서 작성이 완료(채번 완료)된 교육 계획이 존재해야 합니다.
+                결과보고서를 작성하기 위해서는, 먼저{' '}
+                <span className="font-semibold text-indigo-700">'교육 기안서 작성 및 인쇄'</span>{' '}
+                탭에서 기안서 작성이 완료(채번 완료)된 교육 계획이 존재해야 합니다.
               </p>
             </div>
           </div>
@@ -688,15 +765,20 @@ export default function ReportManager({
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs text-gray-600 flex justify-between items-center gap-4">
                 <div className="space-y-1.5 flex-1">
                   <p>
-                    <span className="font-bold text-gray-500">교육기관:</span> {selectedPlan.institution} |{' '}
+                    <span className="font-bold text-gray-500">교육기관:</span>{' '}
+                    {selectedPlan.institution} |{' '}
                     <span className="font-bold text-gray-500">강사:</span> {selectedPlan.instructor}
                   </p>
                   <p>
-                    <span className="font-bold text-gray-500">교육대상:</span> {selectedPlan.target || '미지정'} {selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}
+                    <span className="font-bold text-gray-500">교육대상:</span>{' '}
+                    {selectedPlan.target || '미지정'}{' '}
+                    {selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}
                   </p>
                   <p>
-                    <span className="font-bold text-gray-500">교육일정:</span> {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
-                    <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.hours}시간
+                    <span className="font-bold text-gray-500">교육일정:</span>{' '}
+                    {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
+                    <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.hours}
+                    시간
                   </p>
                 </div>
               </div>
@@ -735,7 +817,9 @@ export default function ReportManager({
                   }}
                   className="w-full rounded-xl border border-gray-200 py-2.5 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer"
                 />
-                {errors.reportDate && <p className="text-xs text-rose-500 mt-1">{errors.reportDate}</p>}
+                {errors.reportDate && (
+                  <p className="text-xs text-rose-500 mt-1">{errors.reportDate}</p>
+                )}
               </div>
             </div>
 
@@ -752,7 +836,9 @@ export default function ReportManager({
                     placeholder="예: 관리팀"
                     className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
                   />
-                  {errors.department && <p className="text-[10px] text-rose-500 mt-1">{errors.department}</p>}
+                  {errors.department && (
+                    <p className="text-[10px] text-rose-500 mt-1">{errors.department}</p>
+                  )}
                 </div>
                 <div>
                   <input
@@ -762,7 +848,9 @@ export default function ReportManager({
                     placeholder="예: 과장"
                     className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
                   />
-                  {errors.position && <p className="text-[10px] text-rose-500 mt-1">{errors.position}</p>}
+                  {errors.position && (
+                    <p className="text-[10px] text-rose-500 mt-1">{errors.position}</p>
+                  )}
                 </div>
                 <div>
                   <input
@@ -772,7 +860,9 @@ export default function ReportManager({
                     placeholder="예: 염지원"
                     className="w-full rounded-xl border border-gray-200 py-2.5 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
                   />
-                  {errors.drafterName && <p className="text-[10px] text-rose-500 mt-1">{errors.drafterName}</p>}
+                  {errors.drafterName && (
+                    <p className="text-[10px] text-rose-500 mt-1">{errors.drafterName}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -798,7 +888,9 @@ export default function ReportManager({
                   <option value="2.0">2.0 (불만족)</option>
                   <option value="1.0">1.0 (매우 불만족)</option>
                 </select>
-                <span className="text-[11px] text-gray-400">결과보고서 제출 및 마감 처리를 위해 수강생 설문 조사 기준 평점을 입력해 주세요.</span>
+                <span className="text-[11px] text-gray-400">
+                  수강생 설문 조사 기준 평점을 선택해 주세요.
+                </span>
               </div>
             </div>
 
@@ -828,7 +920,9 @@ export default function ReportManager({
                   errors.summary ? 'border-rose-400 bg-rose-50/20' : 'border-gray-200'
                 }`}
               />
-              {errors.summary && <p className="text-[10px] text-rose-500 font-bold mt-1.5">{errors.summary}</p>}
+              {errors.summary && (
+                <p className="text-[10px] text-rose-500 font-bold mt-1.5">{errors.summary}</p>
+              )}
             </div>
 
             <div>
@@ -844,23 +938,25 @@ export default function ReportManager({
                   errors.futurePlan ? 'border-rose-400 bg-rose-50/20' : 'border-gray-200'
                 }`}
               />
-              {errors.futurePlan && <p className="text-[10px] text-rose-500 font-bold mt-1.5">{errors.futurePlan}</p>}
+              {errors.futurePlan && (
+                <p className="text-[10px] text-rose-500 font-bold mt-1.5">{errors.futurePlan}</p>
+              )}
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                7. 교육증빙 업로드 (선택)
+                7. 교육증빙 업로드 (수료증 / 교육사진)
               </label>
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-5 transition-all flex flex-col items-center justify-center cursor-pointer text-center ${
-                  isDragging 
-                    ? 'border-indigo-500 bg-indigo-50/50' 
-                    : certificateFile 
-                      ? 'border-emerald-300 bg-emerald-50/10' 
-                      : 'border-gray-200 bg-gray-50/30 hover:border-indigo-400 hover:bg-gray-50/50'
+                  isDragging
+                    ? 'border-indigo-500 bg-indigo-50/50'
+                    : certificateFile
+                    ? 'border-emerald-300 bg-emerald-50/10'
+                    : 'border-gray-200 bg-gray-50/30 hover:border-indigo-400 hover:bg-gray-50/50'
                 }`}
                 onClick={() => document.getElementById('certificate-upload-input')?.click()}
               >
@@ -873,13 +969,20 @@ export default function ReportManager({
                 />
                 {certificateFile ? (
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                      <ImageIcon className="w-5 h-5" />
+                    <img
+                      src={certificateFile}
+                      alt="미리보기"
+                      className="max-h-24 rounded-lg border border-gray-200 object-contain shadow-2xs"
+                    />
+                    <div className="text-xs font-bold text-gray-800 max-w-[280px] truncate">
+                      {certificateFileName || '등록된 증빙 이미지'}
                     </div>
-                    <div className="text-xs font-bold text-gray-800 max-w-[280px] truncate">{certificateFileName}</div>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); handleRemoveFile(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFile();
+                      }}
                       className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg transition-all"
                     >
                       <X className="w-3 h-3" /> 파일 삭제
@@ -890,7 +993,12 @@ export default function ReportManager({
                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
                       <UploadCloud className="w-5 h-5" />
                     </div>
-                    <div className="text-xs font-bold text-gray-700">클릭하여 파일 선택 또는 드래그 앤 드롭</div>
+                    <div className="text-xs font-bold text-gray-700">
+                      클릭하여 이미지 선택 또는 드래그 앤 드롭
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                      업로드 시 시트 저장 규격에 맞게 자동 최적화됩니다.
+                    </p>
                   </div>
                 )}
               </div>
@@ -911,7 +1019,11 @@ export default function ReportManager({
                   </>
                 )}
               </button>
-              <button type="button" onClick={handlePrint} className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-4 py-3 cursor-pointer flex items-center justify-center gap-1.5">
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-4 py-3 cursor-pointer flex items-center justify-center gap-1.5"
+              >
                 <Printer className="w-4 h-4 text-gray-500" />
                 <span>보고서 출력</span>
               </button>
@@ -922,21 +1034,24 @@ export default function ReportManager({
         {/* History List */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5">
           {(() => {
-            // 작성된 결과보고서 목록에서 고유 연도를 추출하고 현재 연도를 항상 포함
-            const availableYears = Array.from(new Set([
-              new Date().getFullYear().toString(),
-              ...reports.map((r) => {
-                const rDate = r.report_date || r.reportDate || '';
-                return rDate ? rDate.split('T')[0].substring(0, 4) : '';
-              }).filter(Boolean)
-            ])).sort((a, b) => b.localeCompare(a));
+            const availableYears = Array.from(
+              new Set([
+                new Date().getFullYear().toString(),
+                ...reports
+                  .map((r) => {
+                    const rDate = r.report_date || r.reportDate || '';
+                    return rDate ? rDate.split('T')[0].substring(0, 4) : '';
+                  })
+                  .filter(Boolean),
+              ])
+            ).sort((a, b) => b.localeCompare(a));
 
             const filteredReportsWithIndex = reports
               .map((r, originalIndex) => ({ r, originalIndex }))
               .filter(({ r }) => {
                 const rDate = r.report_date || r.reportDate || '';
                 const year = rDate ? rDate.split('T')[0].substring(0, 4) : '';
-                return year === filterYear;
+                return !year || year === filterYear;
               });
 
             return (
@@ -952,7 +1067,9 @@ export default function ReportManager({
                     className="text-xs font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 outline-none focus:border-indigo-500 cursor-pointer"
                   >
                     {availableYears.map((y) => (
-                      <option key={y} value={y}>{y}년</option>
+                      <option key={y} value={y}>
+                        {y}년
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -964,24 +1081,48 @@ export default function ReportManager({
                     </p>
                   ) : (
                     filteredReportsWithIndex.map(({ r, originalIndex }) => {
-                      const associatedPlan = plans.find((p) => p.id === (r.plan_id || r.planId));
+                      const associatedPlan = plans.find(
+                        (p) => p.id === (r.plan_id || r.planId)
+                      );
+                      const hasCert = Boolean(r.certificate_file || r.certificateFile);
                       return (
                         <div
                           key={r.id}
                           className={`p-3 rounded-xl border text-xs transition-all flex items-start justify-between gap-3 cursor-pointer ${
-                            editingReportIndex === originalIndex ? 'border-indigo-500 bg-indigo-50/20 shadow-xs' : 'border-gray-200 hover:border-gray-300'
+                            editingReportIndex === originalIndex
+                              ? 'border-indigo-500 bg-indigo-50/20 shadow-xs'
+                              : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => handleSelectReportForEdit(r, originalIndex)}
                         >
                           <div className="space-y-1 overflow-hidden">
-                            <p className="font-bold text-gray-800 truncate">{associatedPlan ? associatedPlan.title : '연관 계획 정보 없음'}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-gray-800 truncate">
+                                {associatedPlan ? associatedPlan.title : '연관 계획 정보 없음'}
+                              </p>
+                              {hasCert && (
+                                <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <ImageIcon className="w-2.5 h-2.5" /> 증빙첨부됨
+                                </span>
+                              )}
+                            </div>
                             <div className="flex gap-2 text-gray-400 text-[10px]">
                               <span>번호: {r.id}</span>
                               <span>•</span>
-                              <span>보고자: {r.drafter_name || r.drafterName} {r.position} ({r.department})</span>
+                              <span>
+                                보고자: {r.drafter_name || r.drafterName} {r.position} (
+                                {r.department})
+                              </span>
                             </div>
                           </div>
-                          <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTargetId(r.id); }} className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTargetId(r.id);
+                            }}
+                            className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
+                          >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -995,194 +1136,192 @@ export default function ReportManager({
         </div>
       </div>
 
-      {/* RIGHT COLUMN */}
-      <div className="lg:col-span-7 flex flex-col items-center">
-        <div id="print-area-wrapper" className="w-full bg-gray-100/70 py-6 px-4 md:px-8 rounded-3xl border border-gray-200 flex justify-center overflow-x-hidden max-w-full box-border print-section">
-          <div id="printable-area" className="w-full max-w-[210mm] h-auto p-4 sm:p-[10mm] bg-white border border-gray-300 shadow-2xl relative text-black font-sans leading-relaxed flex flex-col justify-start gap-y-4 shrink-0 box-border overflow-x-hidden" style={{ boxSizing: 'border-box' }}>
-            <style>{`
-              @media print {
-                @page { size: A4 portrait; margin: 0; }
-
-                /* 1. 불필요 요소 제거 및 공간 소멸 (display: none 복원) */
-                .no-print, header, nav, aside, footer, button { display: none !important; }
-                ::-webkit-scrollbar { display: none !important; }
-                
-                /* 2. 상위 래퍼 제한 완벽 해제 */
-                html, body, #root, main {
-                    display: block !important;
-                    width: 100% !important;
-                    height: auto !important; 
-                    max-width: 100% !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    box-sizing: border-box !important;
-                    overflow: visible !important;
-                }
-
-                .grid { display: block !important; gap: 0 !important; }
-                .lg\\:col-span-7 {
-                    display: block !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                }
-
-                /* 3. absolute 버리고 position: fixed로 페이지 기준 고정 (좌우 쏠림/잘림 근본 해결) */
-                #print-area-wrapper {
-                    display: block !important;
-                    width: 100% !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    border: none !important;
-                    background: transparent !important;
-                    overflow: visible !important;
-                }
-
-                #printable-area {
-                    position: fixed !important; /* 조상 relative 탈출, 뷰포트/페이지 기준 배치 */
-                    left: 10mm !important;      /* 직접 여백 제어 */
-                    top: 10mm !important;
-                    width: 190mm !important;    /* A4 세로폭(210mm - 양쪽 여백 20mm) 정확히 안착 */
-                    max-width: 190mm !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    background: white !important;
-                    box-sizing: border-box !important;
-                    overflow: visible !important;
-                }
-
-                /* 4. 테이블 레이아웃 고정 및 결재방 규격 */
-                #printable-area table {
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    table-layout: fixed !important;
-                    word-break: break-all !important;
-                    border-collapse: collapse !important;
-                }
-                
-                #printable-area table.approval-table {
-                    width: 48mm !important;
-                    margin-left: auto !important;
-                    margin-right: 0 !important;
-                }
-                
-                /* 5. 폰트 크기 확대 및 가독성 확보 */
-                #printable-area table td, 
-                #printable-area table th {
-                    padding: 8px 6px !important;
-                    font-size: 13px !important; 
-                    line-height: 1.5 !important;
-                }
-                
-                /* 전용 높이 유지 */
-                .report-summary-box { min-height: 140px !important; }
-                .report-future-box { min-height: 75px !important; }
-                .draft-summary-box { min-height: 240px !important; }
-                .draft-budget-box { min-height: 80px !important; }
-              }
-            `}</style>
+      {/* RIGHT COLUMN (A4 WYSIWYG 미리보기 및 인쇄 영역) */}
+      <div className="lg:col-span-7 flex flex-col items-center w-full">
+        <div
+          id="print-area-wrapper"
+          className="w-full bg-slate-200/70 py-6 px-3 sm:px-6 rounded-3xl border border-gray-200 flex justify-center overflow-x-auto"
+        >
+          <div
+            id="printable-area"
+            className="a4-document-sheet border border-gray-300 shadow-xl"
+          >
+            {/* 상단 영역: 제목 + 결재란 + 본문 테이블 */}
             <div>
-              <div className="flex justify-between items-start mb-4">
-                <div className="text-[10px] text-gray-400 font-mono tracking-tight">{reportId || 'DSEREP-YYYYMMDD-XXX'}</div>
-                <table className="approval-table border-collapse border border-black text-center text-xs w-[180px] ml-auto" style={{ borderCollapse: 'collapse', border: '1px solid #000000', marginLeft: 'auto' }}>
+              {/* 문서 헤더 및 결재란 */}
+              <div className="flex justify-between items-end mb-6 pb-2 border-b-2 border-black">
+                <div>
+                  <p className="text-[11px] font-bold text-gray-600 mb-1">
+                    (주)대성스틸 교육훈련 관리규정
+                  </p>
+                  <h1 className="text-2xl font-black tracking-[0.25em] text-black">
+                    교 육 결 과 보 고 서
+                  </h1>
+                </div>
+
+                <table className="approval-table">
                   <tbody>
-                    <tr className="border-b border-black">
-                      <td rowSpan={2} className="border-r border-black font-bold p-1 bg-gray-50 text-[10px]" style={{ border: '1px solid #000000', width: '15%' }}>결<br />재</td>
-                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>작 성</td>
-                      <td className="border-r border-black p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>검 토</td>
-                      <td className="p-1 bg-gray-50 font-bold text-[10px]" style={{ border: '1px solid #000000', width: '28.3%' }}>승 인</td>
+                    <tr>
+                      <th
+                        rowSpan={2}
+                        className="bg-gray-100 font-bold"
+                        style={{ width: '28px' }}
+                      >
+                        결<br />재
+                      </th>
+                      <th className="bg-gray-100 font-bold">담 당</th>
+                      <th className="bg-gray-100 font-bold">검 토</th>
+                      <th className="bg-gray-100 font-bold">승 인</th>
                     </tr>
-                    <tr style={{ height: '45px' }}>
-                      <td className="border-r border-black p-1 text-center" style={{ border: '1px solid #000000', height: '45px', verticalAlign: 'middle' }}></td>
-                      <td className="border-r border-black" style={{ border: '1px solid #000000', height: '45px' }}></td>
-                      <td style={{ border: '1px solid #000000', height: '45px' }}></td>
+                    <tr style={{ height: '50px' }}>
+                      <td></td>
+                      <td></td>
+                      <td></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
 
-              <div className="text-center mb-10">
-                <h1 className="text-2xl font-black tracking-[0.4em] border-b-2 border-double border-black pb-2 inline-block pl-[0.4em]">교 육 결 과 보 고 서</h1>
-              </div>
-
-              <table className="w-full border-collapse border border-black text-xs mb-3">
+              {/* 본문 테이블 (중복 항목 제거 및 정돈) */}
+              <table className="doc-table">
+                <colgroup>
+                  <col style={{ width: '16%' }} />
+                  <col style={{ width: '34%' }} />
+                  <col style={{ width: '16%' }} />
+                  <col style={{ width: '34%' }} />
+                </colgroup>
                 <tbody>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고서번호</td>
-                    <td className="border-r border-black p-2.5 w-[32%] font-mono text-[11px]">{reportId || '(보고서 저장 시 부여)'}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 w-[18%] text-center">보고자 정보</td>
-                    <td className="p-2.5 w-[32%]">{department && drafterName ? <span className="font-bold">{department} {drafterName} {position}</span> : '(보고자 입력)'}</td>
-                  </tr>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">보고일자</td>
-                    <td className="border-r border-black p-2.5">{getFormattedKoreanDate(reportDate)}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">기안연동번호</td>
-                    <td className="p-2.5 font-mono text-[10px] text-gray-600">{draftId || '(기안서 번호)'}</td>
-                  </tr>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교 육 명</td>
-                    <td colSpan={3} className="p-2.5 font-bold text-sm bg-gray-50/10">{selectedPlan ? selectedPlan.title : '(교육 계획 선택 필요)'}</td>
-                  </tr>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육기관</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? selectedPlan.institution : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">강 사</td>
-                    <td className="p-2.5">{selectedPlan ? selectedPlan.instructor : ''}</td>
-                  </tr>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">대 상 자</td>
-                    <td className="border-r border-black p-2.5">{selectedPlan ? `${selectedPlan.target} ${selectedPlan.headcount ? `(${selectedPlan.headcount}명)` : ''}` : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육일정</td>
-                    <td className="p-2.5">{selectedPlan ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${selectedPlan.schedule}) (${selectedPlan.hours}시간)` : ''}</td>
-                  </tr>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">집행비용</td>
-                    <td className="border-r border-black p-2.5 font-bold text-emerald-800">{selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : ''}</td>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">만족도</td>
-                    <td className="p-2.5 font-bold text-indigo-700">{selectedPlan ? `만족도 ${satisfactionScore.toFixed(1)} (${getSatisfactionLabel(satisfactionScore)}) / 5.0` : ''}</td>
-                  </tr>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육목적</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px]">{purpose || '(교육 목적 기재)'}</td>
-                  </tr>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">소요예산 상세</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] text-gray-700">{budgetBreakdown || '(기안서의 예산 내역 자동 연동)'}</td>
-                  </tr>
-                  <tr className="border-b border-black">
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">교육 결과<br />요약 및 성과</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                      <div className="report-summary-box min-h-[168px] w-full">{summary || '(교육 수료 내용 및 이수 평가 기재)'}</div>
+                  <tr>
+                    <th>문서번호</th>
+                    <td className="font-mono text-[11px]">{reportId || '(저장 시 자동채번)'}</td>
+                    <th>보 고 자</th>
+                    <td className="font-semibold">
+                      {department || drafterName || position
+                        ? `${department} ${position} ${drafterName}`.trim()
+                        : '(작성자 정보 입력)'}
                     </td>
                   </tr>
                   <tr>
-                    <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">향후 현업<br />적용 계획 및<br />기대효과</td>
-                    <td colSpan={3} className="p-2.5 whitespace-pre-wrap leading-relaxed text-[11px] align-top">
-                      <div className="report-future-box min-h-[60px] w-full">{futurePlan || '(과제 및 정량적/정성적 기대효과 기재)'}</div>
+                    <th>기안번호</th>
+                    <td className="font-mono text-[11px] text-gray-700">{draftId || '-'}</td>
+                    <th>교육구분</th>
+                    <td className="font-bold">
+                      {selectedPlan ? `${selectedPlan.category}교육` : '-'}
                     </td>
                   </tr>
-                  {certificateFile && (
-                    <tr className="border-t border-black">
-                      <td className="border-r border-black font-bold p-2.5 bg-gray-50 text-center">첨부 교육증빙</td>
-                      <td colSpan={3} className="p-2.5 text-center">
-                        <div className="flex flex-col items-center justify-center p-2 bg-gray-50/50 rounded-xl border border-gray-100 max-w-md mx-auto">
-                          <img src={certificateFile} alt="Certificate Attachment" className="max-h-[140px] max-w-full object-contain rounded-lg shadow-sm border border-gray-200" referrerPolicy="no-referrer" />
-                          <p className="text-[10px] text-gray-500 mt-1.5 font-bold font-mono">{certificateFileName}</p>
+                  <tr>
+                    <th>교 육 명</th>
+                    <td colSpan={3} className="font-bold text-[13px]">
+                      {selectedPlan ? selectedPlan.title : '(연관 교육 계획을 선택해주세요)'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>교육기관</th>
+                    <td>{selectedPlan ? selectedPlan.institution : '-'}</td>
+                    <th>강 사 명</th>
+                    <td>{selectedPlan ? selectedPlan.instructor : '-'}</td>
+                  </tr>
+                  <tr>
+                    <th>교육대상</th>
+                    <td>
+                      {selectedPlan
+                        ? `${selectedPlan.target}${
+                            selectedPlan.headcount ? ` (${selectedPlan.headcount}명)` : ''
+                          }`
+                        : '-'}
+                    </td>
+                    <th>교육일시</th>
+                    <td>
+                      {selectedPlan
+                        ? `${
+                            selectedPlan.schedule ||
+                            (selectedPlan.date ? selectedPlan.date.split('T')[0] : '')
+                          } (${selectedPlan.hours}시간)`
+                        : '-'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>집행비용</th>
+                    <td className="font-bold">
+                      {selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : '-'}
+                    </td>
+                    <th>교육만족도</th>
+                    <td className="font-bold">
+                      {selectedPlan
+                        ? `${satisfactionScore.toFixed(1)}점 / 5.0점 (${getSatisfactionLabel(
+                            satisfactionScore
+                          )})`
+                        : '-'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>교육목적</th>
+                    <td colSpan={3} className="whitespace-pre-wrap">
+                      {purpose || '-'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      교육 결과
+                      <br />
+                      요약 및 성과
+                    </th>
+                    <td colSpan={3} className="whitespace-pre-wrap align-top">
+                      <div className="min-h-[115px]">
+                        {summary || '(교육 수료 내용 및 주요 성과 기재)'}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      현업 적용 계획
+                      <br />및 기대효과
+                    </th>
+                    <td colSpan={3} className="whitespace-pre-wrap align-top">
+                      <div className="min-h-[85px]">
+                        {futurePlan || '(향후 현업 적용 방안 및 기대효과 기재)'}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>교육증빙 첨부</th>
+                    <td colSpan={3} className="text-center align-middle">
+                      {certificateFile ? (
+                        <div className="py-1 flex flex-col items-center justify-center">
+                          <img
+                            src={certificateFile}
+                            alt="교육증빙"
+                            className="max-h-[185px] w-auto object-contain border border-gray-300"
+                            referrerPolicy="no-referrer"
+                          />
+                          {certificateFileName && (
+                            <p className="text-[10px] text-gray-500 mt-1 font-mono">
+                              첨부파일: {certificateFileName}
+                            </p>
+                          )}
                         </div>
-                      </td>
-                    </tr>
-                  )}
+                      ) : (
+                        <div className="py-4 text-gray-400 text-[11px]">
+                          (첨부된 교육 수료증 또는 현장 사진 없음)
+                        </div>
+                      )}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
 
-            <div className="text-center pt-2 border-t border-gray-100 mt-2 print:mt-1.5 pb-0">
-              <p className="text-[11px] sm:text-xs text-gray-500 tracking-tight leading-relaxed mb-2 print:mb-1.5 font-medium max-w-[95%] mx-auto">위와 같이 연간 교육 계획에 의거하여 사내/사외 위탁 교육 결과를 보고하오니,<br />검토 후 결재하여 주시기 바랍니다.</p>
-              <p className="text-[11px] sm:text-xs font-bold text-gray-700 tracking-wider mb-2 print:mb-1.5">{getFormattedKoreanDate(reportDate)}</p>
-              <div className="flex flex-col items-center">
-                <p className="text-sm sm:text-md font-extrabold text-gray-900 leading-none">(주)대성스틸</p>
-              </div>
+            {/* 하단 서명 영역 */}
+            <div className="text-center pt-4 mt-4">
+              <p className="text-xs text-gray-800 mb-3 font-medium">
+                위와 같이 교육훈련 이수 결과를 보고하오니 검토 후 재가하여 주시기 바랍니다.
+              </p>
+              <p className="text-xs font-bold text-black mb-3">
+                {getFormattedKoreanDate(reportDate)}
+              </p>
+              <p className="text-base font-black tracking-widest text-black">
+                주식회사 대성스틸
+              </p>
             </div>
           </div>
         </div>
@@ -1192,17 +1331,39 @@ export default function ReportManager({
       <AnimatePresence>
         {deleteTargetId !== null && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full text-center space-y-4"
+            >
               <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-500">
                 <Trash2 className="w-6 h-6" />
               </div>
               <div>
                 <h4 className="text-sm font-bold text-gray-800">보고서를 삭제하시겠습니까?</h4>
-                <p className="text-xs text-gray-400 mt-1">구글 스프레드시트에서도 즉시 삭제됩니다.</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  구글 스프레드시트에서도 즉시 삭제됩니다.
+                </p>
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setDeleteTargetId(null)} className="flex-1 rounded-xl border border-gray-200 py-2 text-xs font-bold">아니요</button>
-                <button type="button" onClick={() => { handleDeleteReport(deleteTargetId); setDeleteTargetId(null); }} className="flex-1 rounded-xl bg-rose-600 text-white text-xs font-bold py-2">확인</button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTargetId(null)}
+                  className="flex-1 rounded-xl border border-gray-200 py-2 text-xs font-bold"
+                >
+                  아니요
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteReport(deleteTargetId);
+                    setDeleteTargetId(null);
+                  }}
+                  className="flex-1 rounded-xl bg-rose-600 text-white text-xs font-bold py-2"
+                >
+                  확인
+                </button>
               </div>
             </motion.div>
           </div>
