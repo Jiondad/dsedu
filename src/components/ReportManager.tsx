@@ -239,11 +239,41 @@ export default function ReportManager({
   // State to show print dialog error warning modal (when window.print is blocked by iframe sandbox)
   const [showPrintIframeWarning, setShowPrintIframeWarning] = useState(false);
 
+  // Filter for plan categories ('전체', '사내', '사외')
+  const [planCategoryFilter, setPlanCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
+
   // 연도 선택 필터 State (디폴트는 현재 연도)
   const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
 
-  // Filter education plans that already have drafts (COMPLETED DRAFTS ONLY!)
-  const plansWithDrafts = plans.filter((p) => drafts.some((d) => d.plan_id === p.id));
+  // 1차 필터: 기안서가 작성 완료된 교육 계획만 추출
+  const plansWithDrafts = plans.filter((p) =>
+    drafts.some((d) => String(d.plan_id || '').trim() === String(p.id || '').trim())
+  );
+
+  // 2차 필터: 이미 결과보고서가 작성된 교육 계획은 드롭다운에서 제외 (단, 현재 수정 중인 보고서의 교육 계획은 유지)
+  const availablePlansForReport = plansWithDrafts.filter((plan) => {
+    const planIdStr = String(plan.id || '').trim();
+
+    // 현재 선택되어 수정 중인 교육 계획이라면 드롭다운에 무조건 표시 보장
+    if (planIdStr === String(selectedPlanId || '').trim()) {
+      return true;
+    }
+
+    // 카테고리 필터 ('전체' | '사내' | '사외') 검사
+    const categoryMatch =
+      planCategoryFilter === '전체' || plan.category === planCategoryFilter;
+
+    // 이미 결과보고서가 존재하는지 검사 (수정 모드일 때는 자기 자신 제외)
+    const isAlreadyReported = reports.some((r, idx) => {
+      const rPlanId = String(r.plan_id || r.planId || '').trim();
+      if (editingReportIndex !== null) {
+        return rPlanId === planIdStr && idx !== editingReportIndex;
+      }
+      return rPlanId === planIdStr;
+    });
+
+    return categoryMatch && !isAlreadyReported;
+  });
 
   // Auto-generate report ID based on selected draft's ID or fallback date
   const autoGenerateReportId = (matchedDraft: EducationDraft | undefined, date: string) => {
@@ -260,8 +290,12 @@ export default function ReportManager({
   // Synchronize report form on plan selection
   useEffect(() => {
     if (selectedPlanId) {
-      const matchedDraft = drafts.find((d) => d.plan_id === selectedPlanId);
-      const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+      const matchedDraft = drafts.find(
+        (d) => String(d.plan_id || '').trim() === String(selectedPlanId || '').trim()
+      );
+      const selectedPlan = plans.find(
+        (p) => String(p.id || '').trim() === String(selectedPlanId || '').trim()
+      );
 
       if (matchedDraft && selectedPlan) {
         setDraftId(matchedDraft.id);
@@ -308,7 +342,9 @@ export default function ReportManager({
   // Handle preselected plan when clicking "보고서" from the plans tab
   useEffect(() => {
     if (preselectedPlanId) {
-      const plan = plans.find((p) => p.id === preselectedPlanId);
+      const plan = plans.find(
+        (p) => String(p.id || '').trim() === String(preselectedPlanId || '').trim()
+      );
       if (plan) {
         setSelectedPlanId(preselectedPlanId);
 
@@ -331,7 +367,9 @@ export default function ReportManager({
             'info'
           );
         } else {
-          const matchedDraft = drafts.find((d) => d.plan_id === preselectedPlanId);
+          const matchedDraft = drafts.find(
+            (d) => String(d.plan_id || '').trim() === String(preselectedPlanId || '').trim()
+          );
           setEditingReportIndex(null);
 
           const nextId = autoGenerateReportId(matchedDraft, reportDate);
@@ -417,6 +455,13 @@ export default function ReportManager({
         );
         handleSelectReportForEdit(existingReport, index);
       }
+    } else if (editingReportIndex !== null) {
+      // 수정 모드에서 아직 보고서가 없는 다른 교육을 선택한 경우 신규 작성 모드로 자연스럽게 전환
+      setEditingReportIndex(null);
+      setSummary('');
+      setFuturePlan('');
+      setCertificateFile('');
+      setCertificateFileName('');
     }
   };
 
@@ -440,7 +485,9 @@ export default function ReportManager({
     setCertificateFile(report.certificate_file || report.certificateFile || '');
     setCertificateFileName(report.certificate_file_name || report.certificateFileName || '');
 
-    const matchedDraft = drafts.find((d) => d.plan_id === (report.plan_id || report.planId));
+    const matchedDraft = drafts.find(
+      (d) => String(d.plan_id || '').trim() === String(report.plan_id || report.planId || '').trim()
+    );
     if (matchedDraft) {
       setPurpose(matchedDraft.purpose || '');
       setBudgetBreakdown(matchedDraft.budget_breakdown || '');
@@ -491,7 +538,9 @@ export default function ReportManager({
     triggerLocalNotification('교육 결과보고서가 즉시 삭제되었습니다.', 'success');
   };
 
-  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+  const selectedPlan = plans.find(
+    (p) => String(p.id || '').trim() === String(selectedPlanId || '').trim()
+  );
 
   const handlePrint = () => {
     const isIframe = window.self !== window.top;
@@ -653,8 +702,8 @@ export default function ReportManager({
         await onFetchReports(selectedYear);
       }
 
-      // 저장 완료 후에도 바로 인쇄하거나 증빙을 확인할 수 있도록 방금 저장한 데이터를 편집 상태로 유지
-      // (원치 않으시면 목록에서 다시 클릭해 확인 가능)
+      // 신규 저장 완료 후 입력 폼을 초기화하여 방금 작성된 교육이 드롭다운에서 즉시 사라지도록 처리
+      handleResetForm();
     } catch (err) {
       console.error('Failed to save report:', err);
       triggerLocalNotification('결과보고서 저장 중 오류가 발생했습니다.', 'error');
@@ -735,10 +784,29 @@ export default function ReportManager({
           </div>
 
           <form onSubmit={handleSaveReport} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                1. 연간 교육 선택 <span className="text-rose-500">*</span>
-              </label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-gray-500">
+                  1. 연간 교육 선택 <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-bold">
+                  {(['전체', '사내', '사외'] as const).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setPlanCategoryFilter(cat)}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                        planCategoryFilter === cat
+                          ? 'bg-white text-indigo-700 shadow-xs'
+                          : 'text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <select
                 value={selectedPlanId}
                 onChange={(e) => handlePlanSelection(e.target.value)}
@@ -746,10 +814,15 @@ export default function ReportManager({
                   errors.selectedPlanId ? 'border-rose-400 bg-rose-50/20' : 'border-gray-200'
                 }`}
               >
-                <option value="">-- 기안 완료된 교육 목록 선택 --</option>
-                {plansWithDrafts.map((plan) => (
+                <option value="">
+                  {availablePlansForReport.length === 0
+                    ? '-- 보고서 미작성 교육이 없습니다 (모두 작성 완료) --'
+                    : `-- 기안 완료된 미작성 교육 선택 (${availablePlansForReport.length}건) --`}
+                </option>
+                {availablePlansForReport.map((plan) => (
                   <option key={plan.id} value={plan.id}>
                     [{plan.category}] {plan.title} ({plan.date ? plan.date.split('T')[0] : ''})
+                    {plan.target ? ` - ${plan.target}` : ''}
                   </option>
                 ))}
               </select>
@@ -811,7 +884,9 @@ export default function ReportManager({
                   onChange={(e) => {
                     setReportDate(e.target.value);
                     if (editingReportIndex === null && selectedPlanId) {
-                      const matched = drafts.find((d) => d.plan_id === selectedPlanId);
+                      const matched = drafts.find(
+                        (d) => String(d.plan_id || '').trim() === String(selectedPlanId || '').trim()
+                      );
                       setReportId(autoGenerateReportId(matched, e.target.value));
                     }
                   }}
@@ -1082,7 +1157,9 @@ export default function ReportManager({
                   ) : (
                     filteredReportsWithIndex.map(({ r, originalIndex }) => {
                       const associatedPlan = plans.find(
-                        (p) => p.id === (r.plan_id || r.planId)
+                        (p) =>
+                          String(p.id || '').trim() ===
+                          String(r.plan_id || r.planId || '').trim()
                       );
                       const hasCert = Boolean(r.certificate_file || r.certificateFile);
                       return (
