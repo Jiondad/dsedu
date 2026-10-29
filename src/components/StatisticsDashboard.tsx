@@ -509,4 +509,197 @@ export default function StatisticsDashboard({
                     fontSize: '12px',
                     fontWeight: 600,
                   }}
-                  formatter={(value: any
+                  formatter={(value: any, name: string) => [
+                    `₩${formatCurrency(Number(value) * 10000)}`,
+                    name === '계획예산만원' ? '계획 예산' : '실집행 비용',
+                  ]}
+                />
+                <Bar
+                  dataKey="계획예산만원"
+                  fill="#a7f3d0"
+                  radius={[4, 4, 0, 0]}
+                  barSize={20}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="집행비용만원"
+                  stroke="#059669"
+                  strokeWidth={2.5}
+                  dot={{ r: 3.5, fill: '#059669', strokeWidth: 1.5, stroke: '#fff' }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. 완료된 교육 실적 상세 테이블 (출력 기능 포함 복구) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600" />
+              완료된 교육 실적 상세 내역 ({analysis.completedPlans.length}건)
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              결과보고서 마감이 완료되어 정산 및 이수가 확정된 교육 실적 목록입니다.
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              마감 완료 {analysis.completedPlans.length}건
+            </span>
+            <button
+              type="button"
+              onClick={handlePrintTable}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold transition-all cursor-pointer no-print"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-500" />
+              <span>실적 내역 출력</span>
+            </button>
+          </div>
+        </div>
+
+        {analysis.completedPlans.length === 0 ? (
+          <div className="py-8 text-center text-xs font-bold text-slate-400 bg-slate-50/50 rounded-xl border border-slate-100">
+            아직 마감된 교육 결과보고서가 없습니다.
+          </div>
+        ) : (
+          <div className="overflow-x-auto max-h-80 overflow-y-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                  <th className="py-2.5 px-3 font-bold">보고서번호</th>
+                  <th className="py-2.5 px-3 font-bold">구분</th>
+                  <th className="py-2.5 px-3 font-bold">교육일자</th>
+                  <th className="py-2.5 px-3 font-bold">교육과정명</th>
+                  <th className="py-2.5 px-3 font-bold">교육기관 / 강사</th>
+                  <th className="py-2.5 px-3 font-bold">참여대상</th>
+                  <th className="py-2.5 px-3 font-bold text-center">만족도</th>
+                  <th className="py-2.5 px-3 font-bold text-right">집행비용</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {analysis.completedPlans.map((plan) => {
+                  const matchedReport = reports.find(
+                    (r) => String(r.plan_id || r.planId || '').trim() === String(plan.id || '').trim()
+                  );
+                  const score = matchedReport
+                    ? Number(matchedReport.satisfaction_score ?? matchedReport.satisfactionScore ?? 5.0)
+                    : 5.0;
+                  const hasCert = Boolean(matchedReport?.certificate_file || matchedReport?.certificateFile);
+
+                  return (
+                    <tr key={plan.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-2.5 px-3 font-mono text-[11px] font-bold text-indigo-600">
+                        {matchedReport ? matchedReport.id : 'DSEREP-XXXX'}
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-slate-700">{plan.category}</td>
+                      <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px]">
+                        {(plan.date || '').split('T')[0]}
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-slate-800">
+                        <div className="flex items-center gap-1.5">
+                          <span>{plan.title}</span>
+                          {hasCert && (
+                            <span className="shrink-0 inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" title="증빙자료 첨부됨">
+                              <ImageIcon className="w-2.5 h-2.5" /> 증빙
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {plan.institution} {plan.instructor ? `(${plan.instructor})` : ''}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {plan.target} <strong className="text-slate-800">({plan.headcount}명)</strong>
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-bold text-purple-700">
+                        {score.toFixed(1)}점
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-700">
+                        ₩{formatCurrency(plan.cost)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* 5. 실무 점검 섹션: 미마감(결과보고서 미작성) 교육 과정 리스트 */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              <AlertCircle className="w-4.5 h-4.5 text-amber-500" />
+              결과보고서 미마감 교육 과정 점검 ({analysis.pendingPlans.length}건)
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              연간 계획에 등록되어 있으나 아직 최종 결과보고서가 제출되지 않은 교육 목록입니다.
+            </p>
+          </div>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 self-start sm:self-auto">
+            잔여 미마감 {analysis.pendingPlans.length}건
+          </span>
+        </div>
+
+        {analysis.pendingPlans.length === 0 ? (
+          <div className="py-8 text-center text-xs font-bold text-emerald-600 bg-emerald-50/40 rounded-xl border border-emerald-100">
+            🎉 모든 연간 교육 계획의 결과보고서 마감이 100% 완료되었습니다!
+          </div>
+        ) : (
+          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                  <th className="py-2.5 px-3 font-bold">진행상태</th>
+                  <th className="py-2.5 px-3 font-bold">구분</th>
+                  <th className="py-2.5 px-3 font-bold">교육일자</th>
+                  <th className="py-2.5 px-3 font-bold">교육과정명</th>
+                  <th className="py-2.5 px-3 font-bold">교육기관</th>
+                  <th className="py-2.5 px-3 font-bold">교육대상</th>
+                  <th className="py-2.5 px-3 font-bold text-right">예상비용</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {analysis.pendingPlans.map((plan) => {
+                  const isDrafted = analysis.draftedPlanIds.has(String(plan.id || '').trim());
+                  return (
+                    <tr key={plan.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-2.5 px-3">
+                        {isDrafted ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                            <FileCheck2 className="w-3 h-3" /> 기안완료 (보고대기)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            기안 미작성
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-slate-700">{plan.category}</td>
+                      <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px]">
+                        {(plan.date || '').split('T')[0]} ({plan.schedule})
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-slate-800">{plan.title}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{plan.institution}</td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {plan.target} {plan.headcount ? `(${plan.headcount}명)` : ''}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-700">
+                        ₩{formatCurrency(plan.cost)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
