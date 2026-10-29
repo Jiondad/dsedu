@@ -127,7 +127,7 @@ export default function App() {
     }
   }, [isSettingsOpen]);
 
-// ⚡ 속도 개선판: Sheets DB Setup Flow (병렬 비동기 처리)
+  // ⚡ 속도 개선판: Sheets DB Setup Flow (병렬 비동기 처리)
   const initializeSheetsDB = async (accessToken: string | null = null, year: string = selectedYear) => {
     setIsLoading(true);
     setLoadingStep('구글 클라우드 DB로부터 마스터 데이터를 동기화하는 중입니다...');
@@ -144,7 +144,6 @@ export default function App() {
         fetchReports(sheetId, accessToken, year)
       ]);
 
-      // 한 번에 도착한 데이터를 각각의 상태 주머니에 쏙 집어넣기
       if (Array.isArray(fetchedPlans)) {
         setPlans(fetchedPlans);
       } else {
@@ -211,7 +210,6 @@ export default function App() {
     const originalPlans = [...plans];
 
     if (formData.id) {
-      // 1. UPDATE MODE (Optimistic Update)
       const index = plans.findIndex((p) => p.id === formData.id);
       if (index === -1) return;
 
@@ -220,7 +218,6 @@ export default function App() {
         ...formData,
       } as EducationPlan;
 
-      // Optimistically update local array
       const updatedList = [...plans];
       updatedList[index] = updatedPlan;
       setPlans(updatedList);
@@ -230,18 +227,16 @@ export default function App() {
         await updatePlan(activeSheetId, null, updatedPlan, index, selectedYear);
       } catch (err) {
         console.error('업데이트 동기화 실패:', err);
-        setPlans(originalPlans); // Revert
+        setPlans(originalPlans);
         triggerNotification('구글 시트 동기화에 실패하여 변경 사항을 되돌렸습니다.', 'error');
       }
     } else {
-      // 2. CREATE MODE (Optimistic Update)
       const newPlanId = `edu_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const newPlan: EducationPlan = {
         ...formData,
         id: newPlanId,
       };
 
-      // Optimistically insert into local array
       setPlans((prev) => [...prev, newPlan]);
       triggerNotification('새 교육 계획이 등록되었습니다. (스프레드시트 동기화 진행 중)', 'success');
 
@@ -249,7 +244,7 @@ export default function App() {
         await addPlan(activeSheetId, null, newPlan, selectedYear);
       } catch (err) {
         console.error('추가 동기화 실패:', err);
-        setPlans(originalPlans); // Revert
+        setPlans(originalPlans);
         triggerNotification('구글 시트 동기화에 실패하여 추가를 취소했습니다.', 'error');
       }
     }
@@ -261,8 +256,6 @@ export default function App() {
     const activeSheetId = spreadsheetId || config.spreadsheetId;
 
     const originalPlans = [...plans];
-
-    // Optimistically remove from local array
     const updatedList = plans.filter((_, i) => i !== index);
     setPlans(updatedList);
     triggerNotification('교육 계획이 삭제되었습니다. (스프레드시트 동기화 진행 중)', 'success');
@@ -271,7 +264,7 @@ export default function App() {
       await deletePlan(activeSheetId, null, index, undefined, selectedYear);
     } catch (err) {
       console.error('삭제 동기화 실패:', err);
-      setPlans(originalPlans); // Revert
+      setPlans(originalPlans);
       triggerNotification('구글 시트 동기화에 실패하여 삭제를 복구했습니다.', 'error');
     }
   };
@@ -286,10 +279,8 @@ export default function App() {
     setLoadingStep('최신 기안 데이터를 조회 중입니다...');
 
     try {
-      // 1. Fetch absolute latest drafts to ensure no sequence numbering overlaps
       const latestDrafts = await fetchDrafts(activeSheetId, null, selectedYear);
       
-      // 2. Generate the unique sequential draft ID
       const draftDate = newDraft.draft_date;
       const year = draftDate.substring(0, 4);
       const dateStr = draftDate.replace(/-/g, '');
@@ -316,18 +307,15 @@ export default function App() {
       const paddedSerial = String(nextSerial).padStart(3, '0');
       const finalId = `DSEDU-${dateStr}-${paddedSerial}`;
 
-      // Overwrite ID to make it secure
       const finalizedDraft = {
         ...newDraft,
         id: finalId,
       };
 
-      // 3. Update state optimistically before remote request
       const updatedDrafts = [...latestDrafts, finalizedDraft];
       setDrafts(updatedDrafts);
 
       setLoadingStep('기안서를 저장하는 중입니다...');
-      // 4. Save to remote Google Sheet
       await addDraft(activeSheetId, null, finalizedDraft, selectedYear);
       triggerNotification(`기안서가 저장되었습니다. (기안번호: ${finalId})`, 'success');
 
@@ -356,7 +344,7 @@ export default function App() {
       await updateDraft(activeSheetId, null, updatedDraft, index, selectedYear);
     } catch (err) {
       console.error('기안서 수정 동기화 실패:', err);
-      setDrafts(originalDrafts); // Revert
+      setDrafts(originalDrafts);
       triggerNotification('구글 시트 동기화에 실패하여 변경 사항을 되돌렸습니다.', 'error');
     }
   };
@@ -374,7 +362,7 @@ export default function App() {
       await deleteDraft(activeSheetId, null, index, undefined, selectedYear);
     } catch (err) {
       console.error('기안서 삭제 동기화 실패:', err);
-      setDrafts(originalDrafts); // Revert
+      setDrafts(originalDrafts);
       triggerNotification('구글 시트 동기화에 실패하여 기안서 삭제를 복구했습니다.', 'error');
     }
   };
@@ -400,15 +388,12 @@ export default function App() {
     setLoadingStep('최신 보고서 데이터를 조회 중입니다...');
 
     try {
-      // 1. Fetch latest reports
       const latestReports = await fetchReports(activeSheetId, null, selectedYear);
 
-      // 2. Determine non-duplicate Report ID
       let finalId = newReport.id;
       
       const matchedDraft = drafts.find((d) => d.plan_id === newReport.plan_id);
       if (matchedDraft && matchedDraft.id) {
-        // Direct replacement
         finalId = matchedDraft.id.replace('DSEDU-', 'DSEREP-').replace('DSED-', 'DSEREP-');
       } else {
         const reportDate = newReport.report_date;
@@ -431,7 +416,6 @@ export default function App() {
         finalId = `DSEREP-${dateStr}-${paddedSerial}`;
       }
 
-      // Check if it duplicates in the retrieved rows
       let finalUniqueId = finalId;
       let counter = 1;
       while (latestReports.some((r) => r.id === finalUniqueId)) {
@@ -468,12 +452,10 @@ export default function App() {
         year: newReport.year || selectedYear,
       };
 
-      // 3. Update local state
       const updatedReports = [...latestReports, finalizedReport];
       setReports(updatedReports);
 
       setLoadingStep('결과보고서를 저장하는 중입니다...');
-      // 4. Save to remote Google Sheet
       await addReport(activeSheetId, null, finalizedReport, selectedYear);
       triggerNotification(`결과보고서가 저장되었습니다. (보고서번호: ${finalUniqueId})`, 'success');
 
@@ -523,7 +505,7 @@ export default function App() {
       await updateReport(activeSheetId, null, normalizedReport, index, selectedYear);
     } catch (err) {
       console.error('결과보고서 수정 동기화 실패:', err);
-      setReports(originalReports); // Revert
+      setReports(originalReports);
       triggerNotification('구글 시트 동기화에 실패하여 변경 사항을 되돌렸습니다.', 'error');
     }
   };
@@ -541,7 +523,7 @@ export default function App() {
       await deleteReport(activeSheetId, null, index, undefined, selectedYear);
     } catch (err) {
       console.error('결과보고서 삭제 동기화 실패:', err);
-      setReports(originalReports); // Revert
+      setReports(originalReports);
       triggerNotification('구글 시트 동기화에 실패하여 보고서 삭제를 복구했습니다.', 'error');
     }
   };
@@ -556,7 +538,6 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  // ---------------- RENDERING THE MAIN APP INTERFACE ----------------
   return (
     <div className="min-h-screen bg-gray-50/50 text-gray-800">
       {/* Toast Notification */}
@@ -721,9 +702,9 @@ export default function App() {
             <div className="mt-4">
               {activeTab === 'plans' && (
                 <div className="space-y-6 sm:space-y-8">
-                  {/* Dashboard / Analytics Panel */}
+                  {/* Dashboard / Analytics Panel (연도별 plans 데이터 완벽 연동) */}
                   <div className="no-print">
-                    <Dashboard metrics={metrics} />
+                    <Dashboard metrics={metrics} plans={yearFilteredPlans} selectedYear={selectedYear} />
                   </div>
 
                   {/* Plan List Panel */}
@@ -794,6 +775,7 @@ export default function App() {
                   plans={plans}
                   drafts={drafts}
                   reports={reports}
+                  selectedYear={selectedYear}
                 />
               )}
             </div>
