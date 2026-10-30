@@ -226,7 +226,6 @@ export default function PlanTable({
         <div className="w-full overflow-x-auto bg-white">
           <table className="w-full min-w-[950px] print:min-w-0 table-fixed text-left border-collapse text-xs">
             <thead>
-              {/* 필드명 영역에 연한 회색빛 배경색(bg-slate-50/80)과 상하 테두리 적용 */}
               <tr className="border-y border-gray-200 text-[11px] font-bold text-gray-600 uppercase tracking-wider bg-slate-50/80">
                 <th style={{ width: '4%' }} className="py-3.5 px-2 text-center">
                   NO
@@ -264,7 +263,7 @@ export default function PlanTable({
                 <th style={{ width: '5%' }} className="py-3.5 px-1 text-center no-print">
                   기안
                 </th>
-                <th style={{ width: '5% ' }} className="py-3.5 px-1 text-center no-print">
+                <th style={{ width: '5%' }} className="py-3.5 px-1 text-center no-print">
                   보고서
                 </th>
                 <th style={{ width: '7%' }} className="py-3.5 px-2 text-center no-print">
@@ -418,10 +417,10 @@ export default function PlanTable({
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
