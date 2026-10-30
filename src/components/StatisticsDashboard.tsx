@@ -40,7 +40,7 @@ import {
   ClipboardCheck,
   Wallet,
   BarChart3,
-  FileCheck2,
+  Calendar,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -257,7 +257,7 @@ export default function StatisticsDashboard({
     }
   };
 
-  // 💡 하단 교육 실적 테이블만 A4 가로(Landscape)로 출력하는 함수
+  // 하단 교육 실적 테이블만 A4 가로(Landscape)로 출력하는 함수
   const handlePrintList = () => {
     const portraitStyleEl = document.getElementById('dynamic-portrait-print-style');
     if (portraitStyleEl) {
@@ -274,14 +274,12 @@ export default function StatisticsDashboard({
         styleEl = document.createElement('style');
         styleEl.id = styleId;
       }
-      // 주의: .space-y-6에 display: block !important를 걸면 .no-print.space-y-6까지 강제 노출되므로 :not(.no-print) 적용!
       styleEl.innerHTML = `
         @media print {
           @page {
             size: A4 landscape !important;
             margin: 10mm !important;
           }
-          /* 상단 대시보드, 차트, 검색창, 버튼 등 비인쇄 영역 완벽 제거 */
           header, footer, nav, button, form, .no-print, .stats-chart-card, .stats-filter-section, .modal, [role="dialog"] {
             display: none !important;
           }
@@ -299,7 +297,6 @@ export default function StatisticsDashboard({
             background: #ffffff !important;
             min-height: 0 !important;
           }
-          /* 오직 하단 교육실적 테이블 컨테이너만 A4 가로 100%로 표시 */
           #printable-area.print-report-table-container {
             display: block !important;
             visibility: visible !important;
@@ -596,7 +593,7 @@ export default function StatisticsDashboard({
           </div>
         </div>
 
-        {/* 2. 5대 실적 핵심 KPI 카드 (글자 잘림 완벽 해결) */}
+        {/* 2. 5대 실적 핵심 KPI 카드 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
@@ -721,7 +718,7 @@ export default function StatisticsDashboard({
           </div>
         </div>
 
-        {/* 3. 중단 차트 영역 (단일 축 인원 비교 & 월별 예산 대 집행 추이) */}
+        {/* 3. 중단 차트 영역 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -844,357 +841,409 @@ export default function StatisticsDashboard({
       </div>
 
       {/* =====================================================================
-          하단 교육 실적 목록 테이블 (인쇄 시 이 영역만 A4 가로로 출력됨!)
+          하단 교육 실적 목록 섹션 (연간 교육 계획 목록 UI 스타일로 100% 통일)
       ===================================================================== */}
-      <div
-        id="printable-area"
-        className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-4 print-report-table-container print-stats-table-container"
-      >
-        {/* 인쇄 전용 헤더 및 결재방 */}
-        <div className="hidden print:block mb-6 w-full">
-          <div className="flex justify-between items-end pb-2.5">
-            <h1 className="text-lg font-black text-slate-900 self-end mb-2">
-              대성스틸 연간 교육 실적 현황
-            </h1>
-            <div className="ml-auto">
-              <table
-                className="approval-table border-collapse border border-black text-center"
-                style={{
-                  width: '48mm',
-                  height: '18mm',
-                  tableLayout: 'fixed',
-                  borderCollapse: 'collapse',
-                  marginLeft: 'auto',
-                  marginRight: '0',
-                  border: '1px solid black',
-                }}
-              >
-                <colgroup>
-                  <col style={{ width: '6mm' }} />
-                  <col style={{ width: '14mm' }} />
-                  <col style={{ width: '14mm' }} />
-                  <col style={{ width: '14mm' }} />
-                </colgroup>
-                <tbody>
-                  <tr className="border-b border-black">
-                    <td
-                      rowSpan={2}
-                      className="border-r border-black font-bold p-0.5 bg-gray-100 text-[10px] text-center"
-                      style={{
-                        borderRight: '1px solid black',
-                        width: '6mm',
-                        padding: '2px',
-                        backgroundColor: '#f3f4f6',
-                        fontWeight: 'bold',
-                        fontSize: '10px',
-                        lineHeight: '1.2',
-                      }}
-                    >
-                      결<br />재
-                    </td>
-                    <td
-                      className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center"
-                      style={{
-                        borderRight: '1px solid black',
-                        width: '14mm',
-                        padding: '2px',
-                        backgroundColor: '#f9fafb',
-                        fontSize: '10px',
-                        lineHeight: '1.2',
-                      }}
-                    >
-                      작성
-                    </td>
-                    <td
-                      className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center"
-                      style={{
-                        borderRight: '1px solid black',
-                        width: '14mm',
-                        padding: '2px',
-                        backgroundColor: '#f9fafb',
-                        fontSize: '10px',
-                        lineHeight: '1.2',
-                      }}
-                    >
-                      검토
-                    </td>
-                    <td
-                      className="font-bold p-0.5 bg-gray-50 text-[10px] text-center"
-                      style={{
-                        width: '14mm',
-                        padding: '2px',
-                        backgroundColor: '#f9fafb',
-                        fontSize: '10px',
-                        lineHeight: '1.2',
-                      }}
-                    >
-                      승인
-                    </td>
-                  </tr>
-                  <tr style={{ height: '12mm' }}>
-                    <td
-                      className="border-r border-black"
-                      style={{ borderRight: '1px solid black', height: '12mm' }}
-                    ></td>
-                    <td
-                      className="border-r border-black"
-                      style={{ borderRight: '1px solid black', height: '12mm' }}
-                    ></td>
-                    <td style={{ height: '12mm' }}></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+      <div className="space-y-4">
+        {/* 섹션 타이틀 헤더 (연간 교육 계획 목록과 동일한 카드 외부 배치) */}
+        <div className="flex justify-between items-center no-print">
           <div>
-            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+            <h2 className="text-md font-bold text-gray-800 flex items-center gap-2">
               <Award className="w-4.5 h-4.5 text-indigo-500" />
               <span>교육 실적 목록 (이수 완료)</span>
-            </h3>
-            <p className="text-[11px] text-gray-400 mt-0.5 font-medium">
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
               기안 및 결과보고 제출이 100% 완료된 실적 상세 현황입니다.
             </p>
           </div>
         </div>
 
-        {/* Search and Filters bar (no-print) */}
-        <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-gray-50/50 p-4 rounded-xl border border-gray-100 no-print stats-filter-section">
-          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto items-center">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="교육명, 보고서번호, 부서, 보고자 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
-              />
+        {/* 테이블 메인 카드 컨테이너 (연간 교육 계획 목록과 동일한 디자인) */}
+        <div
+          id="printable-area"
+          className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden print-report-table-container print-stats-table-container"
+        >
+          {/* 인쇄 전용 헤더 및 결재방 */}
+          <div className="hidden print:block mb-6 w-full">
+            <div className="flex justify-between items-end pb-2.5">
+              <h1 className="text-lg font-black text-slate-900 self-end mb-2">
+                대성스틸 연간 교육 실적 현황
+              </h1>
+              <div className="ml-auto">
+                <table
+                  className="approval-table border-collapse border border-black text-center"
+                  style={{
+                    width: '48mm',
+                    height: '18mm',
+                    tableLayout: 'fixed',
+                    borderCollapse: 'collapse',
+                    marginLeft: 'auto',
+                    marginRight: '0',
+                    border: '1px solid black',
+                  }}
+                >
+                  <colgroup>
+                    <col style={{ width: '6mm' }} />
+                    <col style={{ width: '14mm' }} />
+                    <col style={{ width: '14mm' }} />
+                    <col style={{ width: '14mm' }} />
+                  </colgroup>
+                  <tbody>
+                    <tr className="border-b border-black">
+                      <td
+                        rowSpan={2}
+                        className="border-r border-black font-bold p-0.5 bg-gray-100 text-[10px] text-center"
+                        style={{
+                          borderRight: '1px solid black',
+                          width: '6mm',
+                          padding: '2px',
+                          backgroundColor: '#f3f4f6',
+                          fontWeight: 'bold',
+                          fontSize: '10px',
+                          lineHeight: '1.2',
+                        }}
+                      >
+                        결<br />재
+                      </td>
+                      <td
+                        className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center"
+                        style={{
+                          borderRight: '1px solid black',
+                          width: '14mm',
+                          padding: '2px',
+                          backgroundColor: '#f9fafb',
+                          fontSize: '10px',
+                          lineHeight: '1.2',
+                        }}
+                      >
+                        작성
+                      </td>
+                      <td
+                        className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center"
+                        style={{
+                          borderRight: '1px solid black',
+                          width: '14mm',
+                          padding: '2px',
+                          backgroundColor: '#f9fafb',
+                          fontSize: '10px',
+                          lineHeight: '1.2',
+                        }}
+                      >
+                        검토
+                      </td>
+                      <td
+                        className="font-bold p-0.5 bg-gray-50 text-[10px] text-center"
+                        style={{
+                          width: '14mm',
+                          padding: '2px',
+                          backgroundColor: '#f9fafb',
+                          fontSize: '10px',
+                          lineHeight: '1.2',
+                        }}
+                      >
+                        승인
+                      </td>
+                    </tr>
+                    <tr style={{ height: '12mm' }}>
+                      <td
+                        className="border-r border-black"
+                        style={{ borderRight: '1px solid black', height: '12mm' }}
+                      ></td>
+                      <td
+                        className="border-r border-black"
+                        style={{ borderRight: '1px solid black', height: '12mm' }}
+                      ></td>
+                      <td style={{ height: '12mm' }}></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* 상단 검색 및 필터 바 (연간 교육 계획 목록과 동일한 깔끔한 화이트 툴바) */}
+          <div className="flex flex-col lg:flex-row gap-4 justify-between items-center px-6 py-5 border-b border-gray-100 bg-white no-print stats-filter-section">
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-center">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="교육명, 보고서번호, 부서, 보고자 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 text-xs font-medium outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
+                />
+              </div>
+
+              <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 items-center">
+                {(['전체', '사내', '사외'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      categoryFilter === cat
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 items-center">
-              {(['전체', '사내', '사외'] as const).map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    categoryFilter === cat
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
-                  }`}
+            <div className="flex items-center gap-2.5 w-full lg:w-auto justify-end">
+              <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full">
+                총 {filteredReports.length}건 완료
+              </div>
+              <button
+                onClick={handlePrintList}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+              >
+                <Printer className="w-4 h-4 text-gray-500" />
+                <span>교육 실적 목록 출력</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 10개 칼럼 실적 상세 테이블 (필드명/내용 100% 보존 + PlanTable UI 스타일 적용) */}
+          <div className="w-full overflow-x-auto bg-white">
+            <table className="w-full min-w-[900px] print:min-w-0 table-fixed text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/40">
+                  <th style={{ width: '4%' }} className="py-3.5 px-2 text-center">
+                    NO
+                  </th>
+                  <th style={{ width: '6%' }} className="py-3.5 px-2 text-center">
+                    구분
+                  </th>
+                  <th style={{ width: '14%' }} className="py-3.5 px-3">
+                    보고서번호
+                  </th>
+                  <th style={{ width: '26%' }} className="py-3.5 px-3 min-w-[200px]">
+                    교육명
+                  </th>
+                  <th style={{ width: '10%' }} className="py-3.5 px-2">
+                    교육대상자
+                  </th>
+                  <th style={{ width: '11%' }} className="py-3.5 px-2">
+                    교육일정
+                  </th>
+                  <th style={{ width: '8%' }} className="py-3.5 px-2 text-center">
+                    교육시간
+                  </th>
+                  <th style={{ width: '9%' }} className="py-3.5 px-3 text-right">
+                    실집행비용
+                  </th>
+                  <th style={{ width: '5%' }} className="py-3.5 px-1 text-center">
+                    만족도
+                  </th>
+                  <th style={{ width: '7%' }} className="py-3.5 px-2 text-center">
+                    교육증빙
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-xs">
+                {filteredReports.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-14 text-center text-gray-400 font-medium">
+                      {completedReportsWithDetails.length === 0
+                        ? '완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)'
+                        : '검색 조건에 부합하는 교육 실적이 없습니다.'}
+                    </td>
+                  </tr>
+                ) : (
+                  <>
+                    {filteredReports.map(({ report, plan }, index) => {
+                      const associatedPlan = plans.find(
+                        (p) =>
+                          String(p.id || '').trim() ===
+                          String(report.plan_id || report.planId || '').trim()
+                      );
+                      const targetText = associatedPlan
+                        ? associatedPlan.target
+                        : report.target || '-';
+                      const headcountValue = associatedPlan
+                        ? getHeadcount(associatedPlan)
+                        : report.target
+                        ? parseTraineeCount(report.target)
+                        : 0;
+                      const hasCert = Boolean(report.certificate_file || report.certificateFile);
+                      const score = Number(
+                        report.satisfaction_score ?? report.satisfactionScore ?? 5.0
+                      );
+
+                      return (
+                        <tr
+                          key={report.id}
+                          className="hover:bg-indigo-50/20 transition-colors group"
+                        >
+                          {/* 1. NO */}
+                          <td className="py-4 px-2 text-center font-mono font-bold text-gray-500">
+                            {index + 1}
+                          </td>
+
+                          {/* 2. 구분 (PlanTable과 동일한 컬러 배지 스타일) */}
+                          <td className="py-4 px-2 text-center whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
+                                plan.category === '사내'
+                                  ? 'bg-indigo-50 text-indigo-600'
+                                  : 'bg-emerald-50 text-emerald-600'
+                              }`}
+                            >
+                              {plan.category || '-'}
+                            </span>
+                          </td>
+
+                          {/* 3. 보고서번호 */}
+                          <td className="py-4 px-3 font-mono text-[11px] font-bold text-gray-600 truncate">
+                            {report.id}
+                          </td>
+
+                          {/* 4. 교육명 */}
+                          <td
+                            className="py-4 px-3 font-bold text-gray-800 break-all whitespace-normal leading-snug"
+                            title={plan.title}
+                          >
+                            {plan.title}
+                          </td>
+
+                          {/* 5. 교육대상자 (이름 + 인원수 2단 컬러 스타일링) */}
+                          <td
+                            className="py-4 px-2 font-medium truncate"
+                            title={`${targetText} (${headcountValue}명)`}
+                          >
+                            <span className="text-gray-700 font-semibold">{targetText}</span>{' '}
+                            {headcountValue > 0 && (
+                              <span className="text-gray-400 text-[11px]">
+                                ({headcountValue}명)
+                              </span>
+                            )}
+                          </td>
+
+                          {/* 6. 교육일정 (달력 아이콘 적용) */}
+                          <td className="py-4 px-2 text-gray-600 font-medium whitespace-normal break-all">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
+                              <span>{plan.schedule}</span>
+                            </div>
+                          </td>
+
+                          {/* 7. 교육시간 (시계 아이콘 적용) */}
+                          <td className="py-4 px-2 text-center font-medium text-gray-600">
+                            <div className="inline-flex items-center justify-center gap-1">
+                              <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
+                              <span>{plan.hours}시간</span>
+                            </div>
+                          </td>
+
+                          {/* 8. 실집행비용 (PlanTable과 동일한 다크 그레이 모노 폰트) */}
+                          <td className="py-4 px-3 text-right font-mono font-bold text-gray-700">
+                            {formatCurrency(plan.cost)}
+                          </td>
+
+                          {/* 9. 만족도 */}
+                          <td className="py-4 px-1 text-center font-bold text-indigo-600">
+                            {score.toFixed(1)}
+                          </td>
+
+                          {/* 10. 교육증빙 */}
+                          <td className="py-4 px-2 text-center">
+                            {hasCert ? (
+                              <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap">
+                                <Check className="w-3 h-3 stroke-[2.5]" />
+                                첨부 완료
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 font-bold">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* 최하단 종합 합계 행 */}
+                    <tr className="bg-gray-50/80 font-bold border-t border-gray-200">
+                      <td colSpan={3} className="py-3.5 px-2 text-gray-800 text-center font-extrabold">
+                        합계
+                      </td>
+                      <td className="py-3.5 px-3"></td>
+                      <td className="py-3.5 px-2 text-gray-800 font-extrabold">
+                        {filteredHeadcount}명
+                      </td>
+                      <td className="py-3.5 px-2"></td>
+                      <td className="py-3.5 px-2 text-center font-mono text-gray-800 font-extrabold">
+                        {filteredHours}시간
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-mono text-gray-900 font-extrabold">
+                        {formatCurrency(filteredCost)}
+                      </td>
+                      <td className="py-3.5 px-1 text-center font-extrabold text-indigo-600">
+                        {filteredAvgSatisfaction.toFixed(1)}
+                      </td>
+                      <td className="py-3.5 px-2 text-center text-gray-400">-</td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 인쇄 전용 구분별 요약 집계 카드 */}
+          <section className="stats-print-summary" aria-label="구분별 교육 실적 집계">
+            <h2 className="stats-summary-heading">구분별 교육 실적 집계</h2>
+            <div className="stats-summary-grid">
+              {printCategorySummary.map((item) => (
+                <article
+                  key={item.category}
+                  className={'stats-summary-card ' + (item.category === '사외' ? 'external' : '')}
                 >
-                  {cat}
-                </button>
+                  <div className="stats-summary-title">
+                    <strong>{item.category} 교육</strong>
+                    <span>이수 완료 {item.count.toLocaleString('ko-KR')}건</span>
+                  </div>
+                  <dl className="stats-summary-metrics">
+                    <div className="stats-summary-metric">
+                      <dt>교육 인원</dt>
+                      <dd>
+                        {item.headcount.toLocaleString('ko-KR')}
+                        <small>명</small>
+                      </dd>
+                    </div>
+                    <div className="stats-summary-metric">
+                      <dt>교육 시간</dt>
+                      <dd>
+                        {item.hours.toLocaleString('ko-KR')}
+                        <small>시간</small>
+                      </dd>
+                    </div>
+                    <div className="stats-summary-metric">
+                      <dt>교육 비용</dt>
+                      <dd>
+                        {item.cost.toLocaleString('ko-KR')}
+                        <small>원</small>
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
               ))}
             </div>
+            <p className="stats-summary-note">
+              현재 출력 목록 기준 · 인원은 교육별 참여 인원 누계 · 시간과 비용은 연결된 교육계획의 등록값 기준
+            </p>
+          </section>
+
+          {/* 인쇄 전용 푸터 - 출력일자 */}
+          <div className="hidden print:block text-right mt-4">
+            <span className="text-xs text-slate-500 font-mono font-bold">
+              출력일자:{' '}
+              {new Date().toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </span>
           </div>
-
-          <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
-            <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
-              총 {filteredReports.length}건 완료
-            </div>
-            <button
-              onClick={handlePrintList}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-950 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
-            >
-              <Printer className="w-4 h-4 text-slate-500" />
-              <span>교육 실적 목록 출력</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 10개 칼럼 실적 상세 테이블 */}
-        <div className="w-full overflow-x-auto border border-gray-150 rounded-2xl bg-white print:border-none print:rounded-none">
-          <table className="w-full min-w-[850px] print:min-w-0 table-fixed text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-gray-150 text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50">
-                <th style={{ width: '3%' }} className="py-2.5 px-1 text-center">
-                  NO
-                </th>
-                <th style={{ width: '5%' }} className="py-2.5 px-1 text-center">
-                  구분
-                </th>
-                <th style={{ width: '14%' }} className="py-2.5 px-2">
-                  보고서번호
-                </th>
-                <th style={{ width: '28.6%' }} className="py-2.5 px-1.5 min-w-[200px]">
-                  교육명
-                </th>
-                <th style={{ width: '9%' }} className="py-2.5 px-1.5">
-                  교육대상자
-                </th>
-                <th style={{ width: '10%' }} className="py-2.5 px-1.5">
-                  교육일정
-                </th>
-                <th style={{ width: '8%' }} className="py-2.5 px-1.5 text-center">
-                  교육시간
-                </th>
-                <th style={{ width: '8.4%' }} className="py-2.5 px-1.5 text-right">
-                  실집행비용
-                </th>
-                <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">
-                  만족도
-                </th>
-                <th style={{ width: '7%' }} className="py-2.5 px-1 text-center">
-                  교육증빙
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-150 text-[11px] md:text-xs">
-              {filteredReports.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="py-12 text-center text-gray-400 font-medium">
-                    {completedReportsWithDetails.length === 0
-                      ? '완료된 교육 실적이 없습니다. (기안 및 결과보고서 완료 필요)'
-                      : '검색 조건에 부합하는 교육 실적이 없습니다.'}
-                  </td>
-                </tr>
-              ) : (
-                <>
-                  {filteredReports.map(({ report, plan }, index) => {
-                    const associatedPlan = plans.find(
-                      (p) =>
-                        String(p.id || '').trim() ===
-                        String(report.plan_id || report.planId || '').trim()
-                    );
-                    const targetText = associatedPlan
-                      ? associatedPlan.target
-                      : report.target || '-';
-                    const headcountValue = associatedPlan
-                      ? getHeadcount(associatedPlan)
-                      : report.target
-                      ? parseTraineeCount(report.target)
-                      : 0;
-                    const hasCert = Boolean(report.certificate_file || report.certificateFile);
-                    const score = Number(
-                      report.satisfaction_score ?? report.satisfactionScore ?? 5.0
-                    );
-
-                    return (
-                      <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="text-center font-mono">{index + 1}</td>
-                        <td className="text-center whitespace-nowrap">{plan.category || '-'}</td>
-                        <td className="py-2.5 px-2 font-mono font-bold text-gray-700 truncate">
-                          {report.id}
-                        </td>
-                        <td
-                          className="py-2.5 px-1.5 font-semibold text-gray-800 break-all whitespace-normal"
-                          title={plan.title}
-                        >
-                          {plan.title}
-                        </td>
-                        <td
-                          className="py-2.5 px-1.5 text-gray-600 font-medium truncate"
-                          title={`${targetText} (${headcountValue}명)`}
-                        >
-                          {targetText} {headcountValue > 0 ? `(${headcountValue}명)` : ''}
-                        </td>
-                        <td className="py-2.5 px-1.5 text-gray-700 font-medium text-[12px] whitespace-normal break-all">
-                          {plan.schedule}
-                        </td>
-                        <td className="py-2.5 px-1.5 text-center font-mono font-medium text-gray-700">
-                          {plan.hours}시간
-                        </td>
-                        <td className="py-2.5 px-1.5 text-right font-mono font-bold text-emerald-700">
-                          {formatCurrency(plan.cost)}
-                        </td>
-                        <td className="py-2.5 px-1 text-center font-bold text-indigo-700">
-                          {score.toFixed(1)}
-                        </td>
-                        <td className="py-2.5 px-1 text-center">
-                          {hasCert ? (
-                            <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                              첨부 완료
-                            </span>
-                          ) : (
-                            <span className="text-gray-300 font-bold">-</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {/* 최하단 종합 합계 행 */}
-                  <tr className="bg-indigo-50/40 font-bold border-t-2 border-slate-300">
-                    <td colSpan={3} className="py-3 px-2 text-slate-800 text-center font-bold">
-                      합계
-                    </td>
-                    <td className="py-3 px-1.5"></td>
-                    <td className="py-3 px-1.5 text-slate-800 font-bold">{filteredHeadcount}명</td>
-                    <td className="py-3 px-1.5"></td>
-                    <td className="py-3 px-1.5 text-center font-mono text-slate-800 font-bold">
-                      {filteredHours}시간
-                    </td>
-                    <td className="py-3 px-1.5 text-right font-mono text-slate-800 font-bold">
-                      {formatCurrency(filteredCost)}
-                    </td>
-                    <td className="py-3 px-1 text-center font-bold text-slate-800">
-                      {filteredAvgSatisfaction.toFixed(1)}
-                    </td>
-                    <td className="py-3 px-1 text-center text-slate-400">-</td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 인쇄 전용 구분별 요약 집계 카드 */}
-        <section className="stats-print-summary" aria-label="구분별 교육 실적 집계">
-          <h2 className="stats-summary-heading">구분별 교육 실적 집계</h2>
-          <div className="stats-summary-grid">
-            {printCategorySummary.map((item) => (
-              <article
-                key={item.category}
-                className={'stats-summary-card ' + (item.category === '사외' ? 'external' : '')}
-              >
-                <div className="stats-summary-title">
-                  <strong>{item.category} 교육</strong>
-                  <span>이수 완료 {item.count.toLocaleString('ko-KR')}건</span>
-                </div>
-                <dl className="stats-summary-metrics">
-                  <div className="stats-summary-metric">
-                    <dt>교육 인원</dt>
-                    <dd>
-                      {item.headcount.toLocaleString('ko-KR')}
-                      <small>명</small>
-                    </dd>
-                  </div>
-                  <div className="stats-summary-metric">
-                    <dt>교육 시간</dt>
-                    <dd>
-                      {item.hours.toLocaleString('ko-KR')}
-                      <small>시간</small>
-                    </dd>
-                  </div>
-                  <div className="stats-summary-metric">
-                    <dt>교육 비용</dt>
-                    <dd>
-                      {item.cost.toLocaleString('ko-KR')}
-                      <small>원</small>
-                    </dd>
-                  </div>
-                </dl>
-              </article>
-            ))}
-          </div>
-          <p className="stats-summary-note">
-            현재 출력 목록 기준 · 인원은 교육별 참여 인원 누계 · 시간과 비용은 연결된 교육계획의 등록값 기준
-          </p>
-        </section>
-
-        {/* 인쇄 전용 푸터 - 출력일자 */}
-        <div className="hidden print:block text-right mt-4">
-          <span className="text-xs text-slate-500 font-mono font-bold">
-            출력일자:{' '}
-            {new Date().toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </span>
         </div>
       </div>
 
