@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { EducationPlan, EducationDraft, EducationReport } from './types';
 import { computeMetrics } from './utils';
 import {
@@ -30,6 +30,9 @@ import ReportManager from './components/ReportManager';
 import StatisticsDashboard from './components/StatisticsDashboard';
 import {
   CalendarRange,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
   Plus,
   RefreshCw,
   AlertCircle,
@@ -44,17 +47,42 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
-  // System Year Filter (Default to current year)
-  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
-
-  // Dynamic Year Array Generation (2025 to currentYear + 1)
-  const startYear = 2025;
   const currentYear = new Date().getFullYear();
-  const endYear = currentYear + 1;
-  const years = Array.from(
-    { length: endYear - startYear + 1 },
-    (_, i) => String(startYear + i)
+
+  // System Year Filter (Default to current year)
+  const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
+
+  // 달력형 연도 선택기(Year Picker Popover) 상태 관리
+  const [isYearPickerOpen, setIsYearPickerOpen] = useState<boolean>(false);
+  const [pickerBaseYear, setPickerBaseYear] = useState<number>(
+    Math.floor(currentYear / 12) * 12
   );
+  const yearPickerRef = useRef<HTMLDivElement>(null);
+
+  // 달력 외부 영역 클릭 시 팝오버 자동 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        yearPickerRef.current &&
+        !yearPickerRef.current.contains(event.target as Node)
+      ) {
+        setIsYearPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 선택 연도가 바뀔 때 달력 페이지 기준점도 해당 연도 대역으로 맞춤
+  useEffect(() => {
+    const yrNum = parseInt(selectedYear, 10);
+    if (!isNaN(yrNum)) {
+      setPickerBaseYear(Math.floor(yrNum / 12) * 12);
+    }
+  }, [selectedYear]);
+
+  // 현재 달력 페이지에 표시할 12개 연도 배열 (3열 x 4행)
+  const calendarYears = Array.from({ length: 12 }, (_, i) => pickerBaseYear + i);
 
   // Sheets DB state
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
@@ -93,7 +121,7 @@ export default function App() {
   const [editPlan, setEditPlan] = useState<EducationPlan | null>(null);
 
   // Calculate metrics
-  // 💡 선택한 연도(selectedYear)의 교육 계획만 필터링하여 통계 산출 (날짜 가비지 방지)
+  // 선택한 연도(selectedYear)의 교육 계획만 필터링하여 통계 산출 (날짜 가비지 방지)
   const yearFilteredPlans = plans.filter((plan) => {
     const cleanPlanDate = (plan.date || '').split('T')[0].trim();
     return !selectedYear || cleanPlanDate.substring(0, 4) === selectedYear;
@@ -114,7 +142,7 @@ export default function App() {
     setSpreadsheetId(config.spreadsheetId);
     setSettingsSpreadsheetId(config.spreadsheetId);
     setSettingsApiKey(config.apiKey);
-    
+
     initializeSheetsDB(null, selectedYear);
   }, [selectedYear]);
 
@@ -127,8 +155,11 @@ export default function App() {
     }
   }, [isSettingsOpen]);
 
-  // ⚡ 속도 개선판: Sheets DB Setup Flow (병렬 비동기 처리)
-  const initializeSheetsDB = async (accessToken: string | null = null, year: string = selectedYear) => {
+  // Sheets DB Setup Flow (병렬 비동기 처리)
+  const initializeSheetsDB = async (
+    accessToken: string | null = null,
+    year: string = selectedYear
+  ) => {
     setIsLoading(true);
     setLoadingStep('구글 클라우드 DB로부터 마스터 데이터를 동기화하는 중입니다...');
     setErrorMsg(null);
@@ -137,11 +168,10 @@ export default function App() {
       const sheetId = config.spreadsheetId;
       setSpreadsheetId(sheetId);
 
-      // 💡 핵심: 3개의 fetch 요청을 구글 서버에 동시에 한 번에 던집니다! (비동기 병렬 처리)
       const [fetchedPlans, fetchedDrafts, fetchedReports] = await Promise.all([
         fetchPlans(sheetId, accessToken, year),
         fetchDrafts(sheetId, accessToken, year),
-        fetchReports(sheetId, accessToken, year)
+        fetchReports(sheetId, accessToken, year),
       ]);
 
       if (Array.isArray(fetchedPlans)) {
@@ -280,14 +310,15 @@ export default function App() {
 
     try {
       const latestDrafts = await fetchDrafts(activeSheetId, null, selectedYear);
-      
+
       const draftDate = newDraft.draft_date;
       const year = draftDate.substring(0, 4);
       const dateStr = draftDate.replace(/-/g, '');
 
       const sameYearDrafts = latestDrafts.filter((d) => {
         const dateMatch = d.draft_date && d.draft_date.substring(0, 4) === year;
-        const idMatch = d.id && (d.id.startsWith(`DSEDU-${year}`) || d.id.startsWith(`DSED-${year}`));
+        const idMatch =
+          d.id && (d.id.startsWith(`DSEDU-${year}`) || d.id.startsWith(`DSED-${year}`));
         return dateMatch || idMatch;
       });
 
@@ -391,7 +422,7 @@ export default function App() {
       const latestReports = await fetchReports(activeSheetId, null, selectedYear);
 
       let finalId = newReport.id;
-      
+
       const matchedDraft = drafts.find((d) => d.plan_id === newReport.plan_id);
       if (matchedDraft && matchedDraft.id) {
         finalId = matchedDraft.id.replace('DSEDU-', 'DSEREP-').replace('DSED-', 'DSEREP-');
@@ -399,7 +430,7 @@ export default function App() {
         const reportDate = newReport.report_date;
         const dateStr = reportDate.replace(/-/g, '');
         const sameDateReports = latestReports.filter((r) => r.id.startsWith(`DSEREP-${dateStr}`));
-        
+
         let maxSerial = 0;
         sameDateReports.forEach((r) => {
           const parts = r.id.split('-');
@@ -443,12 +474,20 @@ export default function App() {
         reportDate: newReport.reportDate || newReport.report_date || '',
         future_plan: newReport.future_plan || newReport.futurePlan || '',
         futurePlan: newReport.futurePlan || newReport.future_plan || '',
-        satisfaction_score: newReport.satisfaction_score !== undefined ? newReport.satisfaction_score : (newReport.satisfactionScore || 5.0),
-        satisfactionScore: newReport.satisfactionScore !== undefined ? newReport.satisfactionScore : (newReport.satisfaction_score || 5.0),
+        satisfaction_score:
+          newReport.satisfaction_score !== undefined
+            ? newReport.satisfaction_score
+            : newReport.satisfactionScore || 5.0,
+        satisfactionScore:
+          newReport.satisfactionScore !== undefined
+            ? newReport.satisfactionScore
+            : newReport.satisfaction_score || 5.0,
         certificate_file: newReport.certificate_file || newReport.certificateFile || '',
         certificateFile: newReport.certificateFile || newReport.certificate_file || '',
-        certificate_file_name: newReport.certificate_file_name || newReport.certificateFileName || '',
-        certificateFileName: newReport.certificateFileName || newReport.certificate_file_name || '',
+        certificate_file_name:
+          newReport.certificate_file_name || newReport.certificateFileName || '',
+        certificateFileName:
+          newReport.certificateFileName || newReport.certificate_file_name || '',
         year: newReport.year || selectedYear,
       };
 
@@ -486,12 +525,20 @@ export default function App() {
       reportDate: updatedReport.reportDate || updatedReport.report_date || '',
       future_plan: updatedReport.future_plan || updatedReport.futurePlan || '',
       futurePlan: updatedReport.futurePlan || updatedReport.future_plan || '',
-      satisfaction_score: updatedReport.satisfaction_score !== undefined ? updatedReport.satisfaction_score : (updatedReport.satisfactionScore || 5.0),
-      satisfactionScore: updatedReport.satisfactionScore !== undefined ? updatedReport.satisfactionScore : (updatedReport.satisfaction_score || 5.0),
+      satisfaction_score:
+        updatedReport.satisfaction_score !== undefined
+          ? updatedReport.satisfaction_score
+          : updatedReport.satisfactionScore || 5.0,
+      satisfactionScore:
+        updatedReport.satisfactionScore !== undefined
+          ? updatedReport.satisfactionScore
+          : updatedReport.satisfaction_score || 5.0,
       certificate_file: updatedReport.certificate_file || updatedReport.certificateFile || '',
       certificateFile: updatedReport.certificateFile || updatedReport.certificate_file || '',
-      certificate_file_name: updatedReport.certificate_file_name || updatedReport.certificateFileName || '',
-      certificateFileName: updatedReport.certificateFileName || updatedReport.certificate_file_name || '',
+      certificate_file_name:
+        updatedReport.certificate_file_name || updatedReport.certificateFileName || '',
+      certificateFileName:
+        updatedReport.certificateFileName || updatedReport.certificate_file_name || '',
       year: updatedReport.year || selectedYear,
     };
 
@@ -571,32 +618,144 @@ export default function App() {
       </AnimatePresence>
 
       {/* Main Header Container */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10 no-print">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-20 no-print">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
               <CalendarRange className="w-5.5 h-5.5" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-gray-800 tracking-tight">(주)대성스틸 교육관리 시스템</h1>
+              <h1 className="text-lg font-black text-gray-800 tracking-tight">
+                (주)대성스틸 교육관리 시스템
+              </h1>
               <p className="text-xs text-gray-400 mt-0.5">Google Sheets Cloud Database Sync</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 self-stretch sm:self-auto justify-end">
-            <div className="flex items-center gap-2">
+            {/* 달력형 연도 선택기 (Year Calendar Picker) */}
+            <div className="flex items-center gap-2 relative" ref={yearPickerRef}>
               <span className="text-xs font-bold text-gray-500">조회 연도:</span>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl py-1.5 px-3 text-xs font-semibold focus:outline-none cursor-pointer"
-              >
-                {years.map((yr) => (
-                  <option key={yr} value={yr}>
-                    {yr}년
-                  </option>
-                ))}
-              </select>
+
+              <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-xl p-0.5 shadow-2xs">
+                {/* 이전 연도 1년 단위 이동 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedYear(String(Number(selectedYear) - 1))}
+                  className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all cursor-pointer"
+                  title="이전 연도"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                {/* 달력 팝오버 호출 메인 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => setIsYearPickerOpen((prev) => !prev)}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                    isYearPickerOpen
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-gray-800 hover:bg-white'
+                  }`}
+                  title="클릭하여 연도 달력 열기"
+                >
+                  <Calendar
+                    className={`w-3.5 h-3.5 ${
+                      isYearPickerOpen ? 'text-indigo-200' : 'text-indigo-500'
+                    }`}
+                  />
+                  <span>{selectedYear}년</span>
+                </button>
+
+                {/* 다음 연도 1년 단위 이동 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedYear(String(Number(selectedYear) + 1))}
+                  className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all cursor-pointer"
+                  title="다음 연도"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* 달력형 연도 그리드 팝오버 */}
+              <AnimatePresence>
+                {isYearPickerOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 z-50"
+                  >
+                    {/* 달력 헤더: 12년 단위 페이징 */}
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setPickerBaseYear((prev) => prev - 12)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+                        title="이전 12년"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs font-extrabold text-gray-800 tracking-tight">
+                        {pickerBaseYear}년 – {pickerBaseYear + 11}년
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPickerBaseYear((prev) => prev + 12)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+                        title="다음 12년"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* 3x4 연도 선택 그리드 */}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {calendarYears.map((yr) => {
+                        const yrStr = String(yr);
+                        const isSelected = yrStr === selectedYear;
+                        const isCurrentYear = yr === currentYear;
+
+                        return (
+                          <button
+                            key={yr}
+                            type="button"
+                            onClick={() => {
+                              setSelectedYear(yrStr);
+                              setIsYearPickerOpen(false);
+                            }}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : isCurrentYear
+                                ? 'bg-indigo-50/70 text-indigo-600 border border-indigo-200 hover:bg-indigo-100/70'
+                                : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            {yr}년
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* 하단 빠른 이동 푸터 */}
+                    <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedYear(String(currentYear));
+                          setIsYearPickerOpen(false);
+                        }}
+                        className="w-full py-1.5 rounded-lg bg-gray-50 hover:bg-indigo-50 text-[11px] font-bold text-indigo-600 transition-colors cursor-pointer"
+                      >
+                        올해({currentYear}년)로 바로 이동
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <button
@@ -702,9 +861,13 @@ export default function App() {
             <div className="mt-4">
               {activeTab === 'plans' && (
                 <div className="space-y-6 sm:space-y-8">
-                  {/* Dashboard / Analytics Panel (연도별 plans 데이터 완벽 연동) */}
+                  {/* Dashboard / Analytics Panel */}
                   <div className="no-print">
-                    <Dashboard metrics={metrics} plans={yearFilteredPlans} selectedYear={selectedYear} />
+                    <Dashboard
+                      metrics={metrics}
+                      plans={yearFilteredPlans}
+                      selectedYear={selectedYear}
+                    />
                   </div>
 
                   {/* Plan List Panel */}
@@ -712,7 +875,9 @@ export default function App() {
                     <div className="flex justify-between items-center no-print">
                       <div>
                         <h2 className="text-md font-bold text-gray-800">연간 교육 계획 목록</h2>
-                        <p className="text-xs text-gray-400 mt-0.5">총 {plans.length}개의 수립된 교육 프로그램</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          총 {plans.length}개의 수립된 교육 프로그램
+                        </p>
                       </div>
 
                       <button
@@ -827,8 +992,14 @@ export default function App() {
                     className="w-full bg-gray-50 border border-gray-200 focus:border-indigo-500 focus:bg-white rounded-xl py-2.5 px-4 text-xs font-medium focus:outline-none transition-all font-mono text-[11px]"
                   />
                   <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
-                    구글 스프레드시트의 URL 주소창에서 <span className="font-semibold text-gray-600">/d/와 /edit 사이의 값</span>을 복사해 넣어주세요.<br />
-                    * 시트 공유 설정을 반드시 <span className="font-semibold text-emerald-600">"링크가 있는 모든 사용자에게 편집자(혹은 뷰어)"</span>로 변경해 주세요.
+                    구글 스프레드시트의 URL 주소창에서{' '}
+                    <span className="font-semibold text-gray-600">/d/와 /edit 사이의 값</span>을
+                    복사해 넣어주세요.
+                    <br />* 시트 공유 설정을 반드시{' '}
+                    <span className="font-semibold text-emerald-600">
+                      "링크가 있는 모든 사용자에게 편집자(혹은 뷰어)"
+                    </span>
+                    로 변경해 주세요.
                   </p>
                 </div>
 
