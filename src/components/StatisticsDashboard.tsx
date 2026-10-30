@@ -13,25 +13,16 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   Line,
   ComposedChart,
 } from 'recharts';
 import {
   Award,
   Clock,
-  BookOpen,
-  Layers,
   Star,
   TrendingUp,
-  PieChart as PieIcon,
   Printer,
-  Eye,
-  X,
   Check,
   AlertCircle,
   Users,
@@ -98,14 +89,17 @@ export default function StatisticsDashboard({
       });
   }, [plans, drafts, reports]);
 
+  const inHouseItems = completedReportsWithDetails.filter(
+    (item) => item.plan.category === '사내'
+  );
+  const externalItems = completedReportsWithDetails.filter(
+    (item) => item.plan.category === '사외'
+  );
+
   // Calculate KPIs
   const totalCount = completedReportsWithDetails.length;
-  const inHouseCount = completedReportsWithDetails.filter(
-    (item) => item.plan.category === '사내'
-  ).length;
-  const externalCount = completedReportsWithDetails.filter(
-    (item) => item.plan.category === '사외'
-  ).length;
+  const inHouseCount = inHouseItems.length;
+  const externalCount = externalItems.length;
 
   const getHeadcount = (plan: EducationPlan) =>
     plan.headcount !== undefined ? Number(plan.headcount) : parseTraineeCount(plan.target);
@@ -114,42 +108,58 @@ export default function StatisticsDashboard({
     (sum, item) => sum + getHeadcount(item.plan),
     0
   );
-  const inHouseHeadcount = completedReportsWithDetails
-    .filter((item) => item.plan.category === '사내')
-    .reduce((sum, item) => sum + getHeadcount(item.plan), 0);
-  const externalHeadcount = completedReportsWithDetails
-    .filter((item) => item.plan.category === '사외')
-    .reduce((sum, item) => sum + getHeadcount(item.plan), 0);
+  const inHouseHeadcount = inHouseItems.reduce(
+    (sum, item) => sum + getHeadcount(item.plan),
+    0
+  );
+  const externalHeadcount = externalItems.reduce(
+    (sum, item) => sum + getHeadcount(item.plan),
+    0
+  );
 
   const totalCost = completedReportsWithDetails.reduce(
     (sum, item) => sum + (Number(item.plan.cost) || 0),
     0
   );
-  const inHouseCost = completedReportsWithDetails
-    .filter((item) => item.plan.category === '사내')
-    .reduce((sum, item) => sum + (Number(item.plan.cost) || 0), 0);
-  const externalCost = completedReportsWithDetails
-    .filter((item) => item.plan.category === '사외')
-    .reduce((sum, item) => sum + (Number(item.plan.cost) || 0), 0);
+  const inHouseCost = inHouseItems.reduce(
+    (sum, item) => sum + (Number(item.plan.cost) || 0),
+    0
+  );
+  const externalCost = externalItems.reduce(
+    (sum, item) => sum + (Number(item.plan.cost) || 0),
+    0
+  );
 
   const totalHours = completedReportsWithDetails.reduce(
     (sum, item) => sum + (Number(item.plan.hours) || 0),
     0
   );
-  const inHouseHours = completedReportsWithDetails
-    .filter((item) => item.plan.category === '사내')
-    .reduce((sum, item) => sum + (Number(item.plan.hours) || 0), 0);
-  const externalHours = completedReportsWithDetails
-    .filter((item) => item.plan.category === '사외')
-    .reduce((sum, item) => sum + (Number(item.plan.hours) || 0), 0);
+  const inHouseHours = inHouseItems.reduce(
+    (sum, item) => sum + (Number(item.plan.hours) || 0),
+    0
+  );
+  const externalHours = externalItems.reduce(
+    (sum, item) => sum + (Number(item.plan.hours) || 0),
+    0
+  );
+
+  const getScore = (r: EducationReport) =>
+    Number(r.satisfaction_score ?? r.satisfactionScore ?? 5.0);
 
   const avgSatisfaction =
-    completedReportsWithDetails.length > 0
-      ? completedReportsWithDetails.reduce(
-          (sum, item) =>
-            sum + Number(item.report.satisfaction_score ?? item.report.satisfactionScore ?? 5.0),
-          0
-        ) / completedReportsWithDetails.length
+    totalCount > 0
+      ? completedReportsWithDetails.reduce((sum, item) => sum + getScore(item.report), 0) /
+        totalCount
+      : 0.0;
+
+  const inHouseAvgSatisfaction =
+    inHouseCount > 0
+      ? inHouseItems.reduce((sum, item) => sum + getScore(item.report), 0) / inHouseCount
+      : 0.0;
+
+  const externalAvgSatisfaction =
+    externalCount > 0
+      ? externalItems.reduce((sum, item) => sum + getScore(item.report), 0) / externalCount
       : 0.0;
 
   // 계획 전체 대비 달성 지표
@@ -204,58 +214,11 @@ export default function StatisticsDashboard({
     });
   }, [plans, completedReportsWithDetails]);
 
-  // States for preview modal & print sandbox warning
-  const [selectedReportDetail, setSelectedReportDetail] = React.useState<{
-    report: EducationReport;
-    plan: EducationPlan;
-    draft: EducationDraft;
-  } | null>(null);
   const [showPrintIframeWarning, setShowPrintIframeWarning] = React.useState(false);
 
   // States for search and category filters
   const [searchQuery, setSearchQuery] = React.useState('');
   const [categoryFilter, setCategoryFilter] = React.useState<'전체' | '사내' | '사외'>('전체');
-
-  const getFormattedKoreanDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const clean = dateStr.split('T')[0].trim();
-    const parts = clean.split('-');
-    if (parts.length !== 3) return dateStr;
-    return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
-  };
-
-  const handlePrint = () => {
-    const listStyleEl = document.getElementById('dynamic-landscape-print-style-reports');
-    if (listStyleEl) {
-      listStyleEl.remove();
-    }
-
-    const isIframe = window.self !== window.top;
-    if (isIframe) {
-      setShowPrintIframeWarning(true);
-    } else {
-      const portraitStyleId = 'dynamic-portrait-print-style';
-      let styleEl = document.getElementById(portraitStyleId);
-      if (!styleEl) {
-        styleEl = document.createElement('style');
-        styleEl.id = portraitStyleId;
-        styleEl.innerHTML = `
-          @media print {
-            @page {
-              size: A4 portrait !important;
-              margin: 10mm !important;
-            }
-          }
-        `;
-        document.head.appendChild(styleEl);
-      }
-      try {
-        window.print();
-      } catch (err) {
-        setShowPrintIframeWarning(true);
-      }
-    }
-  };
 
   // 하단 교육 실적 테이블만 A4 가로(Landscape)로 출력하는 함수
   const handlePrintList = () => {
@@ -409,11 +372,8 @@ export default function StatisticsDashboard({
   );
   const filteredAvgSatisfaction =
     filteredReports.length > 0
-      ? filteredReports.reduce(
-          (sum, item) =>
-            sum + Number(item.report.satisfaction_score ?? item.report.satisfactionScore ?? 5.0),
-          0
-        ) / filteredReports.length
+      ? filteredReports.reduce((sum, item) => sum + getScore(item.report), 0) /
+        filteredReports.length
       : 0.0;
 
   return (
@@ -421,7 +381,6 @@ export default function StatisticsDashboard({
       <style>{`
         .stats-print-summary { display: none; }
         @media print {
-          /* 상단 대시보드 및 비인쇄 요소 강제 숨김 */
           .stats-chart-card, .stats-filter-section, .no-print, header, nav, aside, footer, button { 
             display: none !important; 
           }
@@ -438,7 +397,6 @@ export default function StatisticsDashboard({
             overflow: visible !important;
           }
 
-          /* 하단 실적 현황 테이블 컨테이너만 인쇄 시 100% 폭으로 표시 */
           #printable-area.print-stats-table-container {
             display: block !important;
             position: static !important;
@@ -466,7 +424,6 @@ export default function StatisticsDashboard({
             padding: 6px 4px !important;
           }
 
-          /* 인쇄용 10개 칼럼 폭 배분 */
           #printable-area.print-stats-table-container table:not(.approval-table) th:nth-child(1) { width: 3.5% !important; }
           #printable-area.print-stats-table-container table:not(.approval-table) th:nth-child(2) { width: 5% !important; }
           #printable-area.print-stats-table-container table:not(.approval-table) th:nth-child(3) { width: 14% !important; }
@@ -478,7 +435,6 @@ export default function StatisticsDashboard({
           #printable-area.print-stats-table-container table:not(.approval-table) th:nth-child(9) { width: 7% !important; }
           #printable-area.print-stats-table-container table:not(.approval-table) th:nth-child(10) { width: 7% !important; }
 
-          /* 결재방 규격 고정 및 우측 정렬 */
           #printable-area table.approval-table {
             width: 48mm !important;
             height: 18mm !important;
@@ -497,7 +453,6 @@ export default function StatisticsDashboard({
             overflow: hidden !important;
           }
 
-          /* 인쇄물 하단 구분별 집계 요약 박스 */
           #printable-area .stats-print-summary {
             display: block !important;
             margin-top: 6mm !important;
@@ -525,10 +480,10 @@ export default function StatisticsDashboard({
       `}</style>
 
       {/* =====================================================================
-          상단 대시보드 영역 (인쇄 시 완벽히 제외되도록 no-print 및 stats-chart-card 지정)
+          상단 대시보드 영역 (인쇄 시 완벽 제외)
       ===================================================================== */}
       <div className="no-print stats-chart-card space-y-6">
-        {/* 1. 상단 배너: 교육훈련 진행 파이프라인 & 종합 마감률 */}
+        {/* 1. 상단 배너 */}
         <div className="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-lg">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2">
@@ -544,7 +499,6 @@ export default function StatisticsDashboard({
               </p>
             </div>
 
-            {/* 3단계 파이프라인 요약 블록 */}
             <div className="grid grid-cols-3 gap-3 bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-4 shrink-0">
               <div className="px-3 border-r border-white/10">
                 <p className="text-[11px] text-indigo-200 font-semibold">① 연간 계획</p>
@@ -578,7 +532,6 @@ export default function StatisticsDashboard({
             </div>
           </div>
 
-          {/* 전체 마감 진행률 게이지 바 */}
           <div className="mt-5 pt-4 border-t border-white/10">
             <div className="flex justify-between text-xs font-bold mb-1.5">
               <span className="text-indigo-200">연간 계획 대비 최종 결과보고서 마감 진행률</span>
@@ -593,8 +546,9 @@ export default function StatisticsDashboard({
           </div>
         </div>
 
-        {/* 2. 5대 실적 핵심 KPI 카드 */}
+        {/* 2. 5대 실적 핵심 KPI 카드 (전 항목 사내/사외 2줄 대칭 표기로 100% 통일) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* 카드 1: 완료 실적 건수 */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -608,16 +562,23 @@ export default function StatisticsDashboard({
                 <CheckCircle2 className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
-              <span className="text-slate-500">
-                사내 <strong className="text-slate-700">{inHouseCount}건</strong>
-              </span>
-              <span className="text-slate-500">
-                사외 <strong className="text-slate-700">{externalCount}건</strong>
-              </span>
+            <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내
+                </span>
+                <span className="text-slate-700 font-bold">{inHouseCount}건</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외
+                </span>
+                <span className="text-slate-700 font-bold">{externalCount}건</span>
+              </div>
             </div>
           </div>
 
+          {/* 카드 2: 총 교육 인원 */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -633,16 +594,23 @@ export default function StatisticsDashboard({
                 <Users className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
-              <span className="text-slate-500">
-                사내 <strong className="text-slate-700">{inHouseHeadcount}명</strong>
-              </span>
-              <span className="text-slate-500">
-                사외 <strong className="text-slate-700">{externalHeadcount}명</strong>
-              </span>
+            <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내
+                </span>
+                <span className="text-slate-700 font-bold">{inHouseHeadcount}명</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외
+                </span>
+                <span className="text-slate-700 font-bold">{externalHeadcount}명</span>
+              </div>
             </div>
           </div>
 
+          {/* 카드 3: 누적 교육 시간 */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -658,20 +626,29 @@ export default function StatisticsDashboard({
                 <Clock className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
-              <span className="text-slate-500">
-                사내 <strong className="text-slate-700">{inHouseHours}H</strong>
-              </span>
-              <span className="text-slate-500">
-                사외 <strong className="text-slate-700">{externalHours}H</strong>
-              </span>
+            <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내
+                </span>
+                <span className="text-slate-700 font-bold">{inHouseHours}시간</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외
+                </span>
+                <span className="text-slate-700 font-bold">{externalHours}시간</span>
+              </div>
             </div>
           </div>
 
+          {/* 카드 4: 실제 집행 비용 (사내/사외 모두 대칭 표기) */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-400">실제 집행 비용</p>
+                <p className="text-xs font-bold text-slate-400">
+                  실제 집행 비용 ({budgetExecutionRate}%)
+                </p>
                 <div className="mt-1.5 flex items-baseline gap-1">
                   <span className="text-xl font-black text-slate-900 tracking-tight">
                     ₩{formatCurrency(totalCost)}
@@ -682,18 +659,23 @@ export default function StatisticsDashboard({
                 <TrendingUp className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-slate-100 space-y-0.5 text-[11px] font-semibold">
-              <div className="flex justify-between text-slate-500">
-                <span>예산 집행률</span>
-                <span className="text-indigo-600 font-bold">{budgetExecutionRate}%</span>
+            <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내
+                </span>
+                <span className="text-slate-700 font-bold">₩{formatCurrency(inHouseCost)}</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>사외 집행액</span>
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외
+                </span>
                 <span className="text-slate-700 font-bold">₩{formatCurrency(externalCost)}</span>
               </div>
             </div>
           </div>
 
+          {/* 카드 5: 평균 교육 만족도 (사내 평균 / 사외 평균 모두 대칭 표기) */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -702,18 +684,32 @@ export default function StatisticsDashboard({
                   <span className="text-2xl font-black text-slate-900">
                     {avgSatisfaction > 0 ? avgSatisfaction.toFixed(1) : '0.0'}
                   </span>
-                  <span className="text-xs font-bold text-slate-400">/ 5.0점</span>
+                  <span className="text-xs font-bold text-slate-400">
+                    / 5.0 ({avgSatisfaction > 0 ? getSatisfactionLabel(avgSatisfaction) : '-'})
+                  </span>
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shrink-0">
                 <Star className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
-              <span className="text-amber-500 tracking-tighter text-xs">★★★★★</span>
-              <span className="text-purple-700 font-bold">
-                {avgSatisfaction > 0 ? getSatisfactionLabel(avgSatisfaction) : '기록 없음'}
-              </span>
+            <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내 평균
+                </span>
+                <span className="text-slate-700 font-bold">
+                  {inHouseCount > 0 ? `${inHouseAvgSatisfaction.toFixed(1)}점` : '-'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외 평균
+                </span>
+                <span className="text-slate-700 font-bold">
+                  {externalCount > 0 ? `${externalAvgSatisfaction.toFixed(1)}점` : '-'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -841,10 +837,9 @@ export default function StatisticsDashboard({
       </div>
 
       {/* =====================================================================
-          하단 교육 실적 목록 섹션 (연간 교육 계획 목록 UI 스타일로 100% 통일)
+          하단 교육 실적 목록 섹션 (연간 교육 계획 목록 UI 스타일 100% 통일)
       ===================================================================== */}
       <div className="space-y-4">
-        {/* 섹션 타이틀 헤더 (연간 교육 계획 목록과 동일한 카드 외부 배치) */}
         <div className="flex justify-between items-center no-print">
           <div>
             <h2 className="text-md font-bold text-gray-800 flex items-center gap-2">
@@ -857,7 +852,6 @@ export default function StatisticsDashboard({
           </div>
         </div>
 
-        {/* 테이블 메인 카드 컨테이너 (연간 교육 계획 목록과 동일한 디자인) */}
         <div
           id="printable-area"
           className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden print-report-table-container print-stats-table-container"
@@ -960,7 +954,7 @@ export default function StatisticsDashboard({
             </div>
           </div>
 
-          {/* 상단 검색 및 필터 바 (연간 교육 계획 목록과 동일한 깔끔한 화이트 툴바) */}
+          {/* 상단 검색 및 필터 바 */}
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-center px-6 py-5 border-b border-gray-100 bg-white no-print stats-filter-section">
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-center">
               <div className="relative w-full sm:w-72">
@@ -1005,7 +999,7 @@ export default function StatisticsDashboard({
             </div>
           </div>
 
-          {/* 10개 칼럼 실적 상세 테이블 (필드명/내용 100% 보존 + PlanTable UI 스타일 적용) */}
+          {/* 10개 칼럼 실적 상세 테이블 */}
           <div className="w-full overflow-x-auto bg-white">
             <table className="w-full min-w-[900px] print:min-w-0 table-fixed text-left border-collapse text-xs">
               <thead>
@@ -1068,21 +1062,16 @@ export default function StatisticsDashboard({
                         ? parseTraineeCount(report.target)
                         : 0;
                       const hasCert = Boolean(report.certificate_file || report.certificateFile);
-                      const score = Number(
-                        report.satisfaction_score ?? report.satisfactionScore ?? 5.0
-                      );
+                      const score = getScore(report);
 
                       return (
                         <tr
                           key={report.id}
                           className="hover:bg-indigo-50/20 transition-colors group"
                         >
-                          {/* 1. NO */}
                           <td className="py-4 px-2 text-center font-mono font-bold text-gray-500">
                             {index + 1}
                           </td>
-
-                          {/* 2. 구분 (PlanTable과 동일한 컬러 배지 스타일) */}
                           <td className="py-4 px-2 text-center whitespace-nowrap">
                             <span
                               className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
@@ -1094,21 +1083,15 @@ export default function StatisticsDashboard({
                               {plan.category || '-'}
                             </span>
                           </td>
-
-                          {/* 3. 보고서번호 */}
                           <td className="py-4 px-3 font-mono text-[11px] font-bold text-gray-600 truncate">
                             {report.id}
                           </td>
-
-                          {/* 4. 교육명 */}
                           <td
                             className="py-4 px-3 font-bold text-gray-800 break-all whitespace-normal leading-snug"
                             title={plan.title}
                           >
                             {plan.title}
                           </td>
-
-                          {/* 5. 교육대상자 (이름 + 인원수 2단 컬러 스타일링) */}
                           <td
                             className="py-4 px-2 font-medium truncate"
                             title={`${targetText} (${headcountValue}명)`}
@@ -1120,34 +1103,24 @@ export default function StatisticsDashboard({
                               </span>
                             )}
                           </td>
-
-                          {/* 6. 교육일정 (달력 아이콘 적용) */}
                           <td className="py-4 px-2 text-gray-600 font-medium whitespace-normal break-all">
                             <div className="flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
                               <span>{plan.schedule}</span>
                             </div>
                           </td>
-
-                          {/* 7. 교육시간 (시계 아이콘 적용) */}
                           <td className="py-4 px-2 text-center font-medium text-gray-600">
                             <div className="inline-flex items-center justify-center gap-1">
                               <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
                               <span>{plan.hours}시간</span>
                             </div>
                           </td>
-
-                          {/* 8. 실집행비용 (PlanTable과 동일한 다크 그레이 모노 폰트) */}
                           <td className="py-4 px-3 text-right font-mono font-bold text-gray-700">
                             {formatCurrency(plan.cost)}
                           </td>
-
-                          {/* 9. 만족도 */}
                           <td className="py-4 px-1 text-center font-bold text-indigo-600">
                             {score.toFixed(1)}
                           </td>
-
-                          {/* 10. 교육증빙 */}
                           <td className="py-4 px-2 text-center">
                             {hasCert ? (
                               <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap">
