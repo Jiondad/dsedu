@@ -479,11 +479,8 @@ export default function StatisticsDashboard({
         }
       `}</style>
 
-      {/* =====================================================================
-          상단 대시보드 영역 (인쇄 시 완벽 제외)
-      ===================================================================== */}
+      {/* 상단 대시보드 영역 */}
       <div className="no-print stats-chart-card space-y-6">
-        {/* 1. 상단 배너 */}
         <div className="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-lg">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2">
@@ -546,9 +543,7 @@ export default function StatisticsDashboard({
           </div>
         </div>
 
-        {/* 2. 5대 실적 핵심 KPI 카드 (전 항목 사내/사외 2줄 대칭 표기로 100% 통일) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* 카드 1: 완료 실적 건수 */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -578,7 +573,6 @@ export default function StatisticsDashboard({
             </div>
           </div>
 
-          {/* 카드 2: 총 교육 인원 */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -610,7 +604,6 @@ export default function StatisticsDashboard({
             </div>
           </div>
 
-          {/* 카드 3: 누적 교육 시간 */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -642,7 +635,6 @@ export default function StatisticsDashboard({
             </div>
           </div>
 
-          {/* 카드 4: 실제 집행 비용 (사내/사외 모두 대칭 표기) */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -675,7 +667,6 @@ export default function StatisticsDashboard({
             </div>
           </div>
 
-          {/* 카드 5: 평균 교육 만족도 (사내 평균 / 사외 평균 모두 대칭 표기) */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -714,7 +705,6 @@ export default function StatisticsDashboard({
           </div>
         </div>
 
-        {/* 3. 중단 차트 영역 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -837,7 +827,7 @@ export default function StatisticsDashboard({
       </div>
 
       {/* =====================================================================
-          하단 교육 실적 목록 섹션 (연간 교육 계획 목록 UI 스타일 100% 통일)
+          하단 교육 실적 목록 섹션 (연간 교육 계획 목록 UI 스타일 100% 통일 + 필드명 음영 추가)
       ===================================================================== */}
       <div className="space-y-4">
         <div className="flex justify-between items-center no-print">
@@ -1003,7 +993,8 @@ export default function StatisticsDashboard({
           <div className="w-full overflow-x-auto bg-white">
             <table className="w-full min-w-[900px] print:min-w-0 table-fixed text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/40">
+                {/* 💡 필드명 배경에 연한 회색빛 음영(bg-slate-50/80) 적용 */}
+                <tr className="border-y border-gray-200 text-[11px] font-bold text-gray-600 uppercase tracking-wider bg-slate-50/80">
                   <th style={{ width: '4%' }} className="py-3.5 px-2 text-center">
                     NO
                   </th>
