@@ -12,7 +12,6 @@ import {
   Clock,
   Wallet,
   Award,
-  BarChart3,
   PieChart as PieChartIcon,
   CalendarDays,
   Building2,
@@ -27,7 +26,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 
 interface DashboardProps {
@@ -36,8 +34,7 @@ interface DashboardProps {
   selectedYear?: string;
 }
 
-export default function Dashboard({ plans = [], metrics, selectedYear }: DashboardProps) {
-  // plans 배열을 기반으로 정밀 통계 산출 (metrics prop만 넘어오는 경우도 완벽 호환)
+export default function Dashboard({ plans = [], metrics }: DashboardProps) {
   const stats = useMemo(() => {
     if (plans && plans.length > 0) {
       const inHouse = plans.filter((p) => p.category === '사내');
@@ -82,12 +79,9 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
         avgCostPerPlan: totalCount > 0 ? Math.round(totalCost / totalCount) : 0,
         avgCostInHouse: inHouseCount > 0 ? Math.round(inHouseCost / inHouseCount) : 0,
         avgCostExternal: externalCount > 0 ? Math.round(externalCost / externalCount) : 0,
-        avgHoursPerPerson:
-          totalHeadcount > 0 ? (totalHours / totalHeadcount).toFixed(1) : '0.0',
       };
     }
 
-    // fallback: metrics 객체만 전달된 경우
     const totalCount = metrics?.total?.count || 0;
     const inHouseCount = metrics?.inHouse?.count || 0;
     const externalCount = metrics?.external?.count || 0;
@@ -117,8 +111,6 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
       avgCostPerPlan: totalCount > 0 ? Math.round(totalCost / totalCount) : 0,
       avgCostInHouse: inHouseCount > 0 ? Math.round(inHouseCost / inHouseCount) : 0,
       avgCostExternal: externalCount > 0 ? Math.round(externalCost / externalCount) : 0,
-      avgHoursPerPerson:
-        totalHeadcount > 0 ? (totalHours / totalHeadcount).toFixed(1) : '0.0',
     };
   }, [plans, metrics]);
 
@@ -166,7 +158,6 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
     return months;
   }, [plans]);
 
-  // 사내 vs 사외 항목별 비중 계산 헬퍼
   const getRatio = (inVal: number, exVal: number) => {
     const total = inVal + exVal;
     if (total === 0) return { inPct: 0, exPct: 0 };
@@ -181,9 +172,9 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
 
   return (
     <div className="space-y-6 mb-8">
-      {/* 1. 상단 5대 핵심 KPI 카드 (글자 잘림 방지 및 시각적 계층 고도화) */}
+      {/* 1. 상단 5대 핵심 KPI 카드 (모든 카드 하단 사내/사외 표기 포맷 100% 통일) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* 카드 1: 총 교육 건수 */}
+        {/* 카드 1: 총 계획 교육 건수 */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -197,19 +188,23 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
               <BookOpen className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
-            <span className="text-slate-500 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-              사내 <strong className="text-slate-700">{stats.inHouseCount}건</strong>
-            </span>
-            <span className="text-slate-500 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              사외 <strong className="text-slate-700">{stats.externalCount}건</strong>
-            </span>
+          <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내
+              </span>
+              <span className="text-slate-700 font-bold">{stats.inHouseCount}건</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외
+              </span>
+              <span className="text-slate-700 font-bold">{stats.externalCount}건</span>
+            </div>
           </div>
         </div>
 
-        {/* 카드 2: 총 교육 인원 */}
+        {/* 카드 2: 총 계획 교육 인원 */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -223,17 +218,23 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
               <Users className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
-            <span className="text-slate-500">
-              사내 <strong className="text-slate-700">{stats.inHouseHeadcount}명</strong>
-            </span>
-            <span className="text-slate-500">
-              사외 <strong className="text-slate-700">{stats.externalHeadcount}명</strong>
-            </span>
+          <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내
+              </span>
+              <span className="text-slate-700 font-bold">{stats.inHouseHeadcount}명</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외
+              </span>
+              <span className="text-slate-700 font-bold">{stats.externalHeadcount}명</span>
+            </div>
           </div>
         </div>
 
-        {/* 카드 3: 총 교육 시간 */}
+        {/* 카드 3: 총 계획 교육 시간 */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -247,17 +248,23 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
               <Clock className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold">
-            <span className="text-slate-500">
-              사내 <strong className="text-slate-700">{stats.inHouseHours}H</strong>
-            </span>
-            <span className="text-slate-500">
-              사외 <strong className="text-slate-700">{stats.externalHours}H</strong>
-            </span>
+          <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내
+              </span>
+              <span className="text-slate-700 font-bold">{stats.inHouseHours}시간</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외
+              </span>
+              <span className="text-slate-700 font-bold">{stats.externalHours}시간</span>
+            </div>
           </div>
         </div>
 
-        {/* 카드 4: 총 예산 (줄바꿈 배지 처리로 잘림 완벽 방지) */}
+        {/* 카드 4: 총 편성 예산 (예상비용) */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -272,23 +279,27 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
               <Wallet className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-100 space-y-0.5 text-[11px] font-semibold">
-            <div className="flex justify-between text-slate-500">
-              <span>사내 예산</span>
+          <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내
+              </span>
               <span className="text-slate-700 font-bold">₩{formatCurrency(stats.inHouseCost)}</span>
             </div>
-            <div className="flex justify-between text-slate-500">
-              <span>사외 예산</span>
-              <span className="text-rose-600 font-bold">₩{formatCurrency(stats.externalCost)}</span>
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외
+              </span>
+              <span className="text-slate-700 font-bold">₩{formatCurrency(stats.externalCost)}</span>
             </div>
           </div>
         </div>
 
-        {/* 카드 5: 건당 평균 소요 비용 및 인당 교육시간 */}
+        {/* 카드 5: 건당 평균 소요 비용 (사내/사외 둘 다 명확히 표시) */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-400">과정당 평균 예산</p>
+              <p className="text-xs font-bold text-slate-400">건당 평균 소요 비용</p>
               <div className="mt-1.5 flex items-baseline gap-0.5">
                 <span className="text-xl font-black text-slate-900 tracking-tight">
                   ₩{formatCurrency(stats.avgCostPerPlan)}
@@ -299,24 +310,30 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
               <Award className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-100 space-y-0.5 text-[11px] font-semibold">
-            <div className="flex justify-between text-slate-500">
-              <span>사외 평균</span>
+          <div className="mt-3.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] font-semibold">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>사내 평균
+              </span>
+              <span className="text-slate-700 font-bold">
+                ₩{formatCurrency(stats.avgCostInHouse)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>사외 평균
+              </span>
               <span className="text-slate-700 font-bold">
                 ₩{formatCurrency(stats.avgCostExternal)}
               </span>
-            </div>
-            <div className="flex justify-between text-slate-500">
-              <span>인당 평균시간</span>
-              <span className="text-indigo-600 font-bold">{stats.avgHoursPerPerson}시간/인</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. 하단 차트 영역 (월별 교육 스케줄 & 사내/사외 4대 지표 밸런스) */}
+      {/* 2. 하단 차트 영역 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 좌측 (7칸): 월별 연간 교육 계획 및 예산 집중도 추이 */}
+        {/* 좌측 (7칸): 월별 연간 교육 계획 및 예산 편성 추이 */}
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
@@ -376,7 +393,8 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
                     fontWeight: 600,
                   }}
                   formatter={(value: any, name: string) => {
-                    if (name === '예산만원') return [`${formatCurrency(Number(value) * 10000)}원`, '계획 예산'];
+                    if (name === '예산만원')
+                      return [`${formatCurrency(Number(value) * 10000)}원`, '계획 예산'];
                     return [`${value}건`, name === '사내건수' ? '사내 교육' : '사외 교육'];
                   }}
                 />
@@ -410,7 +428,7 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
           </div>
         </div>
 
-        {/* 우측 (5칸): 사내 vs 사외 4대 지표 비중 분석 (기존 단조로운 도넛 대체) */}
+        {/* 우측 (5칸): 사내 vs 사외 4대 지표 비중 분석 (모든 항목 사내/사외 완벽 대칭 표기) */}
         <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -419,8 +437,12 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
                 사내 vs 사외 교육 구조 비중 분석
               </h3>
               <div className="flex items-center gap-2 text-[11px] font-bold">
-                <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700">사내교육</span>
-                <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700">사외위탁</span>
+                <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
+                  ● 사내교육
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700">
+                  ● 사외교육
+                </span>
               </div>
             </div>
             <p className="text-[11px] text-slate-400 mb-5">
@@ -428,10 +450,10 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
             </p>
 
             <div className="space-y-4">
-              {/* 1. 교육 과정 수 비중 */}
+              {/* 1. 과정 건수 비중 */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-700">1. 과정 건수 비중</span>
+                  <span className="text-slate-700">1. 교육 건수 비중</span>
                   <span className="text-slate-500">
                     사내 <strong className="text-indigo-600">{stats.inHouseCount}건({countRatio.inPct}%)</strong>
                     {' · '}
@@ -453,7 +475,7 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
               {/* 2. 참여 인원 비중 */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-700">2. 참여 인원 비중</span>
+                  <span className="text-slate-700">2. 교육 인원 비중</span>
                   <span className="text-slate-500">
                     사내 <strong className="text-indigo-600">{stats.inHouseHeadcount}명({headcountRatio.inPct}%)</strong>
                     {' · '}
@@ -472,10 +494,10 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
                 </div>
               </div>
 
-              {/* 3. 교육 시간 비중 */}
+              {/* 3. 이수 시간 비중 */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-700">3. 이수 시간 비중</span>
+                  <span className="text-slate-700">3. 교육 시간 비중</span>
                   <span className="text-slate-500">
                     사내 <strong className="text-indigo-600">{stats.inHouseHours}H({hoursRatio.inPct}%)</strong>
                     {' · '}
@@ -494,14 +516,14 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
                 </div>
               </div>
 
-              {/* 4. 소요 예산 비중 */}
+              {/* 4. 편성 예산 비중 (사내 금액과 사외 금액 모두 대칭 표기) */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
                   <span className="text-slate-700">4. 편성 예산 비중</span>
                   <span className="text-slate-500">
-                    사내 <strong className="text-indigo-600">{costRatio.inPct}%</strong>
+                    사내 <strong className="text-indigo-600">₩{formatCurrency(stats.inHouseCost)}({costRatio.inPct}%)</strong>
                     {' · '}
-                    사외 <strong className="text-emerald-600">{costRatio.exPct}% (₩{formatCurrency(stats.externalCost)})</strong>
+                    사외 <strong className="text-emerald-600">₩{formatCurrency(stats.externalCost)}({costRatio.exPct}%)</strong>
                   </span>
                 </div>
                 <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
@@ -518,16 +540,16 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
             </div>
           </div>
 
-          {/* 하단 요약 인사이트 박스 */}
+          {/* 하단 사내 vs 사외 핵심 요약 대칭 박스 */}
           <div className="mt-5 pt-3.5 border-t border-slate-100 grid grid-cols-2 gap-3">
             <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-indigo-100/80 text-indigo-600 flex items-center justify-center shrink-0">
                 <Building2 className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400">사내 집체교육 인원비중</p>
-                <p className="text-xs font-black text-slate-800">
-                  전체의 {headcountRatio.inPct}% ({stats.inHouseHeadcount}명)
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-slate-400">사내 교육 요약</p>
+                <p className="text-xs font-black text-slate-800 truncate">
+                  {stats.inHouseCount}건 · {stats.inHouseHeadcount}명 · {stats.inHouseHours}H
                 </p>
               </div>
             </div>
@@ -535,10 +557,10 @@ export default function Dashboard({ plans = [], metrics, selectedYear }: Dashboa
               <div className="w-8 h-8 rounded-lg bg-emerald-100/80 text-emerald-600 flex items-center justify-center shrink-0">
                 <ExternalLink className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400">사외 전문교육 시간비중</p>
-                <p className="text-xs font-black text-slate-800">
-                  전체의 {hoursRatio.exPct}% ({stats.externalHours}시간)
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-slate-400">사외 교육 요약</p>
+                <p className="text-xs font-black text-slate-800 truncate">
+                  {stats.externalCount}건 · {stats.externalHeadcount}명 · {stats.externalHours}H
                 </p>
               </div>
             </div>
