@@ -3,47 +3,30 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
 import { formatCurrency } from '../utils';
 import {
-  Search,
-  Filter,
-  Edit3,
-  Trash2,
   Calendar,
   Clock,
-  User,
-  Award,
-  AlertTriangle,
+  Edit2,
+  Trash2,
   Printer,
+  FileText,
+  CheckCircle,
+  ArrowUpDown,
   AlertCircle,
-  X
+  Building2,
+  User,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-
-// MM/DD~MM/DD를 월/일 숫자로 비교합니다. 잘못된 일정은 마지막에 표시합니다.
-function getScheduleOrder(schedule: string): [number, number] | null {
-  const match = (schedule || '').match(/^\s*(\d{1,2})\/(\d{1,2})\s*~\s*(\d{1,2})\/(\d{1,2})\s*$/);
-  if (!match) return null;
-  const [startMonth, startDay, endMonth, endDay] = match.slice(1).map(Number);
-  const isValid = (month: number, day: number) => {
-    const date = new Date(Date.UTC(2000, month - 1, day));
-    return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
-  };
-  if (!isValid(startMonth, startDay) || !isValid(endMonth, endDay)) return null;
-  const start = startMonth * 100 + startDay;
-  const end = endMonth * 100 + endDay;
-  // 12/30~01/02처럼 연도를 넘기는 종료일은 다음 해로 간주합니다.
-  return [start, end < start ? end + 1200 : end];
-}
 
 interface PlanTableProps {
   plans: EducationPlan[];
   drafts: EducationDraft[];
-  reports?: EducationReport[];
-  selectedYear?: string;
-  onEdit: (plan: EducationPlan, index: number) => void;
+  reports: EducationReport[];
+  selectedYear: string;
+  onEdit: (plan: EducationPlan) => void;
   onDelete: (index: number) => void;
   onStartDraft: (plan: EducationPlan) => void;
   onStartReport: (plan: EducationPlan) => void;
@@ -52,284 +35,127 @@ interface PlanTableProps {
 export default function PlanTable({
   plans,
   drafts,
-  reports = [],
+  reports,
   selectedYear,
   onEdit,
   onDelete,
   onStartDraft,
-  onStartReport
+  onStartReport,
 }: PlanTableProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+  // Category filter ('전체', '사내', '사외')
   const [categoryFilter, setCategoryFilter] = useState<'전체' | '사내' | '사외'>('전체');
-  const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
+
+  // Search query state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Sort state for date
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('asc');
+
+  // Delete confirmation modal state
+  const [deleteTargetIndex, setDeleteTargetIndex] = useState<number | null>(null);
+
+  // Print sandbox warning modal state
   const [showPrintIframeWarning, setShowPrintIframeWarning] = useState(false);
 
-  useEffect(() => {
-    const clearPrintStyle = () => {
-      document.getElementById('dynamic-landscape-print-style')?.remove();
-    };
-    window.addEventListener('afterprint', clearPrintStyle);
-    return () => {
-      window.removeEventListener('afterprint', clearPrintStyle);
-      clearPrintStyle();
-    };
-  }, []);
+  // Filter plans by selected year, category filter, and search query
+  const filteredPlans = plans.filter((plan) => {
+    const cleanPlanDate = (plan.date || '').split('T')[0].trim();
+    const planYear = cleanPlanDate.substring(0, 4);
+    const matchesYear = !selectedYear || planYear === selectedYear;
 
-  // Sorting state
-  const [sortField, setSortField] = useState<keyof EducationPlan>('schedule');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+    const matchesCategory =
+      categoryFilter === '전체' || plan.category === categoryFilter;
 
-  const handleSort = (field: keyof EducationPlan) => {
-    if (sortField === field) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
+    const query = searchQuery.toLowerCase();
+    const matchesSearch =
+      (plan.title && plan.title.toLowerCase().includes(query)) ||
+      (plan.institution && plan.institution.toLowerCase().includes(query)) ||
+      (plan.instructor && plan.instructor.toLowerCase().includes(query)) ||
+      (plan.target && plan.target.toLowerCase().includes(query));
 
-  // Filter plans
-  const filteredPlans = plans
-    .map((plan, index) => ({ plan, originalIndex: index }))
-    .filter(({ plan }) => {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch =
-        plan.title.toLowerCase().includes(query) ||
-        plan.institution.toLowerCase().includes(query) ||
-        plan.instructor.toLowerCase().includes(query) ||
-        plan.target.toLowerCase().includes(query);
+    return matchesYear && matchesCategory && matchesSearch;
+  });
 
-      const matchesCategory = categoryFilter === '전체' || plan.category === categoryFilter;
-
-      // 💡 [핵심] plan.date나 기안서/보고서의 날짜를 비교 대조하기 전에 무조건 .split('T')[0].trim() 처리를 가함
-      const cleanPlanDate = (plan.date || '').split('T')[0].trim();
-      const matchesYear = !selectedYear || cleanPlanDate.substring(0, 4) === selectedYear;
-
-      return matchesSearch && matchesCategory && matchesYear;
-    });
-
-  // Sort filtered plans
+  // Sort plans by date if requested
   const sortedPlans = [...filteredPlans].sort((a, b) => {
-    if (sortField === 'schedule') {
-      const aSchedule = getScheduleOrder(a.plan.schedule);
-      const bSchedule = getScheduleOrder(b.plan.schedule);
-      if (!aSchedule && !bSchedule) return a.originalIndex - b.originalIndex;
-      if (!aSchedule) return 1;
-      if (!bSchedule) return -1;
-      const difference = aSchedule[0] - bSchedule[0] || aSchedule[1] - bSchedule[1];
-      return difference
-        ? (sortDirection === 'asc' ? difference : -difference)
-        : a.originalIndex - b.originalIndex;
+    if (!sortOrder) return 0;
+    const dateA = a.date || '';
+    const dateB = b.date || '';
+    if (sortOrder === 'asc') {
+      return dateA.localeCompare(dateB);
+    } else {
+      return dateB.localeCompare(dateA);
     }
-
-    let aVal = a.plan[sortField];
-    let bVal = b.plan[sortField];
-
-    if (typeof aVal === 'string') {
-      aVal = aVal.toLowerCase();
-      bVal = (bVal as string).toLowerCase();
-    }
-
-    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
   });
 
-  const printCategorySummary = (['사내', '사외'] as const).map((category) => {
-    const items = sortedPlans.filter(({ plan }) => plan.category === category);
-    return {
-      category,
-      count: items.length,
-      headcount: items.reduce((sum, { plan }) => sum + (Number(plan.headcount) || 0), 0),
-      hours: items.reduce((sum, { plan }) => sum + (Number(plan.hours) || 0), 0),
-      cost: items.reduce((sum, { plan }) => sum + (Number(plan.cost) || 0), 0),
-    };
-  });
-
-  const totalHours = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.hours) || 0), 0);
-  const totalHeadcount = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.headcount) || 0), 0);
-  const totalCost = sortedPlans.reduce((sum, { plan }) => sum + (Number(plan.cost) || 0), 0);
-
-  const confirmDelete = (index: number) => {
-    setDeleteConfirmIndex(index);
-  };
-
-  const handleConfirmDelete = () => {
-    if (deleteConfirmIndex !== null) {
-      onDelete(deleteConfirmIndex);
-      setDeleteConfirmIndex(null);
-    }
-  };
-
-  // High-reliability landscape print handler with dynamic CSS styles
-  const handlePrint = () => {
+  const handlePrintList = () => {
     const isIframe = window.self !== window.top;
     if (isIframe) {
-      console.warn('Iframe sandbox detected. Showing instructions for secure print.');
       setShowPrintIframeWarning(true);
     } else {
-      // 이전 출력 종류나 클릭 순서에 따라 인쇄 규칙이 누적되지 않도록 초기화합니다.
-      ['dynamic-landscape-print-style', 'dynamic-landscape-print-style-reports', 'dynamic-portrait-print-style']
-        .forEach((id) => document.getElementById(id)?.remove());
-      const styleId = 'dynamic-landscape-print-style';
+      const styleId = 'dynamic-landscape-print-style-plans';
       let styleEl = document.getElementById(styleId);
       if (!styleEl) {
         styleEl = document.createElement('style');
         styleEl.id = styleId;
         styleEl.innerHTML = `
           @media print {
-            @page { size: A4 landscape; margin: 10mm; }
-          .print-plan-table-container .plan-print-summary {
-            display: block !important;
-            margin-top: 6mm !important;
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            color: #0f172a !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .plan-summary-heading { font-size: 11px; font-weight: 800; margin: 0 0 3mm; letter-spacing: .04em; }
-          .print-plan-table-container .plan-summary-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: 5mm; }
-          .plan-summary-card { border: 1px solid #cbd5e1; border-top: 3px solid #2563eb; border-radius: 8px; padding: 3mm 4mm; background: #f8fafc; min-width: 0; }
-          .plan-summary-card.external { border-top-color: #059669; }
-          .print-plan-table-container .plan-summary-title { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 3mm; }
-          .plan-summary-title strong { font-size: 12px; color: #1d4ed8; }
-          .external .plan-summary-title strong { color: #047857; }
-          .plan-summary-title span { font-size: 10px; color: #475569; }
-          .plan-summary-metrics { display: grid !important; grid-template-columns: 1fr 1fr 1.4fr; gap: 3mm; margin: 0; }
-          .plan-summary-metric { min-width: 0; }
-          .plan-summary-metric dt { font-size: 9px; color: #64748b; margin-bottom: 1mm; }
-          .plan-summary-metric dd { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; font-variant-numeric: tabular-nums; }
-          .plan-summary-metric dd small { font-size: 10px; font-weight: 500; margin-left: 1mm; }
-          .plan-summary-note { font-size: 8px; color: #64748b; margin: 2mm 0 0; }
-
-
-
-            /* 1. 불필요 요소 제거 및 공간 차지 원천 차단 */
-            .no-print, header, nav, aside, footer, button { display: none !important; }
-            
-            /* 2. 다중 페이지 넘김(Pagination) 보장 (fixed 절대 금지) */
-            html, body, #root, main, div {
-                overflow: visible !important;
-                display: block !important;
-                max-width: none !important;
+            @page {
+              size: A4 landscape !important;
+              margin: 10mm !important;
             }
-
-            /* 공통 CSS의 세로 A4 폭(210mm)과 화면용 여백을 해제합니다. */
-            html, body, #root, #root > div, main, main > div {
-                width: 100% !important;
-                max-width: none !important;
-                min-width: 0 !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                box-sizing: border-box !important;
-                transform: none !important;
+            header, footer, nav, button, form, .no-print, .modal, [role="dialog"] {
+              display: none !important;
             }
-
-            /* 3. 문서 양식을 A4 가로폭(277mm)에 강제 안착 */
-            .print-plan-table-container {
-                position: static !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                box-sizing: border-box !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                border: none !important;
-                box-shadow: none !important;
-                display: block !important;
+            body > *:not(#root) {
+              display: none !important;
             }
-
-            /* 4. 테이블 기본 구조 100% 매칭 */
-            .print-plan-table-container table:not(.approval-table) {
-                width: 100% !important;
-                max-width: 100% !important;
-                border-collapse: collapse !important;
-                table-layout: fixed !important;
-                font-size: 11px !important;
+            html, body, #root, main, .mt-4 {
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: block !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: #ffffff !important;
+              min-height: 0 !important;
             }
-
-            /* 5. 칼럼 황금비율 재조정 (총 10개 컬럼, 합계 100%) */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(1), .print-plan-table-container table:not(.approval-table) td:nth-child(1) { width: 3%  !important; } /* No */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(2), .print-plan-table-container table:not(.approval-table) td:nth-child(2) { width: 5%  !important; } /* 구분 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(3), .print-plan-table-container table:not(.approval-table) td:nth-child(3) { width: 20% !important; } /* 교육명 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(4), .print-plan-table-container table:not(.approval-table) td:nth-child(4) { width: 27% !important; } /* 기관/강사 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(5), .print-plan-table-container table:not(.approval-table) td:nth-child(5) { width: 7% !important; } /* 대상자 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(6), .print-plan-table-container table:not(.approval-table) td:nth-child(6) { width: 11% !important; } /* 교육일정 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(7), .print-plan-table-container table:not(.approval-table) td:nth-child(7) { width: 11% !important; } /* 교육시간 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(8), .print-plan-table-container table:not(.approval-table) td:nth-child(8) { width: 6% !important; } /* 예상비용 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(9), .print-plan-table-container table:not(.approval-table) td:nth-child(9) { width: 5%  !important; } /* 기안 */
-            .print-plan-table-container table:not(.approval-table) th:nth-child(10), .print-plan-table-container table:not(.approval-table) td:nth-child(10) { width: 5%  !important; } /* 보고서 */
-
-            /* 6. 텍스트 줄바꿈 및 아이콘 분리 방지 (핵심 디테일) */
-            .print-plan-table-container table:not(.approval-table) td,
-            .print-plan-table-container table:not(.approval-table) th {
-                word-break: break-all !important;
-                overflow-wrap: break-word !important;
+            #printable-plan-table-container {
+              display: block !important;
+              visibility: visible !important;
+              position: static !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: transparent !important;
+              overflow: visible !important;
             }
-            
-            /* 아이콘과 텍스트가 묶인 컨테이너는 break-all 무력화 및 flex 레이아웃 복원 */
-            .print-plan-table-container table:not(.approval-table) td .no-break-wrap {
-                display: inline-flex !important; /* 핵심 처방: flex 컨텍스트 복원 */
-                align-items: center !important;  /* 수직 중앙 정렬 */
-                white-space: nowrap !important;
-                word-break: keep-all !important;
-                overflow-wrap: normal !important;
+            #printable-plan-table-container table {
+              width: 100% !important;
+              table-layout: fixed !important;
+              border-collapse: collapse !important;
+              font-size: 10px !important;
             }
-            
-            /* SVG 아이콘이 텍스트와 적절한 간격을 유지하도록 보정 */
-            .print-plan-table-container table:not(.approval-table) td .no-break-wrap svg {
-                margin-right: 4px !important;
-                display: block !important;
+            #printable-plan-table-container th {
+              background-color: #f1f5f9 !important;
+              color: #1e293b !important;
+              font-weight: 700 !important;
+              border: 1px solid #94a3b8 !important;
+              padding: 6px 4px !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
-
-            /* 7. 결재란 고정 사이즈 */
-            .print-plan-table-container table.approval-table {
-                width: 48mm !important;
-                height: 18mm !important;
-                table-layout: fixed !important;
-                border-collapse: collapse !important;
-                margin-left: auto !important;
-                margin-right: 0 !important;
-            }
-
-            .print-plan-table-container table.approval-table td {
-                text-align: center !important;
-                vertical-align: middle !important;
-                padding: 2px !important;
-                font-size: 10px !important;
-                line-height: 1.2 !important;
-            }
-            .print-plan-table-container table:not(.approval-table) th {
-                text-align: center !important;
-                vertical-align: middle !important;
-            }
-            /* 긴 강사명도 인쇄 시 해당 칸 안에서 줄바꿈합니다. */
-            .print-plan-table-container table:not(.approval-table) td .plan-instructor {
-                display: flex !important;
-                align-items: flex-start !important;
-                white-space: normal !important;
-                width: 100% !important;
-            }
-            .print-plan-table-container table:not(.approval-table) td .plan-instructor span {
-                min-width: 0 !important;
-                white-space: normal !important;
-                word-break: normal !important;
-                overflow-wrap: anywhere !important;
-            }
-
-            /* 테이블 선 굵기 얇게 조정 (투박함 제거) */
-            .print-plan-table-container table:not(.approval-table) th,
-            .print-plan-table-container table:not(.approval-table) td {
-                border: 0.2pt solid #d1d7df !important;
-            }
-            .print-plan-table-container table:not(.approval-table) {
-                border: 0.3pt solid #b8c2cf !important;
-            }
-            /* 행에 지정된 기존 테두리가 셀의 얇은 선보다 우선하지 않도록 합니다. */
-            .print-plan-table-container table:not(.approval-table) thead,
-            .print-plan-table-container table:not(.approval-table) tbody,
-            .print-plan-table-container table:not(.approval-table) tr {
-                border: 0 !important;
+            #printable-plan-table-container td {
+              border: 1px solid #cbd5e1 !important;
+              padding: 6px 4px !important;
+              font-size: 10px !important;
+              word-break: break-all !important;
+              line-height: 1.3 !important;
+              color: #000000 !important;
             }
           }
         `;
@@ -339,65 +165,33 @@ export default function PlanTable({
       try {
         window.print();
       } catch (err) {
-        document.getElementById(styleId)?.remove();
-        console.error('Print blocked or failed:', err);
         setShowPrintIframeWarning(true);
       }
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden print-plan-table-container">
-      {/* 인쇄 전용 헤더 */}
-      <div className="hidden print:block mb-6 w-full">
-        <div className="flex justify-between items-end pb-2.5">
-          <h1 className="text-lg font-black text-slate-900 self-end mb-2">{selectedYear ? `${selectedYear}년도 ` : ''}대성스틸 연간 교육 계획 목록</h1>
-          <div className="ml-auto">
-            <table className="approval-table border-collapse border border-black text-center" style={{ width: '48mm', height: '18mm', tableLayout: 'fixed', borderCollapse: 'collapse', marginLeft: 'auto', marginRight: '0', border: '1px solid black' }}>
-                <colgroup>
-                  <col style={{ width: '6mm' }} />
-                  <col style={{ width: '14mm' }} />
-                  <col style={{ width: '14mm' }} />
-                  <col style={{ width: '14mm' }} />
-                </colgroup>
-                <tbody>
-                  <tr className="border-b border-black">
-                    <td rowSpan={2} className="border-r border-black font-bold p-0.5 bg-gray-100 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '6mm', padding: '2px', backgroundColor: '#f3f4f6', fontWeight: 'bold', fontSize: '10px', lineHeight: '1.2' }}>결<br/>재</td>
-                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>작성</td>
-                    <td className="border-r border-black font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ borderRight: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>검토</td>
-                    <td className="font-bold p-0.5 bg-gray-50 text-[10px] text-center" style={{ border: '1px solid black', width: '14mm', padding: '2px', backgroundColor: '#f9fafb', fontSize: '10px', lineHeight: '1.2' }}>승인</td>
-                  </tr>
-                  <tr style={{ height: '12mm' }}>
-                    <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '12mm' }}></td>
-                    <td className="border-r border-black" style={{ borderRight: '1px solid black', height: '12mm' }}></td>
-                    <td style={{ border: '1px solid black', height: '12mm' }}></td>
-                  </tr>
-                </tbody>
-              </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Filters bar */}
-      <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-50/50 no-print">
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+    <div className="space-y-4">
+      {/* Search and Filters Bar */}
+      <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs no-print">
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-center">
+          <div className="relative w-full sm:w-72">
             <input
               type="text"
               placeholder="교육명, 기관, 강사명 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
+              className="w-full pl-4 pr-4 py-2 rounded-xl border border-gray-200 text-xs font-medium outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
             />
           </div>
 
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 items-center">
             {(['전체', '사내', '사외'] as const).map((cat) => (
               <button
                 key={cat}
+                type="button"
                 onClick={() => setCategoryFilter(cat)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                   categoryFilter === cat
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
@@ -409,279 +203,262 @@ export default function PlanTable({
           </div>
         </div>
 
-        <div className="w-full md:w-auto flex justify-end">
+        <div className="flex items-center gap-2.5 w-full lg:w-auto justify-end">
+          <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full">
+            총 {sortedPlans.length}건
+          </div>
           <button
-            onClick={handlePrint}
-            className="w-full md:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-950 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+            type="button"
+            onClick={handlePrintList}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
           >
-            <Printer className="w-4 h-4 text-slate-500" />
+            <Printer className="w-4 h-4 text-gray-500" />
             <span>교육 계획 목록 출력</span>
           </button>
         </div>
       </div>
 
-      {/* Table Section */}
-      <div className="w-full overflow-hidden">
-        <table className="w-full text-left border-collapse text-xs md:text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 text-[11px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
-              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">No</th>
-              <th className="py-3 px-1 md:px-1.5 cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => handleSort('category')}>
-                구분 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="py-3 px-1.5 md:px-2 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
-                교육명 {sortField === 'title' && (sortDirection === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="py-3 px-1.5 md:px-2">교육기관 / 강사</th>
-              <th className="py-3 px-1.5 md:px-2">대상자</th>
-              <th className="py-3 px-1 md:px-1.5 whitespace-nowrap cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('schedule')}>
-                교육일정 {sortField === 'schedule' && (sortDirection === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap" onClick={() => handleSort('hours')}>
-                교육시간 {sortField === 'hours' && (sortDirection === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="py-3 px-1 md:px-1.5 text-right cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => handleSort('cost')}>
-                예상비용 {sortField === 'cost' && (sortDirection === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">기안</th>
-              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap">보고서</th>
-              <th className="py-3 px-1 md:px-1.5 text-center whitespace-nowrap no-print">관리</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {sortedPlans.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="py-12 text-center text-gray-400 font-medium">
-                  수립된 교육 계획이 없습니다.
-                </td>
+      {/* Table Container */}
+      <div
+        id="printable-plan-table-container"
+        className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden"
+      >
+        <div className="w-full overflow-x-auto bg-white">
+          <table className="w-full min-w-[950px] print:min-w-0 table-fixed text-left border-collapse text-xs">
+            <thead>
+              {/* 필드명 영역에 연한 회색빛 배경색(bg-slate-50/80)과 상하 테두리 적용 */}
+              <tr className="border-y border-gray-200 text-[11px] font-bold text-gray-600 uppercase tracking-wider bg-slate-50/80">
+                <th style={{ width: '4%' }} className="py-3.5 px-2 text-center">
+                  NO
+                </th>
+                <th style={{ width: '6%' }} className="py-3.5 px-2 text-center">
+                  구분
+                </th>
+                <th style={{ width: '22%' }} className="py-3.5 px-3">
+                  교육명
+                </th>
+                <th style={{ width: '17%' }} className="py-3.5 px-3">
+                  교육기관 / 강사
+                </th>
+                <th style={{ width: '10%' }} className="py-3.5 px-2">
+                  대상자
+                </th>
+                <th style={{ width: '13%' }} className="py-3.5 px-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+                    }
+                    className="flex items-center gap-1 hover:text-indigo-600 transition-colors cursor-pointer uppercase font-bold"
+                  >
+                    <span>교육일정</span>
+                    <ArrowUpDown className="w-3 h-3 text-gray-400" />
+                  </button>
+                </th>
+                <th style={{ width: '10%' }} className="py-3.5 px-2 text-center">
+                  교육시간
+                </th>
+                <th style={{ width: '9%' }} className="py-3.5 px-3 text-right">
+                  예상비용
+                </th>
+                <th style={{ width: '5%' }} className="py-3.5 px-1 text-center no-print">
+                  기안
+                </th>
+                <th style={{ width: '5% ' }} className="py-3.5 px-1 text-center no-print">
+                  보고서
+                </th>
+                <th style={{ width: '7%' }} className="py-3.5 px-2 text-center no-print">
+                  관리
+                </th>
               </tr>
-            ) : (
-              <>
-                {sortedPlans.map(({ plan, originalIndex }, idx) => {
-                // 💡 [버그 종결] 기안서 데이터가 배열이든 객체든 'plan_id'를 정확하게 파싱하여 비교합니다.
-                const hasDraft = drafts.some((d) => {
-                  if (!d) return false;
-                  const dPlanId = Array.isArray(d) ? String(d[1]) : String(d.plan_id || (d as any).planId || '');
-                  return dPlanId.toString().trim() === plan.id.toString().trim();
-                });
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-xs">
+              {sortedPlans.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="py-14 text-center text-gray-400 font-medium">
+                    {plans.length === 0
+                      ? `${selectedYear}년도에 등록된 연간 교육 계획이 없습니다. 상단 [신규 계획 추가] 버튼을 눌러 등록해 주세요.`
+                      : '검색 조건에 부합하는 교육 계획이 없습니다.'}
+                  </td>
+                </tr>
+              ) : (
+                sortedPlans.map((plan, index) => {
+                  const hasDraft = drafts.some(
+                    (d) => String(d.plan_id || '').trim() === String(plan.id || '').trim()
+                  );
+                  const hasReport = reports.some(
+                    (r) =>
+                      String(r.plan_id || r.planId || '').trim() ===
+                      String(plan.id || '').trim()
+                  );
 
-                // 💡 보고서 데이터도 동일하게 2중 구조 예외 방어 후 매칭
-                const isReportCompleted = reports.some(r => r && (r.planId || r.plan_id || '').toString().trim() === plan.id.toString().trim());
-                const hasReport = isReportCompleted;
-
-                return (
-                  <tr key={plan.id} className="hover:bg-gray-50/50 transition-colors">
-                    {/* Sequence No */}
-                    <td className="py-3.5 px-1 md:px-1.5 text-center font-mono font-bold text-gray-500">
-                      {idx + 1}
-                    </td>
-
-                    {/* Category */}
-                    <td className="py-3.5 px-1 md:px-1.5 text-center whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold leading-none whitespace-nowrap ${
-                          plan.category === '사내'
-                            ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                            : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                        }`}
+                  return (
+                    <tr key={plan.id} className="hover:bg-indigo-50/20 transition-colors group">
+                      <td className="py-4 px-2 text-center font-mono font-bold text-gray-500">
+                        {index + 1}
+                      </td>
+                      <td className="py-4 px-2 text-center whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
+                            plan.category === '사내'
+                              ? 'bg-indigo-50 text-indigo-600'
+                              : 'bg-emerald-50 text-emerald-600'
+                          }`}
+                        >
+                          {plan.category}
+                        </span>
+                      </td>
+                      <td
+                        className="py-4 px-3 font-bold text-gray-800 break-all whitespace-normal leading-snug"
+                        title={plan.title}
                       >
-                        {plan.category}
-                      </span>
-                    </td>
-
-                    {/* Title */}
-                    <td className="py-3.5 px-1.5 md:px-2 font-semibold text-gray-800 leading-snug break-all">
-                      {plan.title}
-                    </td>
-
-                    {/* Agency / Instructor */}
-                    <td className="py-3.5 px-1.5 md:px-2 text-gray-500 break-all">
-                      <div className="font-medium text-gray-700 leading-snug">{plan.institution}</div>
-                      <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex no-break-wrap plan-instructor">
-                        <User className="w-3.5 h-3.5 shrink-0" /> <span className="whitespace-nowrap">{plan.instructor}</span>
-                      </div>
-                    </td>
-
-                    {/* Target Group */}
-                    <td className="py-3.5 px-1.5 md:px-2 text-gray-600 leading-snug">
-                      <span className="block whitespace-nowrap">{plan.target || '-'}</span>
-                      {plan.headcount ? (
-                        <span className="block whitespace-nowrap mt-0.5 text-gray-400">({plan.headcount}명)</span>
-                      ) : null}
-                    </td>
-
-                    {/* Schedule */}
-                    <td className="py-3.5 px-1 md:px-1.5 text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center gap-1 whitespace-nowrap flex-nowrap inline-flex no-break-wrap">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                        <span className="whitespace-nowrap">{plan.schedule}</span>
-                      </div>
-                    </td>
-
-                    {/* Integrated Education Time */}
-                    <td className="py-3.5 px-1 md:px-1.5 text-center text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1 whitespace-nowrap flex-nowrap inline-flex no-break-wrap">
-                        <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                        <span className="whitespace-nowrap">{plan.time_range} ({plan.hours}시간)</span>
-                      </div>
-                    </td>
-
-                    {/* Estimated Cost */}
-                    <td className="py-3.5 px-1 md:px-1.5 text-right text-gray-800 whitespace-nowrap font-mono">
-                      {formatCurrency(plan.cost)}
-                    </td>
-
-                    {/* Draft Column */}
-                    <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
-                      {hasDraft ? (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-gray-500 text-white shadow-xs whitespace-nowrap print:bg-transparent print:text-gray-500 print:p-0 print:border-none print:shadow-none">
-                          완료
+                        {plan.title}
+                      </td>
+                      <td className="py-4 px-3 text-gray-600">
+                        <div className="font-semibold text-gray-800 flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-gray-400 shrink-0 no-print" />
+                          <span className="truncate">{plan.institution}</span>
+                        </div>
+                        {plan.instructor && (
+                          <div className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+                            <User className="w-3 h-3 text-gray-300 shrink-0 no-print" />
+                            <span className="truncate">{plan.instructor}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className="py-4 px-2 font-medium truncate"
+                        title={`${plan.target || '-'} (${plan.headcount || 1}명)`}
+                      >
+                        <span className="text-gray-700 font-semibold">
+                          {plan.target || '-'}
                         </span>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => onStartDraft(plan)}
-                            className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-lime-300 text-indigo-950 hover:bg-lime-400 border border-lime-400/30 shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap no-print"
-                          >
-                            기안
-                          </button>
-                          <span className="hidden print:inline text-gray-400 font-bold">대기</span>
-                        </>
-                      )}
-                    </td>
-
-                    {/* Report Column */}
-                    <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center">
-                      {hasReport ? (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-gray-500 text-white shadow-xs whitespace-nowrap print:bg-transparent print:text-gray-500 print:p-0 print:border-none print:shadow-none">
-                          완료
+                        <span className="text-gray-400 text-[11px] block sm:inline">
+                          {' '}
+                          ({plan.headcount || 1}명)
                         </span>
-                      ) : hasDraft ? (
-                        <>
-                          <button
-                            onClick={() => onStartReport(plan)}
-                            className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-sky-500 text-white hover:bg-sky-600 shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap no-print"
-                          >
-                            작성
-                          </button>
-                          <span className="hidden print:inline text-gray-400 font-bold">대기</span>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            disabled
-                            className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] md:text-xs font-bold rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed opacity-50 whitespace-nowrap no-print"
-                          >
-                            작성
-                          </button>
-                          <span className="hidden print:inline text-gray-300 font-bold">-</span>
-                        </>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-1 md:px-1.5 whitespace-nowrap text-center no-print">
-                      <div className="flex items-center justify-center gap-1.5">
+                      </td>
+                      <td className="py-4 px-2 text-gray-600 font-medium whitespace-normal break-all">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
+                          <span>{plan.date}</span>
+                        </div>
+                        {plan.schedule && (
+                          <div className="text-[10px] text-gray-400 mt-0.5">
+                            기간: {plan.schedule}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-2 text-center font-medium text-gray-600">
+                        <div className="inline-flex items-center justify-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
+                          <span>{plan.hours}시간</span>
+                        </div>
+                        {plan.time_range && (
+                          <div className="text-[10px] text-gray-400 mt-0.5">
+                            ({plan.time_range})
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-3 text-right font-mono font-bold text-gray-700">
+                        {formatCurrency(plan.cost)}
+                      </td>
+                      <td className="py-4 px-1 text-center no-print">
                         <button
-                          onClick={() => onEdit(plan, originalIndex)}
-                          className="p-1 rounded-lg text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                          title="수정"
+                          type="button"
+                          onClick={() => onStartDraft(plan)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                            hasDraft
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-2xs'
+                          }`}
                         >
-                          <Edit3 className="w-4 h-4" />
+                          {hasDraft ? '완료' : '작성'}
                         </button>
+                      </td>
+                      <td className="py-4 px-1 text-center no-print">
                         <button
-                          onClick={() => confirmDelete(originalIndex)}
-                          className="p-1 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                          title="삭제"
+                          type="button"
+                          onClick={() => onStartReport(plan)}
+                          disabled={!hasDraft}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all ${
+                            !hasDraft
+                              ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200'
+                              : hasDraft && hasReport
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 cursor-pointer'
+                              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-2xs cursor-pointer'
+                          }`}
+                          title={!hasDraft ? '기안서 작성이 먼저 완료되어야 합니다.' : ''}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {hasReport ? '완료' : '작성'}
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              <tr className="bg-slate-50/80 font-bold border-t border-b border-slate-300">
-                <td colSpan={4} className="py-3 px-1.5 text-center text-slate-700 font-extrabold">
-                  합계
-                </td>
-                <td className="py-3 px-1.5 text-slate-800 font-bold text-center md:text-left">
-                  {totalHeadcount ? `${totalHeadcount}명` : '-'}
-                </td>
-                <td className="py-3 px-1"></td>
-                <td className="py-3 px-1 text-center text-slate-800 font-bold">
-                  {totalHours}시간
-                </td>
-                <td className="py-3 px-1 text-right text-slate-900 font-mono font-bold whitespace-nowrap">
-                  {formatCurrency(totalCost)}
-                </td>
-                <td className="py-3 px-1"></td>
-                <td className="py-3 px-1"></td>
-                <td className="py-3 px-1 no-print"></td>
-              </tr>
-            </>
-          )}
-        </tbody>
-      </table>
-    </div>
-
-<section className="plan-print-summary hidden" aria-label="구분별 연간 교육계획 집계">
-          <h2 className="plan-summary-heading">구분별 연간 교육계획 집계</h2>
-          <div className="plan-summary-grid">
-            {printCategorySummary.map((item) => (
-              <article key={item.category} className={'plan-summary-card ' + (item.category === '사외' ? 'external' : '')}>
-                <div className="plan-summary-title">
-                  <strong>{item.category} 교육</strong>
-                  <span>계획 {item.count.toLocaleString('ko-KR')}건</span>
-                </div>
-                <dl className="plan-summary-metrics">
-                  <div className="plan-summary-metric"><dt>계획 인원</dt><dd>{item.headcount.toLocaleString('ko-KR')}<small>명</small></dd></div>
-                  <div className="plan-summary-metric"><dt>계획 시간</dt><dd>{item.hours.toLocaleString('ko-KR')}<small>시간</small></dd></div>
-                  <div className="plan-summary-metric"><dt>예상 비용</dt><dd>{item.cost.toLocaleString('ko-KR')}<small>원</small></dd></div>
-                </dl>
-              </article>
-            ))}
+                      </td>
+                      <td className="py-4 px-2 text-center no-print">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onEdit(plan)}
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                            title="수정"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const originalIdx = plans.findIndex((p) => p.id === plan.id);
+                              setDeleteTargetIndex(originalIdx);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <p className="plan-summary-note">현재 출력 목록 기준 · 인원은 교육별 계획 인원 누계 · 시간과 비용은 교육계획의 등록값 기준</p>
-        </section>
-
-    {/* 인쇄 전용 푸터 - 출력일자 */}
-    <div className="hidden print:block text-right mt-6">
-      <span className="text-xs text-slate-500 font-mono font-bold">
-        출력일자: {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-      </span>
-    </div>
+        </div>
+      </div>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
-        {deleteConfirmIndex !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs no-print">
+        {deleteTargetIndex !== null && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print font-sans">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-gray-100"
             >
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-50 text-rose-600 mb-4">
-                <AlertTriangle className="h-6 w-6" />
+              <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-500">
+                <AlertCircle className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">교육 계획 삭제</h3>
-              <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                정말로 이 교육 계획을 삭제하시겠습니까?<br />
-                구글 스프레드시트 데이터베이스에서도 즉시 삭제되며 이 작업은 되돌릴 수 없습니다.
-              </p>
-              <div className="flex gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-gray-800">교육 계획을 삭제하시겠습니까?</h4>
+                <p className="text-xs text-gray-400 mt-1">구글 스프레드시트에서도 즉시 삭제됩니다.</p>
+              </div>
+              <div className="flex gap-2">
                 <button
-                  onClick={() => setDeleteConfirmIndex(null)}
-                  className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-gray-500 bg-gray-50 hover:bg-gray-100 transition-all border border-gray-200"
+                  type="button"
+                  onClick={() => setDeleteTargetIndex(null)}
+                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-xs font-bold hover:bg-gray-50 cursor-pointer"
                 >
-                  취소
+                  아니요
                 </button>
                 <button
-                  onClick={handleConfirmDelete}
-                  className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all"
+                  type="button"
+                  onClick={() => {
+                    onDelete(deleteTargetIndex);
+                    setDeleteTargetIndex(null);
+                  }}
+                  className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 cursor-pointer shadow-xs"
                 >
-                  삭제하기
+                  확인
                 </button>
               </div>
             </motion.div>
@@ -689,7 +466,7 @@ export default function PlanTable({
         )}
       </AnimatePresence>
 
-      {/* Iframe Sandbox Print Warning Modal */}
+      {/* Iframe Print Sandbox Warning Modal */}
       <AnimatePresence>
         {showPrintIframeWarning && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print font-sans">
@@ -697,7 +474,6 @@ export default function PlanTable({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
               className="bg-white rounded-2xl border border-gray-100 p-6 max-w-md w-full shadow-2xl space-y-4 text-center"
             >
               <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto text-indigo-500">
@@ -707,7 +483,7 @@ export default function PlanTable({
                 <h4 className="text-sm font-bold text-gray-800">보안 및 브라우저 환경 안내</h4>
                 <p className="text-xs text-gray-500 leading-relaxed text-left bg-gray-50 p-3.5 rounded-xl border border-gray-150">
                   현재 AI Studio 미리보기(Iframe Sandbox) 내부에서는 보안 규정으로 인해 인쇄 창을 직접 열 수 없습니다.<br /><br />
-                  출력을 정상 진행하려면 우측 상단의 <span className="font-semibold text-indigo-600">[새 창에서 열기 (Open in new tab)]</span>를 클릭하여 새 탭에서 접속해 주십시오. 아래 버튼으로 바로 이동하실 수도 있습니다.
+                  출력을 정상 진행하려면 우측 상단의 <span className="font-semibold text-indigo-600">[새 창에서 열기 (Open in new tab)]</span>를 클릭하여 새 탭에서 접속해 주십시오.
                 </p>
               </div>
               <div className="flex gap-2 pt-2">
