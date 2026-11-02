@@ -337,10 +337,12 @@ export default function PlanTable({
                           ({plan.headcount || 1}명)
                         </span>
                       </td>
+                      
+                      {/* 💡 수정된 교육일정 출력부: 메인에 진짜 교육일자(plan.date), 서브에 기간(plan.schedule) 출력 */}
                       <td className="py-4 px-2 text-gray-600 font-medium whitespace-normal break-all">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
-                          <span>{plan.date}</span>
+                          <span>{plan.date ? plan.date.split('T')[0] : '-'}</span>
                         </div>
                         {plan.schedule && (
                           <div className="text-[10px] text-gray-400 mt-0.5">
@@ -348,6 +350,7 @@ export default function PlanTable({
                           </div>
                         )}
                       </td>
+
                       <td className="py-4 px-2 text-center font-medium text-gray-600">
                         <div className="inline-flex items-center justify-center gap-1">
                           <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
