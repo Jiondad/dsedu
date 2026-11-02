@@ -254,16 +254,13 @@ export default function ReportManager({
   const availablePlansForReport = plansWithDrafts.filter((plan) => {
     const planIdStr = String(plan.id || '').trim();
 
-    // 현재 선택되어 수정 중인 교육 계획이라면 드롭다운에 무조건 표시 보장
     if (planIdStr === String(selectedPlanId || '').trim()) {
       return true;
     }
 
-    // 카테고리 필터 ('전체' | '사내' | '사외') 검사
     const categoryMatch =
       planCategoryFilter === '전체' || plan.category === planCategoryFilter;
 
-    // 이미 결과보고서가 존재하는지 검사 (수정 모드일 때는 자기 자신 제외)
     const isAlreadyReported = reports.some((r, idx) => {
       const rPlanId = String(r.plan_id || r.planId || '').trim();
       if (editingReportIndex !== null) {
@@ -456,7 +453,6 @@ export default function ReportManager({
         handleSelectReportForEdit(existingReport, index);
       }
     } else if (editingReportIndex !== null) {
-      // 수정 모드에서 아직 보고서가 없는 다른 교육을 선택한 경우 신규 작성 모드로 자연스럽게 전환
       setEditingReportIndex(null);
       setSummary('');
       setFuturePlan('');
@@ -575,24 +571,6 @@ export default function ReportManager({
     if (!drafterName.trim()) newErrors.drafterName = '성명을 입력해주세요.';
     if (!reportDate) newErrors.reportDate = '보고일자를 선택해주세요.';
 
-    if (reportDate && selectedPlan && selectedPlan.schedule) {
-      const reportDateClean = reportDate.split('T')[0].trim();
-      const eduYear = selectedPlan.date
-        ? selectedPlan.date.split('T')[0].trim().split('-')[0]
-        : new Date().getFullYear();
-      const scheduleParts = selectedPlan.schedule.split('~');
-
-      if (scheduleParts.length === 2) {
-        const endDateStr = `${eduYear}-${scheduleParts[1].trim().replace('/', '-')}`;
-        const eduEndTimeStr = endDateStr.split('T')[0].trim();
-
-        if (reportDateClean < eduEndTimeStr) {
-          newErrors.reportDate = '보고일자는 교육 마지막 일자보다 같거나 나중이어야 합니다.';
-          alert('❌ 보고일자는 교육 마지막 일자보다 같거나 나중이어야 합니다.');
-        }
-      }
-    }
-
     if (!summary.trim()) newErrors.summary = '교육 결과 요약 및 성과를 입력해주세요.';
     if (!futurePlan.trim()) newErrors.futurePlan = '향후 현업 적용 계획 및 기대효과를 입력해주세요.';
 
@@ -666,7 +644,6 @@ export default function ReportManager({
       satisfaction_score: Number(satisfactionScore) || 5.0,
       certificate_file: certificateFile || '',
       certificate_file_name: certificateFileName || '',
-      // camelCase 호환성 보장
       draftId: draftId,
       planId: selectedPlanId,
       drafterName: drafterName.trim(),
@@ -696,13 +673,11 @@ export default function ReportManager({
         triggerLocalNotification('새 교육 결과보고서가 작성되었습니다.', 'success');
       }
 
-      // 최신 데이터 다시 리로드
       await fetchReports(selectedYear);
       if (onFetchReports) {
         await onFetchReports(selectedYear);
       }
 
-      // 신규 저장 완료 후 입력 폼을 초기화하여 방금 작성된 교육이 드롭다운에서 즉시 사라지도록 처리
       handleResetForm();
     } catch (err) {
       console.error('Failed to save report:', err);
@@ -821,7 +796,7 @@ export default function ReportManager({
                 </option>
                 {availablePlansForReport.map((plan) => (
                   <option key={plan.id} value={plan.id}>
-                    [{plan.category}] {plan.title} ({plan.date ? plan.date.split('T')[0] : ''})
+                    [{plan.category}] {plan.title} ({plan.schedule || plan.date})
                     {plan.target ? ` - ${plan.target}` : ''}
                   </option>
                 ))}
@@ -849,7 +824,7 @@ export default function ReportManager({
                   </p>
                   <p>
                     <span className="font-bold text-gray-500">교육일정:</span>{' '}
-                    {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
+                    {selectedPlan.schedule || selectedPlan.date} ({selectedPlan.time_range}H) |{' '}
                     <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.hours}
                     시간
                   </p>
@@ -1223,9 +1198,7 @@ export default function ReportManager({
             id="printable-area"
             className="a4-document-sheet border border-gray-300 shadow-xl"
           >
-            {/* 상단 영역: 제목 + 결재란 + 본문 테이블 */}
             <div>
-              {/* 문서 헤더 및 결재란 */}
               <div className="flex justify-between items-end mb-6 pb-2 border-b-2 border-black">
                 <div>
                   <p className="text-[11px] font-bold text-gray-600 mb-1">
@@ -1259,7 +1232,6 @@ export default function ReportManager({
                 </table>
               </div>
 
-              {/* 본문 테이블 (중복 항목 제거 및 정돈) */}
               <table className="doc-table">
                 <colgroup>
                   <col style={{ width: '16%' }} />
@@ -1307,13 +1279,12 @@ export default function ReportManager({
                           }`
                         : '-'}
                     </td>
+                    
+                    {/* 💡 수정된 보고서 출력부: 등록일자(plan.date)를 제외하고 사용자가 입력한 교육기간(plan.schedule)만 표시 */}
                     <th>교육일시</th>
                     <td>
                       {selectedPlan
-                        ? `${
-                            selectedPlan.schedule ||
-                            (selectedPlan.date ? selectedPlan.date.split('T')[0] : '')
-                          } (${selectedPlan.hours}시간)`
+                        ? `${selectedPlan.schedule || '-'} (${selectedPlan.hours}시간)`
                         : '-'}
                     </td>
                   </tr>
