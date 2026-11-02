@@ -338,17 +338,12 @@ export default function PlanTable({
                         </span>
                       </td>
                       
-                      {/* 💡 수정된 교육일정 출력부: 메인에 진짜 교육일자(plan.date), 서브에 기간(plan.schedule) 출력 */}
+                      {/* 💡 수정된 교육일정 출력부: 등록일자(plan.date)를 제외하고 사용자가 입력한 교육기간(plan.schedule)만 표시 */}
                       <td className="py-4 px-2 text-gray-600 font-medium whitespace-normal break-all">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
-                          <span>{plan.date ? plan.date.split('T')[0] : '-'}</span>
+                          <span>{plan.schedule || '-'}</span>
                         </div>
-                        {plan.schedule && (
-                          <div className="text-[10px] text-gray-400 mt-0.5">
-                            기간: {plan.schedule}
-                          </div>
-                        )}
                       </td>
 
                       <td className="py-4 px-2 text-center font-medium text-gray-600">
