@@ -130,7 +130,8 @@ export default function DraftManager({
     const sameYearDrafts = drafts.filter((d) => {
       const cleanDDate = d.draft_date ? d.draft_date.split('T')[0].trim() : '';
       const dateMatch = cleanDDate && cleanDDate.substring(0, 4) === year;
-      const idMatch = d.id && (d.id.startsWith(`DSEDU-${year}`) || d.id.startsWith(`DSED-${year}`));
+      const idMatch =
+        d.id && (d.id.startsWith(`DSEDU-${year}`) || d.id.startsWith(`DSED-${year}`));
       return dateMatch || idMatch;
     });
 
@@ -402,15 +403,6 @@ export default function DraftManager({
       }
     }
 
-    if (draftDate && selectedPlan) {
-      const draftDateClean = draftDate.split('T')[0].trim();
-      const eduDateClean = selectedPlan.date.split('T')[0].trim();
-      if (draftDateClean > eduDateClean) {
-        newErrors.draftDate = '기안일자는 교육 시작일보다 같거나 먼저여야 합니다.';
-        alert('❌ 기안일자는 교육 시작일보다 같거나 먼저여야 합니다.');
-      }
-    }
-
     if (!draftId.trim()) newErrors.draftId = '기안서 번호를 입력해주세요.';
     if (!department.trim()) newErrors.department = '부서를 입력해주세요.';
     if (!position.trim()) newErrors.position = '직급을 입력해주세요.';
@@ -584,7 +576,7 @@ export default function DraftManager({
                   })
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      [{p.category}] {p.title} ({p.date})
+                      [{p.category}] {p.title} ({p.schedule || p.date})
                     </option>
                   ))}
               </select>
@@ -623,7 +615,7 @@ export default function DraftManager({
                   </p>
                   <p>
                     <span className="font-bold text-gray-500">교육일정:</span>{' '}
-                    {selectedPlan.schedule} ({selectedPlan.time_range}H) |{' '}
+                    {selectedPlan.schedule || selectedPlan.date} ({selectedPlan.time_range}H) |{' '}
                     <span className="font-bold text-gray-500">총시간:</span> {selectedPlan.hours}
                     시간
                   </p>
@@ -986,18 +978,18 @@ export default function DraftManager({
                   </tr>
                   <tr>
                     <th>교육일정</th>
-                    <td>
-                      {selectedPlan
-                        ? `${selectedPlan.date ? selectedPlan.date.split('T')[0] : ''} (${
-                            selectedPlan.schedule
-                          })`
-                        : '-'}
+                    <td colSpan={3}>
+                      {selectedPlan ? (selectedPlan.schedule || '-') : '-'}
                     </td>
+                  </tr>
+                  <tr>
                     <th>교육시간</th>
-                    <td>
-                      {selectedPlan
-                        ? `${selectedPlan.time_range}H (총 ${selectedPlan.hours}시간)`
-                        : '-'}
+                    <td className="font-mono">
+                      {selectedPlan ? `${selectedPlan.time_range}H (총 ${selectedPlan.hours}시간)` : '-'}
+                    </td>
+                    <th>예상소요비용</th>
+                    <td className="font-bold font-mono">
+                      {selectedPlan ? `₩${formatCurrency(selectedPlan.cost)}` : '-'}
                     </td>
                   </tr>
                   <tr>
@@ -1075,9 +1067,7 @@ export default function DraftManager({
               </div>
               <div>
                 <h4 className="text-sm font-bold text-gray-800">삭제하시겠습니까?</h4>
-                <p className="text-xs text-gray-400 mt-1">
-                  구글 스프레드시트에서도 즉시 삭제됩니다.
-                </p>
+                <p className="text-xs text-gray-400 mt-1">구글 스프레드시트에서도 즉시 삭제됩니다.</p>
               </div>
               <div className="flex gap-2">
                 <button
