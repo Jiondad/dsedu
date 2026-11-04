@@ -9,6 +9,9 @@ import { API_URL } from '../sheetsService';
 import { EducationPlan, EducationDraft, EducationReport } from '../types';
 import { formatCurrency, getSatisfactionLabel } from '../utils';
 import {
+  FileText,
+  FileArchive,
+  Download,
   Trash2,
   Printer,
   RefreshCw,
@@ -35,6 +38,41 @@ interface ReportManagerProps {
   onClearPreselectedPlan?: () => void;
   selectedYear: string;
   onFetchReports: (year: string) => Promise<void>;
+}
+
+// 첨부된 파일의 종류(이미지 / PDF / ZIP)를 판별하는 헬퍼 함수
+function getFileKind(
+  fileData?: string,
+  fileName?: string
+): 'image' | 'pdf' | 'zip' | 'other' | null {
+  if (!fileData && !fileName) return null;
+  const lowerName = (fileName || '').toLowerCase();
+  const lowerData = (fileData || '').toLowerCase();
+
+  if (lowerName.endsWith('.pdf') || lowerData.startsWith('data:application/pdf')) {
+    return 'pdf';
+  }
+  if (
+    lowerName.endsWith('.zip') ||
+    lowerData.startsWith('data:application/zip') ||
+    lowerData.startsWith('data:application/x-zip')
+  ) {
+    return 'zip';
+  }
+  if (
+    lowerData.startsWith('data:image/') ||
+    /\.(jpg|jpeg|png|gif|webp)$/i.test(lowerName)
+  ) {
+    return 'image';
+  }
+  if (fileData) {
+    // 구글 드라이브 URL 등으로 저장된 경우 확장자로 1차 판별, 없으면 기본 이미지/파일 처리
+    if (lowerName.endsWith('.pdf')) return 'pdf';
+    if (lowerName.endsWith('.zip')) return 'zip';
+    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(lowerName)) return 'image';
+    return 'other';
+  }
+  return null;
 }
 
 export default function ReportManager({
@@ -88,7 +126,7 @@ export default function ReportManager({
   const [purpose, setPurpose] = useState('');
   const [budgetBreakdown, setBudgetBreakdown] = useState('');
   const [satisfactionScore, setSatisfactionScore] = useState<number>(5.0);
-  const [certificateFile, setCertificateFile] = useState<string>(''); // Base64 (Compressed)
+  const [certificateFile, setCertificateFile] = useState<string>(''); // Base64 or Drive URL
   const [certificateFileName, setCertificateFileName] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
 
@@ -111,14 +149,55 @@ export default function ReportManager({
     }, 4500);
   };
 
-  // 이미지를 구글 시트 셀 용량(50,000자 제한) 이내로 안전하게 자동 리사이징/압축하는 함수
+  // 이미지(JPG, PNG) 및 문서/압축파일(PDF, ZIP) 통합 처리 함수
   const processFile = (file: File) => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
-      triggerLocalNotification('JPG, PNG 형식의 이미지 파일만 업로드할 수 있습니다.', 'error');
+    const fileName = file.name || '';
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+
+    const isImage = ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type) || ['jpg', 'jpeg', 'png'].includes(ext);
+    const isPdf = file.type === 'application/pdf' || ext === 'pdf';
+    const isZip =
+      [
+        'application/zip',
+        'application/x-zip-compressed',
+        'multipart/x-zip',
+        'application/octet-stream',
+      ].includes(file.type) && ext === 'zip' || ext === 'zip';
+
+    if (!isImage && !isPdf && !isZip) {
+      triggerLocalNotification(
+        'JPG, PNG 이미지 또는 PDF, ZIP 파일만 업로드할 수 있습니다.',
+        'error'
+      );
       return;
     }
 
+    // PDF, ZIP 파일 용량 제한 체크 (웹앱 페이로드 안정성을 위해 최대 15MB 제한)
+    const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+    if ((isPdf || isZip) && file.size > MAX_FILE_SIZE) {
+      triggerLocalNotification(
+        'PDF 및 ZIP 파일은 최대 15MB 이하만 첨부할 수 있습니다.',
+        'error'
+      );
+      return;
+    }
+
+    // 1. PDF 또는 ZIP 파일인 경우 Base64 DataURL로 직접 읽기
+    if (isPdf || isZip) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCertificateFile(reader.result as string);
+        setCertificateFileName(file.name);
+        triggerLocalNotification(
+          `${isPdf ? 'PDF 문서' : 'ZIP 압축파일'}가 등록되었습니다.`,
+          'success'
+        );
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // 2. 이미지(JPG, PNG)인 경우 Canvas로 자동 리사이징/최적화
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -149,10 +228,8 @@ export default function ReportManager({
           ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
 
-          // 1차 압축 (품질 0.65)
           let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
 
-          // 만약 Base64 문자열이 45,000자를 넘으면 한 번 더 압축 (구글 시트 50,000자 제한 방어)
           if (compressedDataUrl.length > 45000) {
             compressedDataUrl = canvas.toDataURL('image/jpeg', 0.45);
           }
@@ -172,6 +249,7 @@ export default function ReportManager({
     if (file) {
       processFile(file);
     }
+    e.target.value = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -693,6 +771,8 @@ export default function ReportManager({
     return `${parts[0]}년 ${parts[1]}월 ${parts[2]}일`;
   };
 
+  const currentFileKind = getFileKind(certificateFile, certificateFileName);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative w-full max-w-full box-border overflow-x-hidden">
       <AnimatePresence>
@@ -995,7 +1075,7 @@ export default function ReportManager({
 
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                7. 교육증빙 업로드 (수료증 / 교육사진)
+                7. 교육증빙 업로드 (JPG, PNG, PDF, ZIP)
               </label>
               <div
                 onDragOver={handleDragOver}
@@ -1013,30 +1093,57 @@ export default function ReportManager({
                 <input
                   id="certificate-upload-input"
                   type="file"
-                  accept="image/jpeg, image/png, image/jpg"
+                  accept="image/jpeg, image/png, image/jpg, application/pdf, .pdf, application/zip, application/x-zip-compressed, .zip"
                   className="hidden"
                   onChange={handleFileChange}
                 />
                 {certificateFile ? (
                   <div className="flex flex-col items-center gap-2">
-                    <img
-                      src={certificateFile}
-                      alt="미리보기"
-                      className="max-h-24 rounded-lg border border-gray-200 object-contain shadow-2xs"
-                    />
+                    {currentFileKind === 'image' ? (
+                      <img
+                        src={certificateFile}
+                        alt="미리보기"
+                        className="max-h-24 rounded-lg border border-gray-200 object-contain shadow-2xs"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : currentFileKind === 'pdf' ? (
+                      <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex flex-col items-center justify-center text-rose-600 shadow-2xs">
+                        <FileText className="w-6 h-6" />
+                        <span className="text-[9px] font-black mt-0.5">PDF</span>
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center text-amber-600 shadow-2xs">
+                        <FileArchive className="w-6 h-6" />
+                        <span className="text-[9px] font-black mt-0.5">ZIP</span>
+                      </div>
+                    )}
+
                     <div className="text-xs font-bold text-gray-800 max-w-[280px] truncate">
-                      {certificateFileName || '등록된 증빙 이미지'}
+                      {certificateFileName || '등록된 교육증빙 파일'}
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveFile();
-                      }}
-                      className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg transition-all"
-                    >
-                      <X className="w-3 h-3" /> 파일 삭제
-                    </button>
+
+                    <div className="flex items-center gap-2 mt-1">
+                      <a
+                        href={certificateFile}
+                        download={certificateFileName || '교육증빙파일'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-all"
+                      >
+                        <Download className="w-3 h-3" /> 다운로드/열기
+                      </a>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFile();
+                        }}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                      >
+                        <X className="w-3 h-3" /> 파일 삭제
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-2">
@@ -1044,10 +1151,10 @@ export default function ReportManager({
                       <UploadCloud className="w-5 h-5" />
                     </div>
                     <div className="text-xs font-bold text-gray-700">
-                      클릭하여 이미지 선택 또는 드래그 앤 드롭
+                      클릭하여 파일 선택 또는 드래그 앤 드롭
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      업로드 시 시트 저장 규격에 맞게 자동 최적화됩니다.
+                      이미지(JPG, PNG) 및 문서/압축파일(PDF, ZIP) 첨부 가능
                     </p>
                   </div>
                 )}
@@ -1136,7 +1243,11 @@ export default function ReportManager({
                           String(p.id || '').trim() ===
                           String(r.plan_id || r.planId || '').trim()
                       );
-                      const hasCert = Boolean(r.certificate_file || r.certificateFile);
+                      const rCertFile = r.certificate_file || r.certificateFile || '';
+                      const rCertName = r.certificate_file_name || r.certificateFileName || '';
+                      const hasCert = Boolean(rCertFile);
+                      const itemFileKind = getFileKind(rCertFile, rCertName);
+
                       return (
                         <div
                           key={r.id}
@@ -1154,7 +1265,18 @@ export default function ReportManager({
                               </p>
                               {hasCert && (
                                 <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  <ImageIcon className="w-2.5 h-2.5" /> 증빙첨부됨
+                                  {itemFileKind === 'pdf' ? (
+                                    <FileText className="w-2.5 h-2.5" />
+                                  ) : itemFileKind === 'zip' ? (
+                                    <FileArchive className="w-2.5 h-2.5" />
+                                  ) : (
+                                    <ImageIcon className="w-2.5 h-2.5" />
+                                  )}
+                                  {itemFileKind === 'pdf'
+                                    ? 'PDF첨부'
+                                    : itemFileKind === 'zip'
+                                    ? 'ZIP첨부'
+                                    : '증빙첨부'}
                                 </span>
                               )}
                             </div>
@@ -1279,8 +1401,6 @@ export default function ReportManager({
                           }`
                         : '-'}
                     </td>
-                    
-                    {/* 💡 수정된 보고서 출력부: 등록일자(plan.date)를 제외하고 사용자가 입력한 교육기간(plan.schedule)만 표시 */}
                     <th>교육일시</th>
                     <td>
                       {selectedPlan
@@ -1335,22 +1455,57 @@ export default function ReportManager({
                     <th>교육증빙 첨부</th>
                     <td colSpan={3} className="text-center align-middle">
                       {certificateFile ? (
-                        <div className="py-1 flex flex-col items-center justify-center">
-                          <img
-                            src={certificateFile}
-                            alt="교육증빙"
-                            className="max-h-[185px] w-auto object-contain border border-gray-300"
-                            referrerPolicy="no-referrer"
-                          />
-                          {certificateFileName && (
-                            <p className="text-[10px] text-gray-500 mt-1 font-mono">
-                              첨부파일: {certificateFileName}
-                            </p>
-                          )}
-                        </div>
+                        currentFileKind === 'image' ? (
+                          <div className="py-1 flex flex-col items-center justify-center">
+                            <img
+                              src={certificateFile}
+                              alt="교육증빙"
+                              className="max-h-[185px] w-auto object-contain border border-gray-300"
+                              referrerPolicy="no-referrer"
+                            />
+                            {certificateFileName && (
+                              <p className="text-[10px] text-gray-500 mt-1 font-mono">
+                                첨부파일: {certificateFileName}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="py-4 px-5 my-1 bg-gray-50 border border-gray-300 rounded-xl inline-flex items-center gap-3.5 text-left max-w-md mx-auto">
+                            {currentFileKind === 'pdf' ? (
+                              <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-700 flex flex-col items-center justify-center shrink-0 font-black text-[10px] border border-rose-200">
+                                <FileText className="w-5 h-5" />
+                                <span>PDF</span>
+                              </div>
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex flex-col items-center justify-center shrink-0 font-black text-[10px] border border-amber-200">
+                                <FileArchive className="w-5 h-5" />
+                                <span>ZIP</span>
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-xs font-extrabold text-gray-900 break-all">
+                                {certificateFileName || '교육증빙_첨부파일'}
+                              </p>
+                              <p className="text-[10px] text-gray-600 mt-0.5">
+                                {currentFileKind === 'pdf'
+                                  ? '전자결재 및 시스템 내 PDF 증빙문서 원본 첨부 완료'
+                                  : '전자결재 및 시스템 내 ZIP 압축 증빙자료 원본 첨부 완료'}
+                              </p>
+                              <a
+                                href={certificateFile}
+                                download={certificateFileName || '교육증빙파일'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="no-print mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:underline"
+                              >
+                                <Download className="w-3 h-3" /> 첨부파일 열기 / 다운로드
+                              </a>
+                            </div>
+                          </div>
+                        )
                       ) : (
                         <div className="py-4 text-gray-400 text-[11px]">
-                          (첨부된 교육 수료증 또는 현장 사진 없음)
+                          (첨부된 교육 수료증 또는 증빙파일 없음)
                         </div>
                       )}
                     </td>
