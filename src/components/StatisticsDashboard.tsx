@@ -176,29 +176,37 @@ export default function StatisticsDashboard({
   const hoursExecutionRate =
     plannedTotalHours > 0 ? Math.round((totalHours / plannedTotalHours) * 100) : 0;
 
-  // Chart Data: Monthly plan and completed trainee count & budget
+  // Chart Data: Monthly plan and completed trainee count & budget (schedule 월 우선 파싱)
   const monthlyData = useMemo(() => {
+    const extractMonth = (plan: EducationPlan, fallbackDate?: string) => {
+      if (plan.schedule && plan.schedule.includes('/')) {
+        const m = parseInt(plan.schedule.split('~')[0].trim().split('/')[0], 10);
+        if (!isNaN(m) && m >= 1 && m <= 12) return m;
+      }
+      const dateStr = (plan.date || fallbackDate || '').split('T')[0];
+      if (dateStr && dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length >= 2) {
+          const m = parseInt(parts[1], 10);
+          if (!isNaN(m) && m >= 1 && m <= 12) return m;
+        }
+      }
+      return -1;
+    };
+
     return Array.from({ length: 12 }, (_, i) => {
       const monthNum = i + 1;
       const monthName = `${monthNum}월`;
 
-      const monthlyPlans = plans.filter((p) => {
-        const dateStr = (p.date || '').split('T')[0];
-        if (!dateStr) return false;
-        const parts = dateStr.split('-');
-        return parts.length >= 2 && parseInt(parts[1], 10) === monthNum;
-      });
+      const monthlyPlans = plans.filter((p) => extractMonth(p) === monthNum);
       const plannedTrainees = monthlyPlans.reduce((sum, p) => sum + getHeadcount(p), 0);
       const plannedBudgetMan = Math.round(
         monthlyPlans.reduce((sum, p) => sum + (Number(p.cost) || 0), 0) / 10000
       );
 
-      const monthItems = completedReportsWithDetails.filter((item) => {
-        const dateStr = (item.plan.date || item.report.report_date || '').split('T')[0];
-        if (!dateStr) return false;
-        const parts = dateStr.split('-');
-        return parts.length >= 2 && parseInt(parts[1], 10) === monthNum;
-      });
+      const monthItems = completedReportsWithDetails.filter(
+        (item) => extractMonth(item.plan, item.report.report_date) === monthNum
+      );
       const completedTrainees = monthItems.reduce((sum, item) => sum + getHeadcount(item.plan), 0);
       const executedBudgetMan = Math.round(
         monthItems.reduce((sum, item) => sum + (Number(item.plan.cost) || 0), 0) / 10000
@@ -826,9 +834,7 @@ export default function StatisticsDashboard({
         </div>
       </div>
 
-      {/* =====================================================================
-          하단 교육 실적 목록 섹션 (연간 교육 계획 목록 UI 스타일 100% 통일 + 필드명 음영 추가)
-      ===================================================================== */}
+      {/* 하단 교육 실적 목록 섹션 */}
       <div className="space-y-4">
         <div className="flex justify-between items-center no-print">
           <div>
@@ -846,11 +852,11 @@ export default function StatisticsDashboard({
           id="printable-area"
           className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden print-report-table-container print-stats-table-container"
         >
-          {/* 인쇄 전용 헤더 및 결재방 */}
+          {/* 💡 인쇄 전용 헤더 (연도 표시 타이틀 + 결재란) */}
           <div className="hidden print:block mb-6 w-full">
             <div className="flex justify-between items-end pb-2.5">
               <h1 className="text-lg font-black text-slate-900 self-end mb-2">
-                대성스틸 연간 교육 실적 현황
+                대성스틸 {selectedYear}년도 연간 교육 실적 현황
               </h1>
               <div className="ml-auto">
                 <table
@@ -993,7 +999,6 @@ export default function StatisticsDashboard({
           <div className="w-full overflow-x-auto bg-white">
             <table className="w-full min-w-[900px] print:min-w-0 table-fixed text-left border-collapse text-xs">
               <thead>
-                {/* 💡 필드명 배경에 연한 회색빛 음영(bg-slate-50/80) 적용 */}
                 <tr className="border-y border-gray-200 text-[11px] font-bold text-gray-600 uppercase tracking-wider bg-slate-50/80">
                   <th style={{ width: '4%' }} className="py-3.5 px-2 text-center">
                     NO
@@ -1155,7 +1160,9 @@ export default function StatisticsDashboard({
 
           {/* 인쇄 전용 구분별 요약 집계 카드 */}
           <section className="stats-print-summary" aria-label="구분별 교육 실적 집계">
-            <h2 className="stats-summary-heading">구분별 교육 실적 집계</h2>
+            <h2 className="stats-summary-heading">
+              구분별 교육 실적 집계 ({selectedYear}년도)
+            </h2>
             <div className="stats-summary-grid">
               {printCategorySummary.map((item) => (
                 <article
@@ -1261,6 +1268,6 @@ export default function StatisticsDashboard({
           </div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
