@@ -176,7 +176,7 @@ export default function StatisticsDashboard({
   const hoursExecutionRate =
     plannedTotalHours > 0 ? Math.round((totalHours / plannedTotalHours) * 100) : 0;
 
-  // Chart Data: Monthly plan and completed trainee count & budget (schedule 월 우선 파싱)
+  // Chart Data: Monthly plan and completed trainee count & budget
   const monthlyData = useMemo(() => {
     const extractMonth = (plan: EducationPlan, fallbackDate?: string) => {
       if (plan.schedule && plan.schedule.includes('/')) {
@@ -1268,6 +1268,6 @@ export default function StatisticsDashboard({
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
