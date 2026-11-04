@@ -12,8 +12,6 @@ import {
   Edit2,
   Trash2,
   Printer,
-  FileText,
-  CheckCircle,
   ArrowUpDown,
   AlertCircle,
   Building2,
@@ -32,6 +30,43 @@ interface PlanTableProps {
   onStartReport: (plan: EducationPlan) => void;
 }
 
+/**
+ * 💡 교육일정(schedule, 예: "06/15~06/26" 또는 "12/01~12/01")에서
+ * '교육 첫날(시작일)'을 추출하여 정렬용 표준 문자열("MM-DD")로 변환하는 헬퍼 함수
+ */
+function getScheduleSortKey(plan: EducationPlan): string {
+  const rawSchedule = (plan.schedule || '').trim();
+
+  if (rawSchedule) {
+    // 1. '~' 기호가 있으면 앞쪽(교육 첫날) 문자열만 추출
+    const startPart = rawSchedule.split('~')[0].trim();
+
+    // 2. MM/DD, M/D, YYYY-MM-DD, MM.DD 등에서 월(MM)과 일(DD) 추출
+    const mdMatch = startPart.match(/(?:\d{4}[-./])?(\d{1,2})[-./](\d{1,2})/);
+    if (mdMatch) {
+      const month = mdMatch[1].padStart(2, '0');
+      const day = mdMatch[2].padStart(2, '0');
+
+      // 종료일도 추출하여 시작일이 같을 때 2차 정렬 기준으로 활용
+      const endPart = rawSchedule.split('~')[1]?.trim() || startPart;
+      const endMatch = endPart.match(/(?:\d{4}[-./])?(\d{1,2})[-./](\d{1,2})/);
+      const endMonth = endMatch ? endMatch[1].padStart(2, '0') : month;
+      const endDay = endMatch ? endMatch[2].padStart(2, '0') : day;
+
+      return `${month}-${day}_${endMonth}-${endDay}`;
+    }
+  }
+
+  // fallback: 만약 schedule이 비어있다면 date(YYYY-MM-DD)에서 월-일 추출
+  const cleanDate = (plan.date || '').split('T')[0].trim();
+  const dateMatch = cleanDate.match(/^\d{4}-(\d{2})-(\d{2})/);
+  if (dateMatch) {
+    return `${dateMatch[1]}-${dateMatch[2]}_${dateMatch[1]}-${dateMatch[2]}`;
+  }
+
+  return '99-99_99-99';
+}
+
 export default function PlanTable({
   plans,
   drafts,
@@ -48,8 +83,8 @@ export default function PlanTable({
   // Search query state
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sort state for date
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('asc');
+  // Sort state for schedule start date (기본값: 교육 첫날 기준 오름차순 'asc')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Delete confirmation modal state
   const [deleteTargetIndex, setDeleteTargetIndex] = useState<number | null>(null);
@@ -61,7 +96,7 @@ export default function PlanTable({
   const filteredPlans = plans.filter((plan) => {
     const cleanPlanDate = (plan.date || '').split('T')[0].trim();
     const planYear = cleanPlanDate.substring(0, 4);
-    const matchesYear = !selectedYear || planYear === selectedYear;
+    const matchesYear = !selectedYear || !planYear || planYear === selectedYear;
 
     const matchesCategory =
       categoryFilter === '전체' || plan.category === categoryFilter;
@@ -71,21 +106,24 @@ export default function PlanTable({
       (plan.title && plan.title.toLowerCase().includes(query)) ||
       (plan.institution && plan.institution.toLowerCase().includes(query)) ||
       (plan.instructor && plan.instructor.toLowerCase().includes(query)) ||
-      (plan.target && plan.target.toLowerCase().includes(query));
+      (plan.target && plan.target.toLowerCase().includes(query)) ||
+      (plan.schedule && plan.schedule.toLowerCase().includes(query));
 
     return matchesYear && matchesCategory && matchesSearch;
   });
 
-  // Sort plans by date if requested
+  // 💡 계획 등록일자(plan.date)가 아닌 '교육일정(plan.schedule)의 첫날' 기준으로 정렬
   const sortedPlans = [...filteredPlans].sort((a, b) => {
-    if (!sortOrder) return 0;
-    const dateA = a.date || '';
-    const dateB = b.date || '';
-    if (sortOrder === 'asc') {
-      return dateA.localeCompare(dateB);
-    } else {
-      return dateB.localeCompare(dateA);
+    const keyA = getScheduleSortKey(a);
+    const keyB = getScheduleSortKey(b);
+
+    const cmp = keyA.localeCompare(keyB);
+    if (cmp !== 0) {
+      return sortOrder === 'asc' ? cmp : -cmp;
     }
+
+    // 교육 일정이 완전히 동일한 경우 교육명 가나다순으로 일관성 유지
+    return (a.title || '').localeCompare(b.title || '');
   });
 
   const handlePrintList = () => {
@@ -249,9 +287,10 @@ export default function PlanTable({
                       setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
                     }
                     className="flex items-center gap-1 hover:text-indigo-600 transition-colors cursor-pointer uppercase font-bold"
+                    title="클릭하여 교육 시작일 기준 오름차순/내림차순 정렬"
                   >
                     <span>교육일정</span>
-                    <ArrowUpDown className="w-3 h-3 text-gray-400" />
+                    <ArrowUpDown className="w-3 h-3 text-indigo-500" />
                   </button>
                 </th>
                 <th style={{ width: '10%' }} className="py-3.5 px-2 text-center">
@@ -337,8 +376,8 @@ export default function PlanTable({
                           ({plan.headcount || 1}명)
                         </span>
                       </td>
-                      
-                      {/* 💡 수정된 교육일정 출력부: 등록일자(plan.date)를 제외하고 사용자가 입력한 교육기간(plan.schedule)만 표시 */}
+
+                      {/* 교육일정: 등록일자는 제외하고 입력한 교육일정(schedule)만 단독 표시 */}
                       <td className="py-4 px-2 text-gray-600 font-medium whitespace-normal break-all">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0 no-print" />
